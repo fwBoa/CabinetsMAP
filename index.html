@@ -1411,7 +1411,7 @@
         if (hoverPopup) { hoverPopup.remove(); hoverPopup = null; }
       });
 
-      // Click département — simple clic met en avant le cabinet principal
+      // Click département — met en avant le cabinet principal
       map.on('click', 'departements-covered', (e) => {
         const feature = e.features && e.features[0];
         if (!feature) return;
@@ -1421,6 +1421,20 @@
           highlightCabinet(cabs[0]);
         } else if (cabs.length > 1) {
           showDeptDetail(feature, cabs);
+        }
+      });
+
+      // Double-click département — zoom sur le territoire du cabinet principal
+      map.on('dblclick', 'departements-covered', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const feature = e.features && e.features[0];
+        if (!feature) return;
+        const code = String(feature.properties.code);
+        const cabs = getCabinetsForDept(code);
+        if (cabs.length >= 1) {
+          const center = polygonCentroid(feature.geometry);
+          if (map) map.flyTo({ center, zoom: 8, speed: 0.8, curve: 1.2 });
         }
       });
 
