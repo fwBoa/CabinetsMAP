@@ -1,0 +1,100 @@
+(async function () {
+  'use strict';
+
+  const App = window.App;
+  const S = App.state;
+  const U = App.utils;
+  const C = App.config;
+
+  // GeoJSON literals are replaced inline by scripts/build_index.py.
+  // In development (Live Server) they are fetched as relative files.
+  async function loadGeoJSON(filename) {
+    const response = await fetch(filename);
+    if (!response.ok) throw new Error(`HTTP ${response.status} sur ${filename}`);
+    return response.json();
+  }
+
+  let CABINETS_GEOJSON, DEPARTEMENTS_GEOJSON;
+  try {
+    CABINETS_GEOJSON = __CABINETS_GEOJSON__;
+    DEPARTEMENTS_GEOJSON = __DEPARTEMENTS_GEOJSON__;
+  } catch (err) {
+    CABINETS_GEOJSON = await loadGeoJSON('cabinets.geojson');
+    DEPARTEMENTS_GEOJSON = await loadGeoJSON('departements.geojson');
+  }
+
+  const mapMain = document.querySelector('.map-main');
+  const retryBtn = document.getElementById('retryBtn');
+  const continueBtn = document.getElementById('continueBtn');
+
+  function loadData() {
+    try {
+      S.cabinets = CABINETS_GEOJSON.features || [];
+      S.departements = DEPARTEMENTS_GEOJSON.features || [];
+      buildDeptIndex();
+      return true;
+    } catch (err) {
+      console.error(err);
+      App.map.setLoaderError('Impossible de charger les données du réseau.', true);
+      return false;
+    }
+  }
+
+  function buildDeptIndex() {
+    S.deptIndex.clear();
+    S.cabinetById.clear();
+
+    S.cabinets.forEach(cab => {
+      const p = cab.properties;
+      S.cabinetById.set(p.id, cab);
+      (p.departements || []).forEach(code => {
+        if (!S.deptIndex.has(code)) {
+          S.deptIndex.set(code, { cabinetIds: [], primary: null, color: null });
+        }
+        S.deptIndex.get(code).cabinetIds.push(p.id);
+      });
+    });
+
+    S.deptIndex.forEach((entry) => {
+      entry.primary = entry.cabinetIds[0];
+      const cab = S.cabinetById.get(entry.primary);
+      entry.color = cab ? cab.properties.couleur : '#cccccc';
+    });
+
+    S.departements.forEach(f => {
+      const code = String(f.properties.code);
+      const entry = S.deptIndex.get(code);
+      f.properties.fillColor = entry ? entry.color : C.colors.uncovered;
+      f.properties.primaryCabinetId = entry ? entry.primary : null;
+      f.properties.cabinetCount = entry ? entry.cabinetIds.length : 0;
+    });
+  }
+
+  function bindGlobalEvents() {
+    retryBtn.addEventListener('click', () => {
+      if (S.map) { S.map.remove(); S.map = null; }
+      if (loadData()) App.map.initMap();
+    });
+
+    continueBtn.addEventListener('click', () => {
+      App.map.hideLoader();
+      App.ui.renderSidebar();
+      U.announce('La carte n\'a pas pu être chargée. La liste des cabinets est disponible.');
+    });
+
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    motionQuery.addEventListener('change', () => {
+      if (S.map && S.mapLoaded) { S.map.setPitch(0); S.map.setBearing(0); }
+    });
+  }
+
+  function init() {
+    mapMain.classList.add('map-main--visible');
+    if (loadData()) {
+      App.map.initMap();
+    }
+  }
+
+  bindGlobalEvents();
+  init();
+})();
