@@ -1,0 +1,696 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "cabinet-01",
+        "nom": "AARPI PLATON MAGNE TURNER",
+        "adresse": "6 Rue Molière - 83000 TOULON",
+        "phone": "04.94.93.64.64",
+        "emails": [
+          "contact@pmt-avocats.fr"
+        ],
+        "tribunaux": [
+          "AIX EN PROVENCE",
+          "BLOIS",
+          "DIGNE LES BAINS",
+          "MONTARGIS",
+          "ORLEANS",
+          "TARASCON",
+          "TOULON",
+          "TOURS"
+        ],
+        "cours_appel": [
+          "AIX-EN-PROVENCE",
+          "ORLEANS"
+        ],
+        "departements": [
+          "04",
+          "13",
+          "37",
+          "41",
+          "45",
+          "83"
+        ],
+        "couleur": "#1e3a5f",
+        "badges": [],
+        "display_name": "6, Rue Molière, Basse Ville, Toulon, Var, Provence-Alpes-Côte d'Azur, France métropolitaine, 83000, France",
+        "place_id": 83727876
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          5.9329002,
+          43.124485
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "cabinet-02",
+        "nom": "AHBL AVOCATS",
+        "adresse": "56 Avenue de la République - 33200 BORDEAUX",
+        "phone": "05.56.48.54.66",
+        "emails": [
+          "contact@ahbl-avocats.fr",
+          "e.rey@scp-camille.com"
+        ],
+        "tribunaux": [
+          "ANGOULEME",
+          "BERGERAC",
+          "BORDEAUX",
+          "BRIVE LA GAILLARDE",
+          "GUERET",
+          "LIBOURNE",
+          "LIMOGES",
+          "PERIGUEUX",
+          "TULLE"
+        ],
+        "cours_appel": [
+          "BORDEAUX",
+          "LIMOGES"
+        ],
+        "departements": [
+          "16",
+          "19",
+          "23",
+          "24",
+          "33",
+          "87"
+        ],
+        "couleur": "#2a6f68",
+        "badges": [],
+        "display_name": "56, Avenue de la République, Barrière d'Arès, Cardoze, Caudéran, Bordeaux, Gironde, Nouvelle-Aquitaine, France métropolitaine, 33200, France",
+        "place_id": 290043927
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -0.6028515,
+          44.8398569
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "cabinet-03",
+        "nom": "CIME AVOCATS",
+        "adresse": "8 place du Colombier - 35000 RENNES",
+        "phone": "02.30.03.43.00",
+        "emails": [
+          "contact@cime-avocats.com"
+        ],
+        "tribunaux": [
+          "BREST",
+          "COLMAR",
+          "LORIENT",
+          "MULHOUSE",
+          "NANTES",
+          "QUIMPER",
+          "RENNES",
+          "SAINT MALO",
+          "SAVERNE",
+          "ST NAZAIRE",
+          "ST-BRIEUC",
+          "STRASBOURG",
+          "VANNES"
+        ],
+        "cours_appel": [
+          "COLMAR",
+          "RENNES"
+        ],
+        "departements": [
+          "22",
+          "29",
+          "35",
+          "44",
+          "56",
+          "67",
+          "68"
+        ],
+        "couleur": "#8b5a2b",
+        "badges": [],
+        "display_name": "Le Bigre! Lieu, 8, Place du Colombier, Colombier - Champ de Mars, Centre, Quartiers Centre, Rennes, Ille-et-Vilaine, Bretagne, France métropolitaine, 35000, France",
+        "place_id": 282487376
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -1.6790654,
+          48.1050391
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "cabinet-04",
+        "nom": "DEJANS AVOCATS",
+        "adresse": "17 Avenue Foch - 60300 SENLIS",
+        "phone": "03.44.53.00.23",
+        "emails": [
+          "recouvrement@dejans-avocats.com"
+        ],
+        "tribunaux": [
+          "AMIENS",
+          "BEAUVAIS",
+          "BOURGES",
+          "CHALON SUR SAONE",
+          "CHATEAUROUX",
+          "CHAUMONT",
+          "COMPIEGNE",
+          "DIJON",
+          "LAON",
+          "MACON",
+          "NEVERS",
+          "SENLIS",
+          "SOISSONS",
+          "ST QUENTIN"
+        ],
+        "cours_appel": [
+          "AMIENS",
+          "BOURGES",
+          "DIJON"
+        ],
+        "departements": [
+          "02",
+          "18",
+          "21",
+          "36",
+          "52",
+          "58",
+          "60",
+          "71",
+          "80"
+        ],
+        "couleur": "#4a4e69",
+        "badges": [],
+        "display_name": "Alain Goislot, 17, Avenue du Maréchal Foch, Senlis, Oise, Hauts-de-France, France métropolitaine, 60300, France",
+        "place_id": 99047247
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          2.5907548,
+          49.2087598
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "cabinet-05",
+        "nom": "EKLAR AVOCATS",
+        "adresse": "43-45 Rue de Breteuil - 13006 MARSEILLE",
+        "phone": "04.91.37.88.77",
+        "emails": [
+          "cabinet@eklar.com"
+        ],
+        "tribunaux": [
+          "AJACCIO",
+          "ALES",
+          "AVIGNON",
+          "BASTIA",
+          "BEZIERS",
+          "CARCASSONNE",
+          "CARPENTRAS",
+          "MARSEILLE",
+          "MENDE",
+          "MONTPELLIER",
+          "NARBONNE",
+          "NIMES",
+          "PRIVAS",
+          "RODEZ"
+        ],
+        "cours_appel": [
+          "AIX-EN-PROVENCE",
+          "BASTIA",
+          "MONTPELLIER",
+          "NIMES"
+        ],
+        "departements": [
+          "07",
+          "11",
+          "12",
+          "13",
+          "2A",
+          "2B",
+          "30",
+          "34",
+          "48",
+          "84"
+        ],
+        "couleur": "#9a4d66",
+        "badges": [],
+        "display_name": "Rue Breteuil, Palais de Justice, 6e Arrondissement, Marseille, Bouches-du-Rhône, Provence-Alpes-Côte d'Azur, France métropolitaine, 13006, France",
+        "place_id": 83110720
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          5.3763981,
+          43.2888739
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "cabinet-06",
+        "nom": "Louis LACAMP",
+        "adresse": "71 boulevard Raspail – 75006 Paris",
+        "phone": "01.45.49.03.20",
+        "emails": [
+          "louis.lacamp@lacamp-avocat.com"
+        ],
+        "tribunaux": [
+          "EVRY",
+          "FONTAINEBLEAU",
+          "MEAUX",
+          "MELUN"
+        ],
+        "cours_appel": [
+          "PARIS"
+        ],
+        "departements": [
+          "77",
+          "91"
+        ],
+        "couleur": "#3d5a80",
+        "badges": [],
+        "display_name": "71, Boulevard Raspail, Quartier Notre-Dame-des-Champs, Paris 6e Arrondissement, Paris, Île-de-France, France métropolitaine, 75006, France",
+        "place_id": 97567531
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          2.3277103,
+          48.8491987
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "cabinet-07",
+        "nom": "Me Guillaume FRICKER",
+        "adresse": "24 Av. de Moka - 35400 Saint-Malo",
+        "phone": "07.56.92.64.26",
+        "emails": [
+          "contact@wla-recouvrement.fr",
+          "fricker@elliot.bzh"
+        ],
+        "tribunaux": [
+          "BELFORT",
+          "BESANCON",
+          "CHALONS EN CHAMPAGNE",
+          "CHARLEVILLE-MEZIERES",
+          "LONS LE SAUNIER",
+          "MONTBELIARD",
+          "REIMS",
+          "TROYES",
+          "VESOUL"
+        ],
+        "cours_appel": [
+          "BESANCON",
+          "REIMS"
+        ],
+        "departements": [
+          "08",
+          "10",
+          "25",
+          "39",
+          "51",
+          "70",
+          "90"
+        ],
+        "couleur": "#5f7d4f",
+        "badges": [],
+        "display_name": "24, Avenue de Moka, Rocabey, Rocabey - Alsace - Gare, Saint-Malo, Ille-et-Vilaine, Bretagne, France métropolitaine, 35400, France",
+        "place_id": 284053121
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -2.0027931,
+          48.6513117
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "cabinet-08",
+        "nom": "REALYZE",
+        "adresse": "52 Boulevard Malesherbes - 75008 PARIS",
+        "phone": "01.43.87.73.07",
+        "emails": [
+          "contact@realyze.fr"
+        ],
+        "tribunaux": [
+          "BOBIGNY",
+          "CRETEIL",
+          "imx",
+          "NANTERRE"
+        ],
+        "cours_appel": [
+          "PARIS",
+          "VERSAILLES"
+        ],
+        "departements": [
+          "75",
+          "92",
+          "93",
+          "94"
+        ],
+        "couleur": "#7c4eb5",
+        "badges": [],
+        "display_name": "52, Boulevard Malesherbes, Quartier de l'Europe, Paris 8e Arrondissement, Paris, Île-de-France, France métropolitaine, 75017, France",
+        "place_id": 98472904
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          2.3175752,
+          48.8769773
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "cabinet-09",
+        "nom": "SARAH SAHNOUN AVOCAT",
+        "adresse": "06400 CANNES",
+        "phone": "06.50.10.42.19",
+        "emails": [
+          "contact@avocat-sahnoun.com"
+        ],
+        "tribunaux": [
+          "AGEN",
+          "ANGERS",
+          "AUCH",
+          "AURILLAC",
+          "BAYONNE",
+          "CAHORS",
+          "CLERMONT FERRAND",
+          "CUSSET",
+          "DAX",
+          "DRAGUIGNAN",
+          "GRASSE",
+          "LAVAL",
+          "LE MANS",
+          "LE PUY EN VELAY",
+          "MONT DE MARSAN",
+          "MONTLUCON",
+          "MOULINS",
+          "NICE",
+          "PAU",
+          "PERPIGNAN",
+          "TARBES"
+        ],
+        "cours_appel": [
+          "AGEN",
+          "AIX-EN-PROVENCE",
+          "ANGERS",
+          "MONTPELLIER",
+          "PAU",
+          "RIOM"
+        ],
+        "departements": [
+          "03",
+          "06",
+          "15",
+          "32",
+          "40",
+          "43",
+          "46",
+          "47",
+          "49",
+          "53",
+          "63",
+          "64",
+          "65",
+          "66",
+          "72",
+          "83"
+        ],
+        "couleur": "#b85c38",
+        "badges": [],
+        "display_name": "123 Conseil, 18, Boulevard Carnot, Cannes Passy, Hautes Vallergues, Cannes, Grasse, Alpes-Maritimes, Provence-Alpes-Côte d'Azur, France métropolitaine, 06400, France",
+        "place_id": 422619214
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          7.0171301,
+          43.5557428
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "cabinet-10",
+        "nom": "SCP ALLEAUME GRAFMEYER BAUDRIER",
+        "adresse": "20 Bd Eugène Deruelle - 69003 LYON",
+        "phone": "04.37.48.80.80",
+        "emails": [
+          "contact.lyon@axiens.legal"
+        ],
+        "tribunaux": [
+          "ALBERTVILLE",
+          "ANNECY",
+          "AUXERRE",
+          "BONNEVILLE",
+          "BOURG EN BRESSE",
+          "BOURGOIN-JAILLEU",
+          "CHAMBERY",
+          "GAP",
+          "GRENOBLE",
+          "LYON",
+          "ROANNE",
+          "SAINT ETIENNE",
+          "SENS",
+          "THONON LES BAINS",
+          "VALENCE",
+          "VIENNE",
+          "VILLEFRANCHE SUR SOANE"
+        ],
+        "cours_appel": [
+          "CHAMBERY",
+          "GRENOBLE",
+          "LYON",
+          "PARIS"
+        ],
+        "departements": [
+          "01",
+          "05",
+          "26",
+          "38",
+          "42",
+          "69",
+          "73",
+          "74",
+          "89"
+        ],
+        "couleur": "#2c7da0",
+        "badges": [],
+        "display_name": "Société Générale, 20, Boulevard Eugène Deruelle, Part-Dieu, Lyon 3e Arrondissement, Lyon, Métropole de Lyon, Rhône, Auvergne-Rhône-Alpes, France métropolitaine, 69003, France",
+        "place_id": 90729038
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          4.8539,
+          45.7627659
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "cabinet-11",
+        "nom": "SELARL FILAO",
+        "adresse": "11 Rue Gambetta - 97110 POINT A PITRE",
+        "phone": "05.90.68.85.44",
+        "emails": [
+          "contact@filao-avocats.fr"
+        ],
+        "tribunaux": [
+          "BAR LE DUC",
+          "BASSE TERRE (GUADELOUPE)",
+          "BRIEY",
+          "CAYENNE (LA GUYANE)",
+          "EPINAL",
+          "FORT DE France (MARTINIQUE)",
+          "LA ROCHE SUR YON",
+          "LA ROCHELLE",
+          "LES SABLES D'OLONNE",
+          "METZ",
+          "NANCY",
+          "NIORT",
+          "NOUMEA (NOUVELLE CALEDONIE)",
+          "PAPEETE (POLYNESIE FRANCAISE)",
+          "POINT A PITRE (GUADELOUPE)",
+          "POITIERS",
+          "SAINT PIERRE (LA REUNION)",
+          "SAINT-DENIS (LA REUNION)",
+          "SAINTES",
+          "SARREGUEMINES",
+          "THIONVILLE",
+          "VERDUN"
+        ],
+        "cours_appel": [
+          "BASSE TERRE",
+          "CAYENNE",
+          "FORT DE FRANCE",
+          "MAMOUDZOU",
+          "METZ",
+          "NANCY",
+          "NOUMEA",
+          "PAPEETE",
+          "POITIERS",
+          "SAINT DENIS"
+        ],
+        "departements": [
+          "17",
+          "54",
+          "55",
+          "57",
+          "79",
+          "85",
+          "86",
+          "88",
+          "971",
+          "972",
+          "973",
+          "974",
+          "976",
+          "987",
+          "988"
+        ],
+        "couleur": "#5e4b35",
+        "badges": [],
+        "display_name": "Rue Gambetta, Centre-Ville, Pointe-à-Pitre, Guadeloupe, 97110, France",
+        "place_id": 302308042
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -61.5349607,
+          16.2374697
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "cabinet-12",
+        "nom": "WIBAULT AVOCAT",
+        "adresse": "59110 LA MADELEINE",
+        "phone": "03.20.91.65.79",
+        "emails": [
+          "secretariat@avocats-wibault.fr"
+        ],
+        "tribunaux": [
+          "ARRAS",
+          "AVESNES SUR HELPES",
+          "BETHUNE",
+          "BOULOGNE SUR MER",
+          "CAMBRAI",
+          "DIEPPE",
+          "DOUAI",
+          "DUNKERQUE",
+          "EVREUX",
+          "LE HAVRE",
+          "LILLE",
+          "ROUEN",
+          "ST OMER",
+          "VALENCIENNES"
+        ],
+        "cours_appel": [
+          "DOUAI",
+          "ROUEN"
+        ],
+        "departements": [
+          "27",
+          "59",
+          "62",
+          "76"
+        ],
+        "couleur": "#6b4c7d",
+        "badges": [],
+        "display_name": "40, Rue Pasteur, La Madeleine, Lille, Nord, Hauts-de-France, France métropolitaine, 59110, France",
+        "place_id": 102220743
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          3.0764141,
+          50.6541913
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "cabinet-13",
+        "nom": "WLA CONSEILS et ASSOCIES",
+        "adresse": "06400 CANNES",
+        "phone": "6",
+        "emails": [
+          "contact@wla-recouvrement.fr"
+        ],
+        "tribunaux": [
+          "ALBI - CASTRES",
+          "ALENCON",
+          "ARGENTAN",
+          "CAEN",
+          "CASTRES",
+          "CHARTRES",
+          "CHERBOURG-OCTEVILLE",
+          "COUTANCES",
+          "FOIX",
+          "LISIEUX",
+          "MONTAUBAN",
+          "PONTOISE",
+          "ST GAUDENS",
+          "TOULOUSE",
+          "VERSAILLES"
+        ],
+        "cours_appel": [
+          "CAEN",
+          "TOULOUSE",
+          "VERSAILLES"
+        ],
+        "departements": [
+          "09",
+          "14",
+          "28",
+          "31",
+          "50",
+          "61",
+          "78",
+          "81",
+          "82",
+          "95"
+        ],
+        "couleur": "#3b7d87",
+        "badges": [],
+        "display_name": "123 Conseil, 18, Boulevard Carnot, Cannes Passy, Hautes Vallergues, Cannes, Grasse, Alpes-Maritimes, Provence-Alpes-Côte d'Azur, France métropolitaine, 06400, France",
+        "place_id": 422619214
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          7.0171301,
+          43.5557428
+        ]
+      }
+    }
+  ]
+}

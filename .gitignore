@@ -1,0 +1,25 @@
+# Captures d'écran et images temporaires
+*.png
+*.jpg
+*.jpeg
+*.gif
+
+# Fichiers système / caches
+.DS_Store
+*.log
+geocode_cache.json
+
+# Environnements et éditeurs
+.vscode/
+.idea/
+*.swp
+
+# Fichiers source bureautique (données brutes)
+*.xlsx
+*.csv
+
+# Données AdminExpress source non simplifiées
+departements-adminexpress.geojson
+
+# Dossiers spécifiques
+.github/

@@ -1,0 +1,1962 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+  <meta name="description" content="Réseau national de 13 cabinets d'avocats partenaires couvrant 103 départements en France métropolitaine et outre-mer." />
+  <title>CabinetsMAP — Réseau national d'avocats</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231e3a8a'/%3E%3Ctext x='50' y='62' text-anchor='middle' font-family='Georgia' font-size='50' fill='%23fff'%3ECM%3C/text%3E%3C/svg%3E" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet" />
+
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+
+  <style>
+    :root {
+      --font-sans: 'Lato', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-serif: 'EB Garamond', Georgia, 'Times New Roman', serif;
+
+      --radius-xs: 6px;
+      --radius-sm: 10px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-xl: 28px;
+      --radius-full: 999px;
+
+      --shadow-xs: 0 1px 3px rgba(15, 23, 42, 0.05);
+      --shadow-sm: 0 3px 10px rgba(15, 23, 42, 0.06);
+      --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.08);
+      --shadow-lg: 0 18px 48px rgba(15, 23, 42, 0.12);
+
+      --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+      --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+
+      /* Palette — Trust & Authority (UI/UX Pro Max): marine institutionnel + ardoise */
+      --color-bg: #f8fafc;
+      --color-surface: #ffffff;
+      --color-text: #0f172a;
+      --color-text-secondary: #475569;
+      --color-text-muted: #64748b;
+      --color-border: #e2e8f0;
+      --color-border-strong: #cbd5e1;
+      --color-primary: #1e3a8a;
+      --color-primary-dark: #172554;
+      --color-primary-light: #eff6ff;
+      --focus-ring: 0 0 0 3px rgba(30, 58, 138, 0.28);
+      --color-primary-rgb: 30, 58, 138;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0; padding: 0;
+      width: 100%; height: 100%;
+      overflow: hidden;
+      font-family: var(--font-sans);
+      background: var(--color-bg);
+      color: var(--color-text);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
+    .map-main {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      opacity: 0;
+      transition: opacity 0.7s var(--ease-out);
+    }
+    .map-main--visible { opacity: 1; }
+
+    #map { width: 100%; height: 100%; outline: none; }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .skip-link {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 200;
+      padding: 10px 16px;
+      background: var(--color-primary);
+      color: #fff;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      transform: translateY(-150%);
+      transition: transform 0.2s var(--ease-out);
+    }
+    .skip-link:focus { transform: translateY(0); outline: none; box-shadow: var(--focus-ring); }
+
+    /* Loader */
+    .loader {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #ffffff;
+      transition: opacity 0.5s var(--ease-out), visibility 0.5s var(--ease-out);
+      padding: 24px;
+      text-align: center;
+    }
+    .loader.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    .loader__spinner {
+      width: 44px; height: 44px;
+      border: 3px solid var(--color-border);
+      border-top-color: var(--color-primary);
+      border-radius: 50%;
+      animation: spin 0.85s linear infinite;
+    }
+    .loader__text {
+      margin: 18px 0 0;
+      font-size: 15px;
+      color: var(--color-text-secondary);
+      letter-spacing: 0.2px;
+      max-width: 340px;
+      line-height: 1.5;
+    }
+    .loader__actions { margin-top: 18px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+    .btn {
+      font-family: var(--font-sans);
+      font-size: 14px;
+      font-weight: 600;
+      padding: 10px 18px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--color-border-strong);
+      background: var(--color-surface);
+      color: var(--color-text);
+      cursor: pointer;
+      transition: transform 0.12s var(--ease-out), background 0.15s var(--ease-out), box-shadow 0.15s var(--ease-out), border-color 0.15s var(--ease-out);
+    }
+    .btn:hover { background: var(--color-primary-light); border-color: var(--color-primary-light); }
+    .btn:active { transform: scale(0.97); }
+    .btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+    .btn--primary {
+      background: var(--color-primary);
+      color: #fff;
+      border-color: var(--color-primary);
+    }
+    .btn--primary:hover { background: var(--color-primary-dark); border-color: var(--color-primary-dark); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { .loader__spinner { animation: none; } }
+
+    /* Header */
+    .map-header {
+      position: absolute;
+      top: calc(14px + var(--safe-top));
+      left: calc(14px + var(--safe-left));
+      right: calc(14px + var(--safe-right));
+      z-index: 10;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      pointer-events: none;
+    }
+    .brand {
+      pointer-events: auto;
+      background: var(--color-surface);
+      backdrop-filter: blur(20px) saturate(160%);
+      -webkit-backdrop-filter: blur(20px) saturate(160%);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 10px 16px;
+      box-shadow: var(--shadow-md);
+      max-width: 380px;
+    }
+    .brand__title {
+      margin: 0;
+      font-family: var(--font-serif);
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+      line-height: 1.25;
+      color: var(--color-text);
+    }
+    .header__actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    .icon-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 42px;
+      height: 42px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      background: var(--color-surface);
+      backdrop-filter: blur(14px);
+      box-shadow: var(--shadow-sm);
+      cursor: pointer;
+      color: var(--color-text);
+      transition: transform 0.12s var(--ease-out), background 0.15s var(--ease-out), box-shadow 0.2s var(--ease-out), border-color 0.15s var(--ease-out);
+    }
+    .icon-btn:hover { box-shadow: var(--shadow-md); background: var(--color-primary-light); border-color: var(--color-primary-light); }
+    .icon-btn:active { transform: scale(0.95); }
+    .icon-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+    .icon-btn svg { width: 20px; height: 20px; }
+    .icon-btn--active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+    .icon-btn--active:hover { background: var(--color-primary-dark); border-color: var(--color-primary-dark); }
+
+    /* Sidebar */
+    .sidebar {
+      position: absolute;
+      top: calc(88px + var(--safe-top));
+      left: calc(14px + var(--safe-left));
+      z-index: 9;
+      width: 380px;
+      max-height: calc(100vh - 108px - var(--safe-top) - var(--safe-bottom));
+      background: var(--color-surface);
+      backdrop-filter: blur(20px) saturate(160%);
+      -webkit-backdrop-filter: blur(20px) saturate(160%);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transform: translateX(0);
+      opacity: 1;
+      visibility: visible;
+      transition: transform 0.35s var(--ease-out), opacity 0.25s var(--ease-out), visibility 0.25s var(--ease-out);
+    }
+    .sidebar--closed {
+      transform: translateX(calc(-100% - 40px));
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .sidebar__header {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .sidebar__title {
+      margin: 0 0 12px 0;
+      font-family: var(--font-serif);
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--color-text);
+    }
+    .sidebar__kpis {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+    .sidebar__kpi {
+      font-size: 12px;
+      color: var(--color-text-muted);
+    }
+    .sidebar__kpi strong {
+      color: var(--color-primary);
+      font-weight: 700;
+      margin-right: 4px;
+    }
+
+    /* Search */
+    .search { position: relative; }
+    .search__input {
+      width: 100%;
+      height: 44px;
+      padding: 0 36px 0 40px;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      border: 1px solid var(--color-border-strong);
+      border-radius: var(--radius-sm);
+      background: var(--color-bg);
+      color: var(--color-text);
+      transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out), transform 0.15s var(--ease-out);
+    }
+    .search__input:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--focus-ring); }
+    .search__icon {
+      position: absolute;
+      left: 13px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 18px;
+      height: 18px;
+      color: var(--color-text-muted);
+      pointer-events: none;
+    }
+    .search__clear {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--color-text-muted);
+      font-size: 20px;
+      line-height: 1;
+      cursor: pointer;
+      transition: background 0.15s var(--ease-out), color 0.15s var(--ease-out), transform 0.1s var(--ease-out);
+    }
+    .search__clear:hover { background: var(--color-primary-light); color: var(--color-primary); }
+    .search__clear:active { transform: translateY(-50%) scale(0.92); }
+    .search__clear:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+    .sidebar__toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 18px 0;
+    }
+    .sidebar__count {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .sidebar__reset {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--color-primary);
+      background: transparent;
+      border: none;
+      padding: 4px 8px;
+      border-radius: var(--radius-xs);
+      cursor: pointer;
+      transition: background 0.15s var(--ease-out), transform 0.1s var(--ease-out);
+    }
+    .sidebar__reset:hover { background: var(--color-primary-light); }
+    .sidebar__reset:active { transform: scale(0.95); }
+    .sidebar__reset:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+    .sidebar__reset[hidden] { display: none; }
+
+    /* List */
+    .sidebar__list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+      list-style: none;
+      margin: 0;
+    }
+    .sidebar__item {
+      margin-bottom: 4px;
+      animation: cardEnter 0.3s var(--ease-out) both;
+      animation-delay: calc(var(--index, 0) * 40ms);
+    }
+    @keyframes cardEnter {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .cabinet-card {
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      cursor: pointer;
+      color: var(--color-text);
+      transition: background 0.15s var(--ease-out), border-color 0.15s var(--ease-out), transform 0.15s var(--ease-out), box-shadow 0.15s var(--ease-out);
+    }
+    .cabinet-card:hover {
+      background: var(--color-primary-light);
+      border-color: rgba(var(--color-primary-rgb), 0.1);
+      box-shadow: var(--shadow-xs);
+    }
+    .cabinet-card--hover, .cabinet-card--hover:hover {
+      background: rgba(var(--color-primary-rgb), 0.06);
+      border-color: rgba(var(--color-primary-rgb), 0.12);
+    }
+    .cabinet-card--active, .cabinet-card--active:hover {
+      background: rgba(var(--color-primary-rgb), 0.12);
+      border-color: rgba(var(--color-primary-rgb), 0.22);
+      box-shadow: var(--shadow-sm);
+    }
+    .cabinet-card:active { transform: scale(0.98); }
+    .cabinet-card:focus-visible { outline: none; border-color: var(--color-primary); box-shadow: var(--focus-ring); }
+    .cabinet-card__row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+    .cabinet-card__dot {
+      flex-shrink: 0;
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+      transition: transform 0.2s var(--ease-spring);
+    }
+    .cabinet-card:hover .cabinet-card__dot,
+    .cabinet-card--active .cabinet-card__dot { transform: scale(1.3); }
+    .cabinet-card__name {
+      flex: 1;
+      font-size: 14px;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--color-text);
+    }
+    .cabinet-card__meta {
+      display: block;
+      font-size: 12px;
+      color: var(--color-text-muted);
+      line-height: 1.4;
+      padding-left: 22px;
+    }
+    .sidebar__empty {
+      padding: 28px 20px;
+      text-align: center;
+      color: var(--color-text-muted);
+    }
+    .sidebar__empty-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--color-text);
+      margin: 0 0 6px;
+    }
+    .sidebar__empty-text {
+      font-size: 13px;
+      line-height: 1.5;
+      margin: 0 0 14px;
+    }
+
+    /* Legend */
+    .sidebar__legend {
+      padding: 12px 18px;
+      border-top: 1px solid var(--color-border);
+      background: var(--color-surface);
+    }
+    .legend__title {
+      margin: 0 0 10px;
+      font-weight: 700;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--color-text-muted);
+    }
+    .legend__items {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .legend__item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border-radius: var(--radius-full);
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--color-text);
+      cursor: pointer;
+      transition: background 0.15s var(--ease-out), transform 0.1s var(--ease-out), border-color 0.15s var(--ease-out);
+    }
+    .legend__item:hover {
+      background: var(--color-primary-light);
+      border-color: var(--color-primary-light);
+      transform: scale(1.03);
+    }
+    .legend__item--active {
+      background: var(--color-primary);
+      color: #fff;
+      border-color: var(--color-primary);
+    }
+    .legend__item--active:hover { background: var(--color-primary-dark); border-color: var(--color-primary-dark); }
+    .legend__swatch {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      border: 1.5px solid #fff;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+    }
+
+    /* Detail panel */
+    .detail-panel {
+      position: absolute;
+      top: calc(88px + var(--safe-top));
+      right: calc(14px + var(--safe-right));
+      z-index: 9;
+      width: 340px;
+      max-height: calc(100vh - 108px - var(--safe-top) - var(--safe-bottom));
+      background: var(--color-surface);
+      backdrop-filter: blur(20px) saturate(160%);
+      -webkit-backdrop-filter: blur(20px) saturate(160%);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transform: translateX(0);
+      opacity: 1;
+      visibility: visible;
+      transition: transform 0.35s var(--ease-out), opacity 0.25s var(--ease-out), visibility 0.25s var(--ease-out);
+    }
+    .detail-panel--hidden {
+      transform: translateX(calc(100% + 40px));
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .detail-panel__header {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--color-border);
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .detail-panel__avatar {
+      flex-shrink: 0;
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .detail-panel__meta { flex: 1; min-width: 0; }
+    .detail-panel__title {
+      font-family: var(--font-serif);
+      font-size: 17px;
+      font-weight: 700;
+      margin: 0;
+      letter-spacing: -0.2px;
+      color: var(--color-text);
+    }
+    .detail-panel__subtitle {
+      font-size: 12px;
+      color: var(--color-text-muted);
+      margin: 4px 0 0;
+    }
+    .detail-panel__close {
+      width: 32px; height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .detail-panel__close:hover { background: var(--color-primary-light); color: var(--color-text); }
+    .detail-panel__close:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+    .detail-panel__body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 18px;
+    }
+    .detail-panel__section {
+      margin-bottom: 18px;
+    }
+    .detail-panel__section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--color-text-muted);
+      margin: 0 0 8px;
+    }
+    .detail-panel__text {
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--color-text-secondary);
+      margin: 0;
+    }
+    .detail-panel__departments {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .detail-panel__dept {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: var(--radius-xs);
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--color-text);
+    }
+    .detail-panel__actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .detail-panel__btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--color-border);
+      background: var(--color-surface);
+      color: var(--color-text);
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s var(--ease-out), transform 0.1s var(--ease-out), box-shadow 0.15s var(--ease-out), border-color 0.15s var(--ease-out);
+    }
+    .detail-panel__btn:hover { background: var(--color-primary-light); border-color: var(--color-primary-light); }
+    .detail-panel__btn:active { transform: scale(0.97); }
+    .detail-panel__btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+    .detail-panel__btn svg { width: 14px; height: 14px; }
+
+    /* Popups */
+    .maplibregl-popup { z-index: 15; }
+    .maplibregl-popup-content {
+      background: var(--color-surface);
+      backdrop-filter: blur(18px) saturate(150%);
+      -webkit-backdrop-filter: blur(18px) saturate(150%);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      padding: 0;
+      min-width: 260px;
+      max-width: 300px;
+      border: 1px solid var(--color-border);
+      color: var(--color-text);
+      font-family: var(--font-sans);
+      line-height: 1.5;
+      overflow: hidden;
+    }
+    .maplibregl-popup-tip { border-top-color: var(--color-surface); }
+    .maplibregl-popup-close-button {
+      top: 10px; right: 12px;
+      width: 28px; height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      line-height: 1;
+      color: var(--color-text-muted);
+      background: transparent;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: background 0.15s var(--ease-out), color 0.15s var(--ease-out);
+      z-index: 2;
+    }
+    .maplibregl-popup-close-button:hover { background: var(--color-primary-light); color: var(--color-text); }
+    .maplibregl-popup-close-button:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+    .popup__header {
+      padding: 16px 16px 12px;
+      border-bottom: 1px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .popup__avatar {
+      flex-shrink: 0;
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .popup__meta { flex: 1; min-width: 0; }
+    .popup__title {
+      font-family: var(--font-serif);
+      font-size: 15px;
+      font-weight: 700;
+      margin: 0;
+      letter-spacing: -0.2px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--color-text);
+    }
+    .popup__subtitle {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin: 3px 0 0;
+      color: var(--color-text-muted);
+    }
+    .popup__body { padding: 14px 16px 16px; }
+    .popup__row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 13px;
+      color: var(--color-text-secondary);
+    }
+    .popup__row svg { width: 14px; height: 14px; color: var(--color-text-muted); flex-shrink: 0; }
+    .popup__actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    .popup__btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--color-border);
+      background: var(--color-surface);
+      color: var(--color-text);
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s var(--ease-out), transform 0.1s var(--ease-out), box-shadow 0.15s var(--ease-out), border-color 0.15s var(--ease-out);
+    }
+    .popup__btn:hover { background: var(--color-primary-light); border-color: var(--color-primary-light); }
+    .popup__btn:active { transform: scale(0.97); }
+    .popup__btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+    .popup__btn svg { width: 14px; height: 14px; }
+
+    .hover-popup .maplibregl-popup-content {
+      padding: 12px 16px;
+      min-width: auto;
+      max-width: 280px;
+    }
+    .hover-popup .popup__header {
+      padding: 0;
+      border: none;
+      gap: 10px;
+    }
+    .hover-popup .popup__avatar { width: 32px; height: 32px; font-size: 13px; }
+    .hover-popup .popup__title { font-size: 14px; }
+    .hover-popup .popup__subtitle { font-size: 11px; }
+    .hover-popup .popup__body { display: none; }
+
+    /* Map controls */
+    .maplibregl-ctrl-bottom-right { bottom: calc(16px + var(--safe-bottom)) !important; right: calc(16px + var(--safe-right)) !important; }
+    .maplibregl-ctrl-group {
+      border-radius: var(--radius-sm) !important;
+      box-shadow: var(--shadow-md) !important;
+      border: 1px solid var(--color-border) !important;
+      background: var(--color-surface) !important;
+      overflow: hidden;
+    }
+    .maplibregl-ctrl-group button {
+      width: 36px; height: 36px;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--color-border);
+      color: var(--color-text);
+      transition: background 0.15s var(--ease-out);
+    }
+    .maplibregl-ctrl-group button:last-child { border-bottom: none; }
+    .maplibregl-ctrl-group button:hover { background: var(--color-primary-light); }
+    .maplibregl-ctrl-group button:focus-visible { outline: none; box-shadow: inset var(--focus-ring); }
+    .maplibregl-ctrl-attrib-inner a { color: var(--color-text-muted); font-size: 10px; }
+
+    /* Outre-mer inset */
+    .om-inset {
+      position: absolute;
+      bottom: calc(16px + var(--safe-bottom));
+      left: calc(14px + var(--safe-left));
+      z-index: 8;
+      width: 220px;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md);
+      padding: 26px 10px 10px;
+      transition: transform 0.3s var(--ease-out), opacity 0.25s var(--ease-out);
+    }
+    .om-inset__label {
+      position: absolute;
+      top: 7px;
+      left: 10px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--color-text-muted);
+      pointer-events: none;
+    }
+    .om-inset__chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .om-inset__chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 9px;
+      border-radius: var(--radius-full);
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--color-text);
+      cursor: pointer;
+      transition: transform 0.1s, background 0.15s, border-color 0.15s;
+    }
+    .om-inset__chip:hover { background: var(--color-primary-light); border-color: var(--color-primary-light); transform: translateY(-1px); }
+    .om-inset__chip:active { transform: scale(0.97); }
+    .om-inset__chip-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--color-text-muted);
+    }
+
+    /* Mobile bottom sheet */
+    @media (max-width: 768px) {
+      .brand { padding: 10px 12px; max-width: none; flex: 1; }
+      .brand__title { font-size: 14px; }
+            .icon-btn { width: 40px; height: 40px; }
+
+      .sidebar {
+        top: auto;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: auto;
+        max-height: 70vh;
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        transform: translateY(0);
+        padding-bottom: var(--safe-bottom);
+      }
+      .sidebar--closed {
+        transform: translateY(calc(100% - 34px));
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+      }
+      .sidebar--closed .sidebar__list,
+      .sidebar--closed .sidebar__legend,
+      .sidebar--closed .sidebar__toolbar { opacity: 0; visibility: hidden; }
+      .sidebar__handle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 0 6px;
+        cursor: pointer;
+      }
+      .sidebar__handle-bar {
+        width: 40px;
+        height: 4px;
+        border-radius: var(--radius-full);
+        background: var(--color-border-strong);
+      }
+      .sidebar__header { padding-top: 6px; }
+
+      .detail-panel {
+        top: auto;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: auto;
+        max-height: 70vh;
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        transform: translateY(0);
+      }
+      .detail-panel--hidden {
+        transform: translateY(calc(100% + 20px));
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+
+      .om-inset {
+        width: auto;
+        max-width: 140px;
+        bottom: calc(48px + var(--safe-bottom));
+        left: auto;
+        right: calc(10px + var(--safe-right));
+        padding: 20px 8px 8px;
+      }
+      .om-inset__label { top: 5px; left: 8px; font-size: 9px; }
+      .om-inset__chip { font-size: 11px; padding: 4px 7px; }
+      .maplibregl-ctrl-bottom-right { bottom: calc(12px + var(--safe-bottom)) !important; right: calc(12px + var(--safe-right)) !important; }
+    }
+    @media (min-width: 769px) {
+      .sidebar__handle { display: none; }
+    }
+    @media (max-width: 380px) {
+      .brand__title { font-size: 13px; }
+      .maplibregl-popup-content { min-width: 220px; max-width: calc(100vw - 32px); }
+      .popup__title { font-size: 15px; }
+      .sidebar { max-height: 72vh; }
+      .detail-panel { max-height: 72vh; }
+    }
+    @media (max-height: 500px) and (orientation: landscape) {
+      .sidebar { max-height: 75vh; }
+      .detail-panel { max-height: 75vh; }
+    }
+
+    @media (prefers-reduced-transparency: reduce) {
+      .brand, .sidebar, .maplibregl-popup-content, .maplibregl-ctrl-group, .detail-panel { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--color-surface); }
+    }
+  </style>
+</head>
+<body>
+  <a href="#main" class="skip-link">Aller au contenu principal</a>
+
+  <div class="loader" id="loader" role="status" aria-live="polite" aria-label="Chargement de la carte">
+    <div class="loader__spinner" aria-hidden="true"></div>
+    <p class="loader__text" id="loaderText">Préparation du réseau…</p>
+    <div class="loader__actions" id="loaderActions" style="display:none;">
+      <button class="btn btn--primary" id="retryBtn" type="button">Réessayer</button>
+      <button class="btn" id="continueBtn" type="button">Continuer sans carte</button>
+    </div>
+  </div>
+
+  <header class="map-header">
+    <div class="brand">
+      <div class="brand__text">
+        <h1 class="brand__title">CabinetsMAP</h1>
+      </div>
+    </div>
+
+    <div class="header__actions">
+      <button class="icon-btn om-trigger" id="omTrigger" type="button" aria-label="Centrer sur l'outre-mer" title="Outre-mer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M2 12h20" />
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+        </svg>
+      </button>
+      <button class="icon-btn" id="resetViewBtn" type="button" aria-label="Réinitialiser la vue" title="Réinitialiser">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polygon points="3 11 22 2 13 21 11 13 3 11" />
+        </svg>
+      </button>
+      <button class="icon-btn menu-toggle" id="menuToggle" type="button" aria-label="Ouvrir la liste" aria-expanded="false" aria-controls="sidebar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="4" y1="6" x2="20" y2="6" />
+          <line x1="4" y1="12" x2="20" y2="12" />
+          <line x1="4" y1="18" x2="20" y2="18" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="main" class="map-main">
+    <div id="map" role="region" aria-label="Carte interactive de couverture territoriale du réseau" tabindex="-1"></div>
+    <div class="om-inset" id="omInset" aria-label="Vue outre-mer">
+      <span class="om-inset__label">Outre-mer</span>
+      <div class="om-inset__chips" id="omInsetChips"></div>
+    </div>
+  </main>
+
+  <!-- Sidebar -->
+  <aside class="sidebar sidebar--closed" id="sidebar" aria-label="Liste des cabinets">
+    <div class="sidebar__handle" id="sidebarHandle" aria-label="Ouvrir ou fermer la liste" role="button" tabindex="0">
+      <span class="sidebar__handle-bar" aria-hidden="true"></span>
+    </div>
+
+    <div class="sidebar__header">
+      <h2 class="sidebar__title">Nos cabinets partenaires</h2>
+      <div class="sidebar__kpis">
+        <span class="sidebar__kpi"><strong id="sidebarKpiCabinets">13</strong> cabinets</span>
+        <span class="sidebar__kpi"><strong id="sidebarKpiDepts">103</strong> départements</span>
+      </div>
+      <div class="search">
+        <svg class="search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="8" />
+          <path d="m21 21-4.3-4.3" />
+        </svg>
+        <label class="sr-only" for="searchInput">Rechercher un cabinet</label>
+        <input class="search__input" id="searchInput" type="search" placeholder="Rechercher un cabinet…" autocomplete="off" inputmode="search" />
+        <button class="search__clear" id="searchClear" type="button" aria-label="Effacer" title="Effacer" hidden>×</button>
+      </div>
+    </div>
+
+    <div class="sidebar__toolbar">
+      <span class="sidebar__count" id="resultCount" aria-live="polite"></span>
+      <button class="sidebar__reset" id="resetFiltersBtn" type="button" hidden>Tout effacer</button>
+    </div>
+
+    <ul class="sidebar__list" id="cabinetList" role="list"></ul>
+
+    <div class="sidebar__legend" id="cabinetLegend"></div>
+  </aside>
+
+  <!-- Detail panel -->
+  <aside class="detail-panel detail-panel--hidden" id="detailPanel" aria-label="Détails du cabinet">
+    <div class="detail-panel__header">
+      <span class="detail-panel__avatar" id="detailAvatar" aria-hidden="true"></span>
+      <div class="detail-panel__meta">
+        <h2 class="detail-panel__title" id="detailTitle"></h2>
+        <p class="detail-panel__subtitle" id="detailSubtitle"></p>
+      </div>
+      <button class="detail-panel__close" id="detailClose" type="button" aria-label="Fermer les détails">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+    </div>
+    <div class="detail-panel__body" id="detailBody"></div>
+  </aside>
+
+  <div id="ariaRegion" aria-live="polite" aria-atomic="true" class="sr-only"></div>
+
+  <script>
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const coarseQuery = window.matchMedia('(pointer: coarse)');
+    const prefersReducedMotion = () => motionQuery.matches;
+    const isCoarsePointer = () => coarseQuery.matches;
+
+    const loader = document.getElementById('loader');
+    const loaderText = document.getElementById('loaderText');
+    const loaderActions = document.getElementById('loaderActions');
+    const retryBtn = document.getElementById('retryBtn');
+    const continueBtn = document.getElementById('continueBtn');
+
+    const mapMain = document.querySelector('.map-main');
+
+    // Data state — GeoJSON embedded by build_index.py
+    const CABINETS_GEOJSON = __CABINETS_GEOJSON__;
+    const DEPARTEMENTS_GEOJSON = __DEPARTEMENTS_GEOJSON__;
+
+    let cabinets = [];
+    let departements = [];
+    let deptIndex = new Map(); // code -> { primaryCabinet, allCabinetIds, color }
+    let map = null;
+    let mapLoaded = false;
+    let hoveredDeptId = null;
+    let hoverPopup = null;
+    let selectedFeature = null;
+    let searchTerm = '';
+    let activeCabinetId = null;
+    let isErrorState = false;
+
+    function announce(message) {
+      const region = document.getElementById('ariaRegion');
+      if (!region) return;
+      region.textContent = '';
+      requestAnimationFrame(() => { region.textContent = message; });
+    }
+
+    function debounce(fn, delay) {
+      let t;
+      return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
+    }
+
+    function normalize(str) {
+      return String(str || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    }
+
+    function initials(name) {
+      return String(name).split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase();
+    }
+
+    function setLoaderError(message, canRetry = true) {
+      isErrorState = true;
+      loader.classList.remove('hidden');
+      loader.style.display = '';
+      loaderText.textContent = message;
+      loaderActions.style.display = 'flex';
+      retryBtn.style.display = canRetry ? 'inline-flex' : 'none';
+      const spinner = loader.querySelector('.loader__spinner');
+      if (spinner) spinner.style.display = 'none';
+    }
+
+    function hideLoader() {
+      loader.classList.add('hidden');
+      loaderActions.style.display = 'none';
+      isErrorState = false;
+    }
+
+    // Style minimaliste : fond blanc. Le fond IGN raster est trop instable (erreurs tuiles, CORS, timeout).
+    const IGN_STYLE = {
+      version: 8,
+      glyphs: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
+      sources: {},
+      layers: [{
+        id: 'background',
+        type: 'background',
+        paint: { 'background-color': '#f8fafc' }
+      }]
+    };
+
+    // Centroid of a polygon (average of coordinates)
+    function polygonCentroid(geometry) {
+      const coords = geometry.type === 'Polygon' ? geometry.coordinates[0]
+        : geometry.type === 'MultiPolygon' ? geometry.coordinates[0][0]
+        : [];
+      if (!coords.length) return [0, 0];
+      let x = 0, y = 0;
+      coords.forEach(([lon, lat]) => { x += lon; y += lat; });
+      return [x / coords.length, y / coords.length];
+    }
+
+    // Load data from embedded GeoJSON
+    function loadData() {
+      try {
+        cabinets = CABINETS_GEOJSON.features || [];
+        departements = DEPARTEMENTS_GEOJSON.features || [];
+        buildDeptIndex();
+        return true;
+      } catch (err) {
+        console.error(err);
+        setLoaderError('Impossible de charger les données du réseau.', true);
+        return false;
+      }
+    }
+
+    function buildDeptIndex() {
+      deptIndex.clear();
+      cabinets.forEach(cab => {
+        const p = cab.properties;
+        const ids = p.departements || [];
+        ids.forEach(code => {
+          if (!deptIndex.has(code)) {
+            deptIndex.set(code, { cabinetIds: [], primary: null });
+          }
+          deptIndex.get(code).cabinetIds.push(p.id);
+        });
+      });
+      // Choisir un cabinet principal par département : le premier dans la liste des cabinets
+      deptIndex.forEach((entry, code) => {
+        entry.primary = entry.cabinetIds[0];
+        const cab = cabinets.find(c => c.properties.id === entry.primary);
+        entry.color = cab ? cab.properties.couleur : '#cccccc';
+      });
+
+      // Pré-calculer la couleur de remplissage et le cabinet principal sur chaque feature département
+      departements.forEach(f => {
+        const code = String(f.properties.code);
+        const entry = deptIndex.get(code);
+        f.properties.fillColor = entry ? entry.color : '#ebe7ed';
+        f.properties.primaryCabinetId = entry ? entry.primary : null;
+        f.properties.cabinetCount = entry ? entry.cabinetIds.length : 0;
+      });
+    }
+
+    function getDeptColor(code) {
+      const entry = deptIndex.get(code);
+      return entry ? entry.color : '#e8e4ea';
+    }
+
+    function getCabinetsForDept(code) {
+      const entry = deptIndex.get(code);
+      if (!entry) return [];
+      return entry.cabinetIds.map(id => cabinets.find(c => c.properties.id === id)).filter(Boolean);
+    }
+
+    function getCabinetById(id) {
+      return cabinets.find(c => c.properties.id === id);
+    }
+
+    function getDeptName(code) {
+      const f = departements.find(d => String(d.properties.code) === String(code));
+      return f ? f.properties.nom : code;
+    }
+
+    function initMap() {
+      mapLoaded = false;
+      loaderText.textContent = 'Chargement de la cartographie…';
+      loaderActions.style.display = 'none';
+
+      map = new maplibregl.Map({
+        container: 'map',
+        style: IGN_STYLE,
+        center: [2.5, 46.6],
+        zoom: 5.2,
+        pitch: 0,
+        bearing: 0,
+        attributionControl: true,
+        doubleClickZoom: false,
+        locale: {
+          'FullscreenControl.Enter': 'Plein écran',
+          'FullscreenControl.Exit': 'Quitter le plein écran',
+          'NavigationControl.ResetBearing': "Réinitialiser l'orientation",
+          'NavigationControl.ZoomIn': 'Zoomer',
+          'NavigationControl.ZoomOut': 'Dézoomer'
+        }
+      });
+
+      map.getCanvas().style.touchAction = 'manipulation';
+      map.getCanvas().setAttribute('aria-hidden', 'true');
+
+      map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
+      map.addControl(new maplibregl.FullscreenControl({ container: document.querySelector('body') }), 'bottom-right');
+
+      map.on('load', () => {
+        mapLoaded = true;
+        hideLoader();
+        setupMapLayers();
+        bindMapEvents();
+        renderSidebar();
+        initOmInset();
+        announce(`${cabinets.length} cabinets disponibles sur ${departements.length} départements.`);
+      });
+
+      map.on('error', (e) => {
+        const err = e.error || {};
+        const msg = String(err.message || e.message || '');
+        // Les erreurs de tuiles IGN (timeout, 404 ponctuel) ne doivent pas bloquer l'interface
+        const isTileError = msg.toLowerCase().includes('tile') || err.status === 404 || err.status === 503;
+        console.warn('Erreur MapLibre :', e);
+        if (!isTileError) {
+          setLoaderError('Impossible de charger la carte. Vérifiez votre connexion.', true);
+        }
+      });
+    }
+
+    function setupMapLayers() {
+      // Source départements
+      map.addSource('departements', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: departements },
+        generateId: true
+      });
+
+      // Fond blanc opaque par-dessus le raster IGN
+      map.addLayer({
+        id: 'departements-base',
+        type: 'fill',
+        source: 'departements',
+        paint: {
+          'fill-color': '#f8fafc',
+          'fill-opacity': 0.95
+        }
+      });
+
+      // Voile blanc sur les départements non couverts
+      map.addLayer({
+        id: 'departements-veil',
+        type: 'fill',
+        source: 'departements',
+        filter: ['==', ['get', 'primaryCabinetId'], null],
+        paint: {
+          'fill-color': '#ffffff',
+          'fill-opacity': 0.6
+        }
+      });
+
+      // Départements couverts — couleurs des cabinets
+      map.addLayer({
+        id: 'departements-covered',
+        type: 'fill',
+        source: 'departements',
+        filter: ['!=', ['get', 'primaryCabinetId'], null],
+        paint: {
+          'fill-color': ['get', 'fillColor'],
+          'fill-opacity': ['case',
+            ['boolean', ['feature-state', 'hover'], false], 0.95,
+            ['boolean', ['get', 'dimmed'], false], 0.35,
+            0.85
+          ]
+        }
+      });
+
+      // Contours des départements
+      map.addLayer({
+        id: 'departements-outline',
+        type: 'line',
+        source: 'departements',
+        paint: {
+          'line-color': '#ffffff',
+          'line-width': ['case', ['boolean', ['feature-state', 'hover'], false], 2.5, 1],
+          'line-opacity': 0.95
+        }
+      });
+
+      // Source cabinets
+      const cabinetGeojson = { type: 'FeatureCollection', features: cabinets };
+      map.addSource('cabinets', {
+        type: 'geojson',
+        data: cabinetGeojson,
+        generateId: true
+      });
+
+      // Petits points discrets pour marquer le siège de chaque cabinet
+      map.addLayer({
+        id: 'cabinets-circles',
+        type: 'circle',
+        source: 'cabinets',
+        paint: {
+          'circle-radius': ['case', ['boolean', ['feature-state', 'hover'], false], 8, 5],
+          'circle-color': '#ffffff',
+          'circle-opacity': 1,
+          'circle-stroke-width': ['case', ['boolean', ['feature-state', 'hover'], false], 3, 2],
+          'circle-stroke-color': ['get', 'couleur'],
+          'circle-stroke-opacity': 1
+        }
+      });
+
+      // Hit area élargie pour le tactile/souris
+      map.addLayer({
+        id: 'cabinets-hit',
+        type: 'circle',
+        source: 'cabinets',
+        paint: {
+          'circle-radius': 18,
+          'circle-color': 'transparent',
+          'circle-opacity': 0,
+          'circle-stroke-width': 0
+        }
+      });
+    }
+
+    function setDeptHoverState(id, isHover) {
+      if (id == null || !map) return;
+      map.setFeatureState({ source: 'departements', id }, { hover: isHover });
+    }
+
+    function setCabinetHoverState(id, isHover) {
+      if (id == null || !map) return;
+      map.setFeatureState({ source: 'cabinets', id }, { hover: isHover });
+    }
+
+    function initOmInset() {
+      const container = document.getElementById('omInsetChips');
+      if (!container) return;
+      const omCodes = ['971', '972', '973', '974', '976', '987', '988'];
+      container.innerHTML = omCodes.map(code => {
+        const dept = departements.find(d => String(d.properties.code) === code);
+        const entry = deptIndex.get(code);
+        const color = entry ? entry.color : '#cccccc';
+        return `
+          <button class="om-inset__chip" type="button" data-code="${code}" aria-label="Département ${code}">
+            <span class="om-inset__chip-dot" style="background:${color}"></span>
+            ${code}
+          </button>
+        `;
+      }).join('');
+      container.querySelectorAll('.om-inset__chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const code = btn.dataset.code;
+          const dept = departements.find(d => String(d.properties.code) === code);
+          if (!dept || !map) return;
+          const center = polygonCentroid(dept.geometry);
+          map.flyTo({ center, zoom: 7, speed: 0.8, curve: 1.2 });
+        });
+      });
+    }
+
+    function bindMapEvents() {
+      // Hover départements
+      map.on('mouseenter', 'departements-covered', (e) => {
+        map.getCanvas().style.cursor = 'pointer';
+        if (e.features.length > 0) {
+          const next = e.features[0];
+          if (hoveredDeptId !== null && hoveredDeptId !== next.id) {
+            setDeptHoverState(hoveredDeptId, false);
+          }
+          hoveredDeptId = next.id;
+          setDeptHoverState(hoveredDeptId, true);
+
+          const code = String(next.properties.code);
+          const cabs = getCabinetsForDept(code);
+          if (cabs.length && !selectedFeature && !isCoarsePointer()) {
+            if (hoverPopup) hoverPopup.remove();
+            hoverPopup = createDeptHoverPopup(next, cabs, e.lngLat).addTo(map);
+          }
+        }
+      });
+
+      map.on('mousemove', 'departements-covered', (e) => {
+        if (hoverPopup && e.features.length > 0) {
+          hoverPopup.setLngLat(e.lngLat);
+        }
+      });
+
+      map.on('mouseleave', 'departements-covered', () => {
+        map.getCanvas().style.cursor = '';
+        if (hoveredDeptId !== null) {
+          setDeptHoverState(hoveredDeptId, false);
+          hoveredDeptId = null;
+        }
+        if (hoverPopup) { hoverPopup.remove(); hoverPopup = null; }
+      });
+
+      // Click département — simple clic met en avant le cabinet principal
+      map.on('click', 'departements-covered', (e) => {
+        const feature = e.features && e.features[0];
+        if (!feature) return;
+        const code = String(feature.properties.code);
+        const cabs = getCabinetsForDept(code);
+        if (cabs.length === 1) {
+          highlightCabinet(cabs[0]);
+        } else if (cabs.length > 1) {
+          showDeptDetail(feature, cabs);
+        }
+      });
+
+      // Click / double-click cabinet
+      map.on('mouseenter', 'cabinets-hit', (e) => {
+        map.getCanvas().style.cursor = 'pointer';
+        if (e.features.length > 0) {
+          const f = e.features[0];
+          setCabinetHoverState(f.id, true);
+        }
+      });
+      map.on('mouseleave', 'cabinets-hit', (e) => {
+        map.getCanvas().style.cursor = '';
+        if (e.features.length > 0) {
+          setCabinetHoverState(e.features[0].id, false);
+        }
+      });
+      map.on('click', 'cabinets-hit', (e) => {
+        const feature = e.features && e.features[0];
+        if (feature) highlightCabinet(feature);
+      });
+      map.on('dblclick', 'cabinets-hit', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const feature = e.features && e.features[0];
+        if (feature) selectCabinet(feature);
+      });
+
+      // Click sur fond : désélectionner
+      map.on('click', (e) => {
+        const deptFeatures = map.queryRenderedFeatures(e.point, { layers: ['departements-covered'] });
+        const cabFeatures = map.queryRenderedFeatures(e.point, { layers: ['cabinets-hit'] });
+        if (!deptFeatures.length && !cabFeatures.length) {
+          clearSelection();
+        }
+      });
+    }
+
+    // Popups
+    function createDeptHoverPopup(feature, cabs, lngLat) {
+      const code = String(feature.properties.code);
+      const deptName = getDeptName(code);
+      const main = cabs[0].properties;
+      const html = `
+        <div class="popup__header">
+          <span class="popup__avatar" style="background:${main.couleur}" aria-hidden="true">${initials(main.nom)}</span>
+          <div class="popup__meta">
+            <h3 class="popup__title">${deptName}</h3>
+            <p class="popup__subtitle">${cabs.length > 1 ? cabs.length + ' cabinets couvrent ce territoire' : 'Couvert par ' + main.nom}</p>
+          </div>
+        </div>
+      `;
+      return new maplibregl.Popup({
+        offset: 12,
+        closeButton: false,
+        closeOnClick: false,
+        anchor: 'bottom',
+        className: 'hover-popup'
+      }).setLngLat(lngLat || polygonCentroid(feature.geometry))
+        .setHTML(html);
+    }
+
+    // Selection
+    function highlightCabinet(feature) {
+      if (!feature || !feature.properties) return;
+      selectedFeature = feature;
+      activeCabinetId = feature.properties.id;
+
+      clearActiveCard();
+      activateSidebarCard(activeCabinetId);
+      highlightCabinetTerritory(activeCabinetId);
+      showCabinetDetail(feature);
+
+      announce(`${feature.properties.nom}, ${feature.properties.adresse || 'adresse non renseignée'}`);
+
+      if (window.innerWidth <= 768) {
+        closeSidebar();
+      }
+    }
+
+    function selectCabinet(feature) {
+      if (!feature || !feature.properties) return;
+      highlightCabinet(feature);
+      flyToCabinet(feature);
+    }
+
+    function flyToCabinet(feature) {
+      if (!map || !feature) return;
+      const p = feature.properties;
+      const depts = (p.departements || []).map(code => departements.find(d => String(d.properties.code) === code)).filter(Boolean);
+      if (depts.length) {
+        const bounds = depts.reduce((acc, d) => {
+          const c = polygonCentroid(d.geometry);
+          if (!acc) return [c[0], c[1], c[0], c[1]];
+          return [Math.min(acc[0], c[0]), Math.min(acc[1], c[1]), Math.max(acc[2], c[0]), Math.max(acc[3], c[1])];
+        }, null);
+        if (bounds) {
+          map.fitBounds([[bounds[0], bounds[1]], [bounds[2], bounds[3]]], { padding: 80, maxZoom: 9, duration: prefersReducedMotion() ? 0 : 900 });
+          return;
+        }
+      }
+      flyTo(feature.geometry.coordinates.slice(), Math.max(map.getZoom(), 8));
+    }
+
+    function showDeptDetail(feature, cabs) {
+      const code = String(feature.properties.code);
+      const deptName = getDeptName(code);
+      activeCabinetId = null;
+      selectedFeature = null;
+      clearActiveCard();
+
+      const panel = document.getElementById('detailPanel');
+      const avatar = document.getElementById('detailAvatar');
+      avatar.style.background = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim();
+      avatar.textContent = code;
+      document.getElementById('detailTitle').textContent = deptName;
+      document.getElementById('detailSubtitle').textContent = `${cabs.length} cabinets interviennent sur ce département`;
+
+      const body = document.getElementById('detailBody');
+      body.innerHTML = cabs.map(cab => {
+        const p = cab.properties;
+        return `
+          <div class="cabinet-card" data-id="${p.id}" role="button" tabindex="0" style="margin-bottom:8px;">
+            <div class="cabinet-card__row">
+              <span class="cabinet-card__dot" style="background:${p.couleur}" aria-hidden="true"></span>
+              <span class="cabinet-card__name">${p.nom}</span>
+            </div>
+            <span class="cabinet-card__meta">${p.adresse || ''}</span>
+          </div>
+        `;
+      }).join('');
+
+      body.querySelectorAll('.cabinet-card').forEach(card => {
+        const activateCard = () => {
+          const cab = getCabinetById(card.dataset.id);
+          if (cab) selectCabinet(cab);
+        };
+        card.addEventListener('click', activateCard);
+        card.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activateCard(); }
+        });
+      });
+
+      panel.classList.remove('detail-panel--hidden');
+      if (window.innerWidth <= 768) closeSidebar();
+    }
+
+    function showCabinetDetail(feature) {
+      const p = feature.properties;
+      const panel = document.getElementById('detailPanel');
+      const avatar = document.getElementById('detailAvatar');
+      avatar.style.background = p.couleur;
+      avatar.textContent = initials(p.nom);
+      document.getElementById('detailTitle').textContent = p.nom;
+      document.getElementById('detailSubtitle').textContent = `${(p.departements || []).length} départements couverts · Siège : ${p.adresse || 'non renseigné'}`;
+
+      const body = document.getElementById('detailBody');
+      const deptsHtml = (p.departements || []).map(code => {
+        return `<span class="detail-panel__dept">${code}</span>`;
+      }).join('');
+
+      const contactButtons = [];
+      if (p.phone) {
+        contactButtons.push(`<a class="detail-panel__btn" href="tel:${p.phone.replace(/[^\d+]/g, '')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${p.phone}</a>`);
+      }
+      if (p.emails && p.emails.length) {
+        contactButtons.push(`<a class="detail-panel__btn" href="mailto:${p.emails[0]}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>${p.emails[0]}</a>`);
+      }
+
+      const tribunauxNote = (Array.isArray(p.tribunaux) && p.tribunaux.length)
+        ? `<div class="detail-panel__section">
+             <p class="detail-panel__section-title">Tribunaux de rattachement</p>
+             <p class="detail-panel__text">${p.tribunaux.join(' · ')}</p>
+           </div>`
+        : '';
+
+      body.innerHTML = `
+        <div class="detail-panel__section">
+          <p class="detail-panel__section-title">Adresse</p>
+          <p class="detail-panel__text">${p.adresse || 'Adresse non renseignée'}</p>
+        </div>
+        <div class="detail-panel__section">
+          <p class="detail-panel__section-title">Départements couverts</p>
+          <div class="detail-panel__departments">${deptsHtml || '<span class="detail-panel__text">Non renseigné</span>'}</div>
+        </div>
+        ${tribunauxNote}
+        <div class="detail-panel__section">
+          <div class="detail-panel__actions">
+            ${p.adresse ? `<a class="detail-panel__btn" href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.adresse)}" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>Itinéraire</a>` : ''}
+            ${contactButtons.join('')}
+          </div>
+        </div>
+      `;
+
+      panel.classList.remove('detail-panel--hidden');
+    }
+
+    function clearSelection() {
+      selectedFeature = null;
+      activeCabinetId = null;
+      clearActiveCard();
+      document.getElementById('detailPanel').classList.add('detail-panel--hidden');
+      resetDeptOpacity();
+    }
+
+    function setDeptDimmedState(dimmedCabinetId) {
+      if (!map) return;
+      // Dimmer tous les départements couverts par d'autres cabinets
+      const updated = departements.map(f => {
+        const p = f.properties;
+        const isSelected = dimmedCabinetId != null && p.primaryCabinetId === dimmedCabinetId;
+        const isOtherCovered = dimmedCabinetId != null && p.primaryCabinetId != null && !isSelected;
+        return {
+          ...f,
+          properties: {
+            ...p,
+            dimmed: isOtherCovered
+          }
+        };
+      });
+      map.getSource('departements').setData({ type: 'FeatureCollection', features: updated });
+    }
+
+    function highlightCabinetTerritory(cabinetId) {
+      if (!map) return;
+      setDeptDimmedState(cabinetId);
+      // Met en surbrillance le siège du cabinet sélectionné via feature-state hover
+      const rendered = map.querySourceFeatures('cabinets');
+      rendered.forEach(f => {
+        if (f.id == null) return;
+        setCabinetHoverState(f.id, f.properties.id === cabinetId);
+      });
+    }
+
+    function resetDeptOpacity() {
+      if (!map) return;
+      setDeptDimmedState(null);
+      // Retire la surbrillance de tous les sièges
+      const rendered = map.querySourceFeatures('cabinets');
+      rendered.forEach(f => {
+        if (f.id != null) setCabinetHoverState(f.id, false);
+      });
+    }
+
+    function activateSidebarCard(id) {
+      clearActiveCard();
+      const card = document.querySelector(`.cabinet-card[data-id="${id}"]`);
+      if (!card) return;
+      card.classList.add('cabinet-card--active');
+      if (!prefersReducedMotion()) {
+        card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      } else {
+        card.scrollIntoView({ block: 'nearest' });
+      }
+    }
+
+    function clearActiveCard() {
+      document.querySelectorAll('.cabinet-card').forEach(btn => btn.classList.remove('cabinet-card--active', 'cabinet-card--hover'));
+      document.querySelectorAll('.legend__item').forEach(item => item.classList.remove('legend__item--active'));
+    }
+
+    function flyTo(coords, zoom) {
+      if (!map) return;
+      map.easeTo({
+        center: coords,
+        zoom: zoom || Math.max(map.getZoom(), 12),
+        duration: prefersReducedMotion() ? 0 : 650,
+        easing: t => t * (2 - t)
+      });
+    }
+
+    function resetView() {
+      clearSelection();
+      searchInput.value = '';
+      searchTerm = '';
+      renderList();
+      if (map) {
+        map.easeTo({
+          center: [2.5, 46.6],
+          zoom: 5.2,
+          pitch: 0,
+          bearing: 0,
+          duration: prefersReducedMotion() ? 0 : 800,
+          easing: t => t * (2 - t)
+        });
+      }
+      announce('Vue réinitialisée. Tous les cabinets sont affichés.');
+    }
+
+    // Sidebar rendering
+    function renderSidebar() {
+      document.getElementById('sidebarKpiCabinets').textContent = cabinets.length;
+      document.getElementById('sidebarKpiDepts').textContent = deptIndex.size;
+      renderList();
+      renderLegend();
+    }
+
+    function getFilteredCabinets() {
+      const term = normalize(searchTerm);
+      if (!term) return cabinets;
+      return cabinets.filter(c => {
+        const p = c.properties;
+        const fields = [p.nom, p.adresse, p.phone].concat(p.emails || []).concat(p.cours_appel || []).join(' ');
+        return normalize(fields).includes(term);
+      });
+    }
+
+    function renderList() {
+      const list = document.getElementById('cabinetList');
+      const filtered = getFilteredCabinets();
+      list.innerHTML = '';
+      updateResultCount(filtered.length);
+
+      if (filtered.length === 0) {
+        const li = document.createElement('li');
+        li.className = 'sidebar__empty';
+        li.setAttribute('role', 'status');
+        li.innerHTML = `
+          <p class="sidebar__empty-title">Aucun cabinet trouvé</p>
+          <p class="sidebar__empty-text">Essayez une autre recherche.</p>
+          <button class="btn btn--primary" id="emptyResetBtn" type="button">Tout afficher</button>
+        `;
+        list.appendChild(li);
+        li.querySelector('#emptyResetBtn').addEventListener('click', resetAll);
+        announce('Aucun cabinet ne correspond à la recherche.');
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+      filtered.forEach((f, index) => {
+        const p = f.properties;
+        const li = document.createElement('li');
+        li.className = 'sidebar__item';
+        li.style.setProperty('--index', index);
+        const btn = document.createElement('button');
+        btn.className = 'cabinet-card';
+        btn.type = 'button';
+        btn.dataset.id = p.id;
+        const label = [p.nom, p.adresse].filter(Boolean).join(', ');
+        btn.setAttribute('aria-label', label);
+        btn.innerHTML = `
+          <div class="cabinet-card__row">
+            <span class="cabinet-card__dot" style="background:${p.couleur}" aria-hidden="true"></span>
+            <span class="cabinet-card__name">${p.nom}</span>
+          </div>
+          <span class="cabinet-card__meta">${p.adresse || 'Adresse non renseignée'} · ${(p.departements || []).length} départements</span>
+        `;
+        li.appendChild(btn);
+        fragment.appendChild(li);
+      });
+      list.appendChild(fragment);
+
+      bindCardHoverSync();
+      announce(`${filtered.length} cabinet${filtered.length > 1 ? 's' : ''} affiché${filtered.length > 1 ? 's' : ''}.`);
+    }
+
+    function updateResultCount(count) {
+      const plural = count > 1 ? 's' : '';
+      document.getElementById('resultCount').textContent = `${count} cabinet${plural}`;
+      document.getElementById('resetFiltersBtn').hidden = !searchTerm;
+    }
+
+    function bindCardHoverSync() {
+      document.querySelectorAll('.cabinet-card').forEach(btn => {
+        btn.addEventListener('mouseenter', () => {
+          const id = btn.dataset.id;
+          document.querySelectorAll('.cabinet-card').forEach(b => b.classList.remove('cabinet-card--hover'));
+          btn.classList.add('cabinet-card--hover');
+          const rendered = map ? map.querySourceFeatures('cabinets').filter(f => f.properties && f.properties.id === id) : [];
+          rendered.forEach(f => { if (f.id != null) setCabinetHoverState(f.id, true); });
+        });
+        btn.addEventListener('mouseleave', () => {
+          const id = btn.dataset.id;
+          btn.classList.remove('cabinet-card--hover');
+          const rendered = map ? map.querySourceFeatures('cabinets').filter(f => f.properties && f.properties.id === id) : [];
+          rendered.forEach(f => { if (f.id != null) setCabinetHoverState(f.id, false); });
+        });
+      });
+    }
+
+    document.getElementById('cabinetList').addEventListener('click', (e) => {
+      const card = e.target.closest('.cabinet-card');
+      if (!card) return;
+      const feature = getCabinetById(card.dataset.id);
+      if (feature) highlightCabinet(feature);
+    });
+    document.getElementById('cabinetList').addEventListener('dblclick', (e) => {
+      const card = e.target.closest('.cabinet-card');
+      if (!card) return;
+      const feature = getCabinetById(card.dataset.id);
+      if (feature) selectCabinet(feature);
+    });
+
+    const searchInput = document.getElementById('searchInput');
+    const searchClear = document.getElementById('searchClear');
+    const handleSearch = debounce((value) => {
+      searchTerm = value;
+      renderList();
+    }, 120);
+
+    searchInput.addEventListener('input', (e) => {
+      handleSearch(e.target.value);
+      searchClear.hidden = !e.target.value.trim();
+    });
+    searchClear.addEventListener('click', () => {
+      searchInput.value = '';
+      searchInput.focus();
+      searchTerm = '';
+      searchClear.hidden = true;
+      renderList();
+    });
+
+    function resetAll() {
+      searchInput.value = '';
+      searchTerm = '';
+      searchClear.hidden = true;
+      renderList();
+      announce('Recherche réinitialisée.');
+    }
+    document.getElementById('resetFiltersBtn').addEventListener('click', resetAll);
+    document.getElementById('resetViewBtn').addEventListener('click', resetView);
+
+    function renderLegend() {
+      const legend = document.getElementById('cabinetLegend');
+      legend.innerHTML = '<p class="legend__title">Cabinets par couleur</p>';
+      const items = document.createElement('div');
+      items.className = 'legend__items';
+      cabinets.forEach(cab => {
+        const p = cab.properties;
+        const item = document.createElement('button');
+        item.className = 'legend__item';
+        item.type = 'button';
+        item.title = `Voir ${p.nom}`;
+        item.dataset.id = p.id;
+        item.innerHTML = `<span class="legend__swatch" style="background:${p.couleur}" aria-hidden="true"></span><span>${p.nom}</span>`;
+        item.addEventListener('click', () => {
+          selectCabinet(cab);
+          if (window.innerWidth <= 768) closeSidebar();
+        });
+        items.appendChild(item);
+      });
+      legend.appendChild(items);
+    }
+
+    // Sidebar toggle
+    const sidebar = document.getElementById('sidebar');
+    const sidebarHandle = document.getElementById('sidebarHandle');
+    const menuToggle = document.getElementById('menuToggle');
+
+    function openSidebar() {
+      sidebar.classList.remove('sidebar--closed');
+      menuToggle.setAttribute('aria-expanded', 'true');
+      menuToggle.setAttribute('aria-label', 'Fermer la liste');
+      menuToggle.classList.add('icon-btn--active');
+    }
+    function closeSidebar() {
+      sidebar.classList.add('sidebar--closed');
+      menuToggle.setAttribute('aria-expanded', 'false');
+      menuToggle.setAttribute('aria-label', 'Ouvrir la liste');
+      menuToggle.classList.remove('icon-btn--active');
+    }
+    function toggleSidebar() {
+      sidebar.classList.contains('sidebar--closed') ? openSidebar() : closeSidebar();
+    }
+    menuToggle.addEventListener('click', toggleSidebar);
+    sidebarHandle.addEventListener('click', toggleSidebar);
+    sidebarHandle.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSidebar(); }
+    });
+
+    document.getElementById('detailClose').addEventListener('click', () => {
+      document.getElementById('detailPanel').classList.add('detail-panel--hidden');
+      clearActiveCard();
+      selectedFeature = null;
+      activeCabinetId = null;
+    });
+
+    // Outre-mer — vol vers les Antilles/Guyane sur la carte principale
+    const omTrigger = document.getElementById('omTrigger');
+    omTrigger.addEventListener('click', () => {
+      if (!map) return;
+      map.flyTo({ center: [-60, 15], zoom: 4.5, speed: 0.8, curve: 1.2 });
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        let handled = false;
+        if (!document.getElementById('detailPanel').classList.contains('detail-panel--hidden')) {
+          document.getElementById('detailPanel').classList.add('detail-panel--hidden');
+          clearActiveCard();
+          handled = true;
+        }
+        if (window.innerWidth <= 768 && !sidebar.classList.contains('sidebar--closed')) {
+          closeSidebar();
+          menuToggle.focus();
+          handled = true;
+        }
+        if (handled) e.preventDefault();
+      }
+    });
+
+    // Viewport
+    function updateSidebarForViewport() {
+      if (window.innerWidth > 768) {
+        openSidebar();
+      } else {
+        closeSidebar();
+      }
+    }
+    window.addEventListener('resize', debounce(updateSidebarForViewport, 150));
+
+    retryBtn.addEventListener('click', () => {
+      if (map) { map.remove(); map = null; }
+      if (loadData()) initMap();
+    });
+
+    continueBtn.addEventListener('click', () => {
+      hideLoader();
+      renderSidebar();
+      announce('La carte n\'a pas pu être chargée. La liste des cabinets est disponible.');
+    });
+
+    // Start — show map immediately, loader is the splash screen
+    mapMain.classList.add('map-main--visible');
+    if (window.innerWidth > 768) {
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar) sidebar.classList.remove('sidebar--closed');
+    }
+    if (loadData()) {
+      initMap();
+    }
+
+    // Keep top-down view
+    motionQuery.addEventListener('change', () => {
+      if (map && mapLoaded) { map.setPitch(0); map.setBearing(0); }    });
+  </script>
+</body>
+</html>
