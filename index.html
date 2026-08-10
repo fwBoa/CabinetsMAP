@@ -1003,8 +1003,8 @@
           <circle cx="11" cy="11" r="8" />
           <path d="m21 21-4.3-4.3" />
         </svg>
-        <label class="sr-only" for="searchInput">Rechercher un cabinet</label>
-        <input class="search__input" id="searchInput" type="search" placeholder="Rechercher un cabinet…" autocomplete="off" inputmode="search" />
+        <label class="sr-only" for="searchInput">Rechercher un cabinet ou un département</label>
+        <input class="search__input" id="searchInput" type="search" placeholder="Cabinet, ville ou département…" autocomplete="off" inputmode="search" />
         <button class="search__clear" id="searchClear" type="button" aria-label="Effacer" title="Effacer" hidden>×</button>
       </div>
     </div>
@@ -1723,7 +1723,8 @@
       if (!term) return cabinets;
       return cabinets.filter(c => {
         const p = c.properties;
-        const fields = [p.nom, p.adresse, p.phone].concat(p.emails || []).concat(p.cours_appel || []).join(' ');
+        const depts = (p.departements || []).map(code => getDeptName(code)).join(' ');
+        const fields = [p.nom, p.adresse, p.phone, depts].concat(p.emails || []).concat(p.cours_appel || []).join(' ');
         return normalize(fields).includes(term);
       });
     }
@@ -1761,12 +1762,14 @@
         btn.dataset.id = p.id;
         const label = [p.nom, p.adresse].filter(Boolean).join(', ');
         btn.setAttribute('aria-label', label);
+        const deptCount = (p.departements || []).length;
+        const deptLabel = deptCount > 1 ? 'départements' : 'département';
         btn.innerHTML = `
           <div class="cabinet-card__row">
             <span class="cabinet-card__dot" style="background:${p.couleur}" aria-hidden="true"></span>
             <span class="cabinet-card__name">${p.nom}</span>
           </div>
-          <span class="cabinet-card__meta">${p.adresse || 'Adresse non renseignée'} · ${(p.departements || []).length} départements</span>
+          <span class="cabinet-card__meta">${p.adresse || 'Adresse non renseignée'} · ${deptCount} ${deptLabel}</span>
         `;
         li.appendChild(btn);
         fragment.appendChild(li);
