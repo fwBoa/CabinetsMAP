@@ -1149,22 +1149,23 @@ html, body {
         antilles: {
           title: 'Antilles-Guyane',
           codes: ['971', '972', '973'],
-          target: [6, 51.5],
-          slots: [[-0.9, 0.5], [0.9, 0.5], [0, -1.0]]
+          target: [7, 52],
+          slots: [[-1.0, 0.55], [1.0, 0.55], [0, -1.1]]
         },
         ocean: {
           title: 'Océan Indien',
           codes: ['974', '976'],
-          target: [9, 41.5],
-          slots: [[-0.8, 0], [0.8, 0]]
+          target: [10, 39],
+          slots: [[-0.9, 0], [0.9, 0]]
         },
         pacifique: {
           title: 'Pacifique',
           codes: ['987', '988'],
-          target: [-5, 41],
-          slots: [[-0.8, 0], [0.8, 0]]
+          target: [-6, 39],
+          slots: [[-0.9, 0], [0.9, 0]]
         }
       },
+      OM_INSET_JUMP_THRESHOLD_DEG: 35,
       OM_INSET_MAX_SLOT_SIZE: 1.4,
       OM_INSET_MIN_SCALE: 0.03,
     },
@@ -1611,7 +1612,7 @@ html, body {
       if (!real || !S.map) return;
       const cabs = App.getCabinetsForDept(code);
       if (!cabs.length) return;
-      S.map.flyTo({ center: U.polygonCentroid(real.geometry), zoom: 7, speed: 0.8, curve: 1.2 });
+      goToDept(code, 7);
       if (cabs.length === 1) {
         App.emit('map:cabinetClick', { feature: cabs[0] });
       } else {
@@ -1625,10 +1626,22 @@ html, body {
       const feature = e.features && e.features[0];
       if (!feature || !S.map) return;
       const code = String(feature.properties.code);
-      const real = S.departements.find(d => String(d.properties.code) === code);
-      if (!real) return;
-      S.map.flyTo({ center: U.polygonCentroid(real.geometry), zoom: 8, speed: 0.8, curve: 1.2 });
+      goToDept(code, 8);
     });
+  }
+
+  function goToDept(code, zoom) {
+    if (!S.map) return;
+    const real = S.departements.find(d => String(d.properties.code) === String(code));
+    if (!real) return;
+    const center = U.polygonCentroid(real.geometry);
+    const current = S.map.getCenter();
+    const distDeg = Math.hypot(center[0] - current.lng, center[1] - current.lat);
+    if (distDeg > C.OM_INSET_JUMP_THRESHOLD_DEG) {
+      S.map.jumpTo({ center, zoom });
+    } else {
+      S.map.flyTo({ center, zoom, speed: 0.8, curve: 1.2 });
+    }
   }
 
   function updateInsetVisibility() {
@@ -1793,7 +1806,7 @@ html, body {
         const dept = S.departements.find(d => String(d.properties.code) === code);
         if (!dept || !S.map) return;
         const cabs = App.getCabinetsForDept(code);
-        S.map.flyTo({ center: U.polygonCentroid(dept.geometry), zoom: 7, speed: 0.8, curve: 1.2 });
+        goToDept(code, 7);
         if (cabs.length === 1) {
           App.emit('map:cabinetClick', { feature: cabs[0] });
         } else if (cabs.length > 1) {
@@ -2338,7 +2351,7 @@ html, body {
 
   document.getElementById('omTrigger').addEventListener('click', () => {
     if (!S.map) return;
-    S.map.flyTo({ center: C.OM_CENTER, zoom: C.OM_ZOOM, speed: 0.8, curve: 1.2 });
+    S.map.jumpTo({ center: C.FRANCE_CENTER, zoom: C.FRANCE_ZOOM });
   });
 
   document.addEventListener('keydown', (e) => {

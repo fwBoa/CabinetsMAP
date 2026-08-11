@@ -349,7 +349,7 @@
       if (!real || !S.map) return;
       const cabs = App.getCabinetsForDept(code);
       if (!cabs.length) return;
-      S.map.flyTo({ center: U.polygonCentroid(real.geometry), zoom: 7, speed: 0.8, curve: 1.2 });
+      goToDept(code, 7);
       if (cabs.length === 1) {
         App.emit('map:cabinetClick', { feature: cabs[0] });
       } else {
@@ -363,10 +363,22 @@
       const feature = e.features && e.features[0];
       if (!feature || !S.map) return;
       const code = String(feature.properties.code);
-      const real = S.departements.find(d => String(d.properties.code) === code);
-      if (!real) return;
-      S.map.flyTo({ center: U.polygonCentroid(real.geometry), zoom: 8, speed: 0.8, curve: 1.2 });
+      goToDept(code, 8);
     });
+  }
+
+  function goToDept(code, zoom) {
+    if (!S.map) return;
+    const real = S.departements.find(d => String(d.properties.code) === String(code));
+    if (!real) return;
+    const center = U.polygonCentroid(real.geometry);
+    const current = S.map.getCenter();
+    const distDeg = Math.hypot(center[0] - current.lng, center[1] - current.lat);
+    if (distDeg > C.OM_INSET_JUMP_THRESHOLD_DEG) {
+      S.map.jumpTo({ center, zoom });
+    } else {
+      S.map.flyTo({ center, zoom, speed: 0.8, curve: 1.2 });
+    }
   }
 
   function updateInsetVisibility() {
@@ -531,7 +543,7 @@
         const dept = S.departements.find(d => String(d.properties.code) === code);
         if (!dept || !S.map) return;
         const cabs = App.getCabinetsForDept(code);
-        S.map.flyTo({ center: U.polygonCentroid(dept.geometry), zoom: 7, speed: 0.8, curve: 1.2 });
+        goToDept(code, 7);
         if (cabs.length === 1) {
           App.emit('map:cabinetClick', { feature: cabs[0] });
         } else if (cabs.length > 1) {

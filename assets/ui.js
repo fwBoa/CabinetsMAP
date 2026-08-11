@@ -425,7 +425,7 @@
 
   document.getElementById('omTrigger').addEventListener('click', () => {
     if (!S.map) return;
-    S.map.flyTo({ center: C.OM_CENTER, zoom: C.OM_ZOOM, speed: 0.8, curve: 1.2 });
+    S.map.jumpTo({ center: C.FRANCE_CENTER, zoom: C.FRANCE_ZOOM });
   });
 
   document.addEventListener('keydown', (e) => {
