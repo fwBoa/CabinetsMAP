@@ -14,40 +14,63 @@
   const detailPanel = document.getElementById('detailPanel');
   const detailClose = document.getElementById('detailClose');
 
-  function openSidebar() {
-    sidebar.classList.remove('sidebar--closed');
-    menuToggle.setAttribute('aria-expanded', 'true');
-    menuToggle.setAttribute('aria-label', 'Fermer la liste');
-    menuToggle.classList.add('icon-btn--active');
+  let sidebarSnap = 'peek';
+  const SIDEBAR_SNAPS = ['closed', 'peek', 'half', 'full'];
+
+  function setSidebarSnap(state) {
+    if (!SIDEBAR_SNAPS.includes(state)) state = 'peek';
+    sidebarSnap = state;
+    sidebar.classList.remove('sidebar--closed', 'sidebar--peek', 'sidebar--half', 'sidebar--full');
+    sidebar.style.height = '';
+    if (state !== 'closed') sidebar.classList.add(`sidebar--${state}`);
+    const isOpen = state !== 'closed';
+    menuToggle.setAttribute('aria-expanded', String(isOpen));
+    menuToggle.setAttribute('aria-label', isOpen ? 'Fermer la liste' : 'Ouvrir la liste');
+    menuToggle.classList.toggle('icon-btn--active', isOpen);
+    if (isOpen && S.map) App.map.recenterMapForMobilePanel();
   }
 
-  function closeSidebar() {
-    sidebar.classList.add('sidebar--closed');
-    menuToggle.setAttribute('aria-expanded', 'false');
-    menuToggle.setAttribute('aria-label', 'Ouvrir la liste');
-    menuToggle.classList.remove('icon-btn--active');
-  }
+  function openSidebar() { setSidebarSnap('peek'); }
+  function closeSidebar() { setSidebarSnap('closed'); }
+  function expandSidebarHalf() { setSidebarSnap('half'); }
+  function expandSidebarFull() { setSidebarSnap('full'); }
 
   function toggleSidebar() {
-    sidebar.classList.contains('sidebar--closed') ? openSidebar() : closeSidebar();
+    setSidebarSnap(sidebarSnap === 'closed' ? 'peek' : 'closed');
+  }
+
+  function cycleSidebarSnap() {
+    const idx = SIDEBAR_SNAPS.indexOf(sidebarSnap);
+    setSidebarSnap(SIDEBAR_SNAPS[(idx + 1) % SIDEBAR_SNAPS.length]);
   }
 
   menuToggle.addEventListener('click', toggleSidebar);
-  sidebarHandle.addEventListener('click', toggleSidebar);
   sidebarHandle.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSidebar(); }
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cycleSidebarSnap(); }
   });
 
-  function openBottomSheet() {
-    detailPanel.classList.remove('detail-panel--hidden', 'detail-panel--snap-open');
-    detailPanel.classList.add('detail-panel--snap-peek');
+  let detailSnap = 'peek';
+  const DETAIL_SNAPS = ['hidden', 'peek', 'half', 'full'];
+  const DETAIL_SNAP_HEIGHTS = { peek: 0.32, half: 0.50, full: 0.85 };
+
+  function setDetailSnap(state) {
+    if (!DETAIL_SNAPS.includes(state)) state = 'peek';
+    detailSnap = state;
+    detailPanel.classList.remove('detail-panel--peek', 'detail-panel--half', 'detail-panel--full', 'detail-panel--hidden');
     detailPanel.style.height = '';
+    if (state !== 'hidden') detailPanel.classList.add(`detail-panel--${state}`);
+    if (state !== 'hidden' && S.map) App.map.recenterMapForMobilePanel();
   }
 
-  function closeBottomSheet() {
-    detailPanel.classList.add('detail-panel--hidden');
-    detailPanel.classList.remove('detail-panel--snap-open', 'detail-panel--snap-peek');
-    detailPanel.style.height = '';
+  function openBottomSheet() { setDetailSnap('peek'); }
+  function closeBottomSheet() { setDetailSnap('hidden'); }
+  function expandDetailHalf() { setDetailSnap('half'); }
+  function expandDetailFull() { setDetailSnap('full'); }
+
+  function cycleDetailSnap() {
+    if (detailSnap === 'hidden') { setDetailSnap('peek'); return; }
+    const idx = DETAIL_SNAPS.indexOf(detailSnap);
+    setDetailSnap(DETAIL_SNAPS[(idx + 1) % DETAIL_SNAPS.length]);
   }
 
   function initBottomSheet() {
@@ -56,9 +79,15 @@
     let startY = 0;
     let startHeight = 0;
     let isDragging = false;
+    let moved = false;
+
+    handle.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cycleDetailSnap(); }
+    });
 
     function onStart(clientY) {
       isDragging = true;
+      moved = false;
       startY = clientY;
       startHeight = detailPanel.getBoundingClientRect().height;
       detailPanel.style.transition = 'none';
@@ -67,8 +96,10 @@
 
     function onMove(clientY) {
       if (!isDragging) return;
+      if (Math.abs(clientY - startY) > 3) moved = true;
       const delta = startY - clientY;
-      const newHeight = Math.min(window.innerHeight * 0.85, Math.max(80, startHeight + delta));
+      const maxH = window.innerHeight * 0.88;
+      const newHeight = Math.min(maxH, Math.max(80, startHeight + delta));
       detailPanel.style.height = `${newHeight}px`;
     }
 
@@ -77,23 +108,30 @@
       isDragging = false;
       detailPanel.style.transition = '';
       document.body.style.userSelect = '';
-      const delta = startY - clientY;
+
+      if (!moved) {
+        cycleDetailSnap();
+        return;
+      }
+
       const currentHeight = detailPanel.getBoundingClientRect().height;
       const vh = window.innerHeight;
-      const openThreshold = vh * 0.55;
-      const closeThreshold = vh * 0.22;
 
-      if (delta < -40 || currentHeight > openThreshold) {
-        detailPanel.classList.add('detail-panel--snap-open');
-        detailPanel.classList.remove('detail-panel--snap-peek');
-        detailPanel.style.height = '';
-      } else if (delta > 40 || currentHeight < closeThreshold) {
+      const targets = [
+        { key: 'hidden', height: 0 },
+        { key: 'peek', height: vh * DETAIL_SNAP_HEIGHTS.peek },
+        { key: 'half', height: vh * DETAIL_SNAP_HEIGHTS.half },
+        { key: 'full', height: vh * DETAIL_SNAP_HEIGHTS.full }
+      ];
+      let nearest = targets.reduce((best, t) => {
+        const dist = Math.abs(currentHeight - t.height);
+        return dist < best.dist ? { key: t.key, dist } : best;
+      }, { key: 'peek', dist: Infinity });
+
+      if (nearest.key === 'hidden') {
         closeSelection();
       } else {
-        detailPanel.classList.remove('detail-panel--snap-open');
-        detailPanel.classList.add('detail-panel--snap-peek');
-        detailPanel.style.height = '';
-        App.map.recenterMapForMobilePanel();
+        setDetailSnap(nearest.key);
       }
     }
 
@@ -109,6 +147,75 @@
     handle.addEventListener('pointercancel', () => {
       isDragging = false;
       detailPanel.style.transition = '';
+      document.body.style.userSelect = '';
+    });
+  }
+
+  function initSidebarDrag() {
+    if (!sidebarHandle) return;
+    let startY = 0;
+    let startHeight = 0;
+    let isDragging = false;
+    let moved = false;
+
+    function onStart(clientY) {
+      isDragging = true;
+      moved = false;
+      startY = clientY;
+      startHeight = sidebar.getBoundingClientRect().height;
+      sidebar.style.transition = 'none';
+      document.body.style.userSelect = 'none';
+    }
+
+    function onMove(clientY) {
+      if (!isDragging) return;
+      if (Math.abs(clientY - startY) > 3) moved = true;
+      const delta = startY - clientY;
+      const maxH = window.innerHeight * 0.88;
+      const newHeight = Math.min(maxH, Math.max(80, startHeight + delta));
+      sidebar.style.height = `${newHeight}px`;
+    }
+
+    function onEnd(clientY) {
+      if (!isDragging) return;
+      isDragging = false;
+      sidebar.style.transition = '';
+      document.body.style.userSelect = '';
+
+      if (!moved) {
+        cycleSidebarSnap();
+        return;
+      }
+
+      const currentHeight = sidebar.getBoundingClientRect().height;
+      const vh = window.innerHeight;
+
+      const targets = [
+        { key: 'closed', height: 0 },
+        { key: 'peek', height: 120 },
+        { key: 'half', height: vh * 0.45 },
+        { key: 'full', height: vh * 0.85 }
+      ];
+      let nearest = targets.reduce((best, t) => {
+        const dist = Math.abs(currentHeight - t.height);
+        return dist < best.dist ? { key: t.key, dist } : best;
+      }, { key: 'peek', dist: Infinity });
+
+      setSidebarSnap(nearest.key);
+    }
+
+    sidebarHandle.addEventListener('pointerdown', (e) => {
+      onStart(e.clientY);
+      sidebarHandle.setPointerCapture(e.pointerId);
+    });
+    sidebarHandle.addEventListener('pointermove', (e) => {
+      if (isDragging) e.preventDefault();
+      onMove(e.clientY);
+    });
+    sidebarHandle.addEventListener('pointerup', (e) => onEnd(e.clientY));
+    sidebarHandle.addEventListener('pointercancel', () => {
+      isDragging = false;
+      sidebar.style.transition = '';
       document.body.style.userSelect = '';
     });
   }
@@ -473,6 +580,9 @@
 
   App.on('map:selectionCleared', () => {
     closeSelection();
+    if (window.innerWidth <= C.mobileBreakpoint) {
+      closeSidebar();
+    }
   });
 
   App.on('ui:resetSearch', () => {
@@ -486,6 +596,7 @@
   }
 
   initBottomSheet();
+  initSidebarDrag();
 
   App.ui = {
     renderSidebar,

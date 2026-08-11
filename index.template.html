@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
-  <meta name="description" content="Réseau national de 13 cabinets d'avocats partenaires couvrant 103 départements en France métropolitaine et outre-mer." />
-  <title>CabinetsMAP — Réseau national d'avocats</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231e3a8a'/%3E%3Ctext x='50' y='62' text-anchor='middle' font-family='Georgia' font-size='50' fill='%23fff'%3ECM%3C/text%3E%3C/svg%3E" />
+  <meta name="description" content="Réseau avocat CEGC — 13 cabinets d'avocats partenaires couvrant 103 départements en France métropolitaine et outre-mer." />
+  <title>Réseau avocat CEGC</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231e3a8a'/%3E%3Ctext x='50' y='64' text-anchor='middle' font-family='Georgia' font-size='40' font-weight='700' fill='%23fff'%3ECEGC%3C/text%3E%3C/svg%3E" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -18,22 +18,19 @@
 <body>
   <a href="#main" class="skip-link">Aller au contenu principal</a>
 
-  <div class="loader" id="loader" role="status" aria-live="polite" aria-label="Chargement de la carte">
-    <div class="loader__spinner" aria-hidden="true"></div>
-    <p class="loader__text" id="loaderText">Préparation du réseau…</p>
-    <div class="loader__actions" id="loaderActions" style="display:none;">
+  <div class="splash" id="loader" role="status" aria-live="polite" aria-label="Chargement du réseau">
+    <div class="splash__inner">
+      <p class="splash__title">Réseau avocat <span class="splash__brand">CEGC</span></p>
+      <div class="splash__spinner" aria-hidden="true"></div>
+      <p class="splash__subtitle" id="loaderText">Préparation du réseau…</p>
+    </div>
+    <div class="splash__actions" id="loaderActions" style="display:none;">
       <button class="btn btn--primary" id="retryBtn" type="button">Réessayer</button>
       <button class="btn" id="continueBtn" type="button">Continuer sans carte</button>
     </div>
   </div>
 
   <header class="map-header">
-    <div class="brand">
-      <div class="brand__text">
-        <h1 class="brand__title">CabinetsMAP</h1>
-      </div>
-    </div>
-
     <div class="header__actions">
       <button class="icon-btn om-trigger" id="omTrigger" type="button" aria-label="Centrer sur les DOM-TOM-COM" title="DOM-TOM-COM">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

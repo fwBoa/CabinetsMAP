@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
-  <meta name="description" content="Réseau national de 13 cabinets d'avocats partenaires couvrant 103 départements en France métropolitaine et outre-mer." />
-  <title>CabinetsMAP — Réseau national d'avocats</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231e3a8a'/%3E%3Ctext x='50' y='62' text-anchor='middle' font-family='Georgia' font-size='50' fill='%23fff'%3ECM%3C/text%3E%3C/svg%3E" />
+  <meta name="description" content="Réseau avocat CEGC — 13 cabinets d'avocats partenaires couvrant 103 départements en France métropolitaine et outre-mer." />
+  <title>Réseau avocat CEGC</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231e3a8a'/%3E%3Ctext x='50' y='64' text-anchor='middle' font-family='Georgia' font-size='40' font-weight='700' fill='%23fff'%3ECEGC%3C/text%3E%3C/svg%3E" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -114,8 +114,8 @@ html, body {
 }
 .skip-link:focus { transform: translateY(0); outline: none; box-shadow: var(--focus-ring); }
 
-/* Loader */
-.loader {
+/* Splash (loader) */
+.splash {
   position: fixed;
   inset: 0;
   z-index: 200;
@@ -128,23 +128,50 @@ html, body {
   padding: 24px;
   text-align: center;
 }
-.loader.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-.loader__spinner {
-  width: 44px; height: 44px;
-  border: 3px solid var(--color-border);
+.splash.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+.splash__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 540px;
+  animation: splashEnter 0.6s var(--ease-out) both;
+}
+@keyframes splashEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.splash__title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: clamp(32px, 6vw, 56px);
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  line-height: 1.15;
+  color: var(--color-text);
+}
+.splash__brand {
+  color: var(--color-primary);
+  font-weight: 700;
+  margin-left: 0.15em;
+  letter-spacing: 0.5px;
+}
+.splash__spinner {
+  width: 32px; height: 32px;
+  margin-top: 36px;
+  border: 2px solid var(--color-border);
   border-top-color: var(--color-primary);
   border-radius: 50%;
   animation: spin 0.85s linear infinite;
 }
-.loader__text {
+.splash__subtitle {
   margin: 18px 0 0;
-  font-size: 15px;
-  color: var(--color-text-secondary);
+  font-size: 14px;
+  color: var(--color-text-muted);
   letter-spacing: 0.2px;
-  max-width: 340px;
+  max-width: 320px;
   line-height: 1.5;
 }
-.loader__actions { margin-top: 18px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.splash__actions { margin-top: 24px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .btn {
   font-family: var(--font-sans);
   font-size: 14px;
@@ -164,10 +191,16 @@ html, body {
   background: var(--color-primary);
   color: #fff;
   border-color: var(--color-primary);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
 }
-.btn--primary:hover { background: var(--color-primary-dark); border-color: var(--color-primary-dark); }
+.btn--primary:hover {
+  background: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
 @keyframes spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .loader__spinner { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .splash__spinner { animation: none; } }
 
 /* Header */
 .map-header {
@@ -178,29 +211,9 @@ html, body {
   z-index: 10;
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 8px;
   pointer-events: none;
-}
-.brand {
-  pointer-events: auto;
-  background: var(--color-surface);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: 10px 16px;
-  box-shadow: var(--shadow-md);
-  max-width: 380px;
-}
-.brand__title {
-  margin: 0;
-  font-family: var(--font-serif);
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: -0.2px;
-  line-height: 1.25;
-  color: var(--color-text);
 }
 .header__actions {
   display: flex;
@@ -272,17 +285,23 @@ html, body {
 }
 .sidebar__kpis {
   display: flex;
-  gap: 16px;
+  gap: 8px;
   margin-bottom: 12px;
 }
 .sidebar__kpi {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 10px;
   font-size: 12px;
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
+  background: var(--color-primary-light);
+  border-radius: var(--radius-full);
 }
 .sidebar__kpi strong {
   color: var(--color-primary);
   font-weight: 700;
-  margin-right: 4px;
+  font-size: 13px;
 }
 
 /* Search */
@@ -366,57 +385,80 @@ html, body {
 .sidebar__list {
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
+  padding: 0;
   list-style: none;
   margin: 0;
 }
-.sidebar__item {
-  margin-bottom: 4px;
-  animation: cardEnter 0.3s var(--ease-out) both;
-  animation-delay: calc(var(--index, 0) * 40ms);
+.sidebar__list::-webkit-scrollbar { width: 6px; }
+.sidebar__list::-webkit-scrollbar-track { background: transparent; }
+.sidebar__list::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: var(--radius-full);
 }
+.sidebar__list::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
+.sidebar__item {
+  border-bottom: 1px solid var(--color-border);
+  animation: cardEnter 0.3s var(--ease-out) both;
+  animation-delay: calc(var(--index, 0) * 25ms);
+}
+.sidebar__item:last-child { border-bottom: none; }
 @keyframes cardEnter {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 .cabinet-card {
+  position: relative;
   width: 100%;
   text-align: left;
   background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  padding: 12px;
+  border: none;
+  border-radius: 0;
+  padding: 12px 18px;
   cursor: pointer;
   color: var(--color-text);
-  transition: background 0.15s var(--ease-out), border-color 0.15s var(--ease-out), transform 0.15s var(--ease-out), box-shadow 0.15s var(--ease-out);
+  transition: background 0.15s var(--ease-out), transform 0.18s var(--ease-out);
+}
+.cabinet-card::after {
+  content: '›';
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  opacity: 0;
+  transition: opacity 0.15s var(--ease-out), transform 0.15s var(--ease-out);
 }
 .cabinet-card:hover {
   background: var(--color-primary-light);
-  border-color: rgba(var(--color-primary-rgb), 0.1);
-  box-shadow: var(--shadow-xs);
+  transform: translateX(2px);
 }
+.cabinet-card:hover::after { opacity: 1; transform: translateY(-50%) translateX(-2px); }
 .cabinet-card--hover, .cabinet-card--hover:hover {
   background: rgba(var(--color-primary-rgb), 0.06);
-  border-color: rgba(var(--color-primary-rgb), 0.12);
+  transform: none;
 }
+.cabinet-card--hover::after { display: none; }
 .cabinet-card--active, .cabinet-card--active:hover {
-  background: rgba(var(--color-primary-rgb), 0.12);
-  border-color: rgba(var(--color-primary-rgb), 0.22);
-  box-shadow: var(--shadow-sm);
+  background: rgba(var(--color-primary-rgb), 0.1);
+  transform: none;
 }
-.cabinet-card:active { transform: scale(0.98); }
-.cabinet-card:focus-visible { outline: none; border-color: var(--color-primary); box-shadow: var(--focus-ring); }
-.cabinet-card__row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.cabinet-card--active::after { display: none; }
+.cabinet-card:active { transform: translateX(2px) scale(0.99); }
+.cabinet-card:focus-visible { outline: none; background: var(--color-primary-light); box-shadow: inset 3px 0 0 var(--color-primary); }
+.cabinet-card__row { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
 .cabinet-card__dot {
   flex-shrink: 0;
   width: 12px; height: 12px;
   border-radius: 50%;
   border: 2px solid #fff;
   box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  background-clip: padding-box;
   transition: transform 0.2s var(--ease-spring);
 }
 .cabinet-card:hover .cabinet-card__dot,
-.cabinet-card--active .cabinet-card__dot { transform: scale(1.3); }
+.cabinet-card--active .cabinet-card__dot { transform: scale(1.25); }
 .cabinet-card__name {
   flex: 1;
   font-size: 14px;
@@ -492,6 +534,7 @@ html, body {
   background: var(--color-primary);
   color: #fff;
   border-color: var(--color-primary);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.18);
 }
 .legend__item--active:hover { background: var(--color-primary-dark); border-color: var(--color-primary-dark); }
 .legend__swatch {
@@ -539,15 +582,16 @@ html, body {
 }
 .detail-panel__avatar {
   flex-shrink: 0;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-sm);
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 700;
   color: #fff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.18);
 }
 .detail-panel__meta { flex: 1; min-width: 0; }
 .detail-panel__title {
@@ -586,12 +630,24 @@ html, body {
   margin-bottom: 18px;
 }
 .detail-panel__section-title {
+  position: relative;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.8px;
   color: var(--color-text-muted);
   margin: 0 0 8px;
+  padding-left: 10px;
+}
+.detail-panel__section-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 2px;
+  bottom: 2px;
+  width: 3px;
+  background: var(--color-primary);
+  border-radius: 2px;
 }
 .detail-panel__text {
   font-size: 14px;
@@ -608,14 +664,16 @@ html, body {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 8px;
-  border-radius: var(--radius-xs);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
   background: var(--color-bg);
   border: 1px solid var(--color-border);
   font-size: 12px;
   font-weight: 500;
   color: var(--color-text);
+  transition: background 0.15s var(--ease-out), border-color 0.15s var(--ease-out);
 }
+.detail-panel__dept:hover { background: var(--color-primary-light); border-color: var(--color-primary-light); }
 .detail-panel__actions {
   display: flex;
   gap: 8px;
@@ -641,6 +699,18 @@ html, body {
 .detail-panel__btn:active { transform: scale(0.97); }
 .detail-panel__btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .detail-panel__btn svg { width: 14px; height: 14px; }
+.detail-panel__actions .detail-panel__btn:first-child {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+.detail-panel__actions .detail-panel__btn:first-child:hover {
+  background: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
 
 /* Popups */
 .maplibregl-popup { z-index: 15; }
@@ -778,28 +848,44 @@ html, body {
   opacity: 0;
   transform: translateY(4px);
   transition: opacity 0.12s var(--ease-out), transform 0.12s var(--ease-out);
-  max-width: 260px;
-  padding: 10px 12px;
+  max-width: 280px;
+  padding: 12px 14px 12px 16px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
   font-family: var(--font-sans);
   line-height: 1.4;
 }
 .map-tooltip--visible { opacity: 1; transform: translateY(0); }
-.map-tooltip__header { display: flex; align-items: center; gap: 10px; }
+.map-tooltip__header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.map-tooltip__header::before {
+  content: '';
+  position: absolute;
+  left: -15px;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  background: var(--tt-accent, var(--color-primary));
+  border-radius: 2px;
+}
 .map-tooltip__avatar {
   flex-shrink: 0;
-  width: 32px; height: 32px;
-  border-radius: var(--radius-xs);
+  width: 36px; height: 36px;
+  border-radius: var(--radius-sm);
   display: flex; align-items: center; justify-content: center;
-  font-size: 13px; font-weight: 700; color: #fff;
+  font-size: 14px; font-weight: 700; color: #fff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.18);
 }
 .map-tooltip__meta { flex: 1; min-width: 0; }
 .map-tooltip__title {
   font-family: var(--font-serif);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--color-text);
   overflow: hidden;
@@ -848,18 +934,22 @@ html, body {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
-  padding: 26px 10px 10px;
+  padding: 30px 12px 12px;
   transition: transform 0.3s var(--ease-out), opacity 0.25s var(--ease-out);
 }
 .om-inset__label {
   position: absolute;
-  top: 7px;
-  left: 10px;
-  font-size: 10px;
+  top: 8px;
+  left: 12px;
+  display: inline-block;
+  padding: 3px 8px;
+  font-size: 9px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.7px;
-  color: var(--color-text-muted);
+  color: #fff;
+  background: var(--color-primary);
+  border-radius: 4px;
   pointer-events: none;
 }
 .om-inset__chips {
@@ -870,8 +960,8 @@ html, body {
 .om-inset__chip {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 9px;
+  gap: 6px;
+  padding: 6px 11px;
   border-radius: var(--radius-full);
   background: var(--color-bg);
   border: 1px solid var(--color-border);
@@ -879,10 +969,16 @@ html, body {
   font-weight: 600;
   color: var(--color-text);
   cursor: pointer;
-  transition: transform 0.1s, background 0.15s, border-color 0.15s;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition: transform 0.15s var(--ease-out), background 0.15s var(--ease-out), border-color 0.15s var(--ease-out), box-shadow 0.15s var(--ease-out);
 }
-.om-inset__chip:hover { background: var(--color-primary-light); border-color: var(--color-primary-light); transform: translateY(-1px); }
-.om-inset__chip:active { transform: scale(0.97); }
+.om-inset__chip:hover {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary-light);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+.om-inset__chip:active { transform: translateY(0) scale(0.97); }
 .om-inset__chip-dot {
   width: 8px;
   height: 8px;
@@ -915,9 +1011,10 @@ html, body {
 
 /* Mobile bottom sheet */
 @media (max-width: 768px) {
-  .brand { padding: 8px 12px; max-width: none; flex: 1; }
-  .brand__title { font-size: 14px; }
-  .icon-btn { width: 40px; height: 40px; }
+  .header__actions { gap: 6px; }
+  .icon-btn { width: 36px; height: 36px; }
+  .icon-btn svg { width: 18px; height: 18px; }
+  .map-header { top: calc(6px + var(--safe-top)); left: calc(6px + var(--safe-left)); right: calc(6px + var(--safe-right)); justify-content: flex-end; }
 
   .sidebar {
     top: auto;
@@ -925,34 +1022,47 @@ html, body {
     right: 0;
     bottom: 0;
     width: auto;
-    max-height: 55vh;
+    max-height: none;
+    height: 190px;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     transform: translateY(0);
     padding-bottom: var(--safe-bottom);
+    box-shadow: 0 -6px 40px rgba(15, 23, 42, 0.14);
+    transition: transform 0.35s var(--ease-out), opacity 0.25s var(--ease-out), visibility 0.25s var(--ease-out), height 0.3s var(--ease-out);
   }
   .sidebar--closed {
-    transform: translateY(calc(100% - 34px));
+    transform: translateY(calc(100% - 40px));
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
   }
+  .sidebar--half { height: 45vh; }
+  .sidebar--full { height: 85vh; }
+  .sidebar--closed .sidebar__header,
+  .sidebar--closed .sidebar__toolbar,
   .sidebar--closed .sidebar__list,
-  .sidebar--closed .sidebar__legend,
-  .sidebar--closed .sidebar__toolbar { opacity: 0; visibility: hidden; }
+  .sidebar--closed .sidebar__legend { opacity: 0; visibility: hidden; }
+  .sidebar--peek .sidebar__toolbar,
+  .sidebar--peek .sidebar__legend { display: none; }
   .sidebar__handle {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 10px 0 6px;
+    padding: 8px 0 4px;
     cursor: pointer;
+    touch-action: none;
   }
   .sidebar__handle-bar {
-    width: 40px;
-    height: 4px;
+    width: 44px;
+    height: 5px;
     border-radius: var(--radius-full);
     background: var(--color-border-strong);
   }
-  .sidebar__header { padding-top: 6px; }
+  .sidebar__header { padding: 6px 14px 12px; }
+  .sidebar__title { font-size: 15px; margin-bottom: 8px; }
+  .sidebar__kpis { margin-bottom: 8px; }
+  .sidebar__toolbar { padding: 0 14px 6px; }
+  .sidebar__list { padding: 4px 8px; }
 
   .detail-panel {
     top: auto;
@@ -960,11 +1070,11 @@ html, body {
     right: 8px;
     bottom: 0;
     width: auto;
-    height: 35vh;
+    height: auto;
     max-height: none;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     transform: translateY(0);
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 -6px 40px rgba(15, 23, 42, 0.14);
     padding-bottom: var(--safe-bottom);
     transition: transform 0.35s var(--ease-out), opacity 0.25s var(--ease-out), visibility 0.25s var(--ease-out), height 0.3s var(--ease-out);
   }
@@ -974,31 +1084,27 @@ html, body {
     visibility: hidden;
     pointer-events: none;
   }
-  .detail-panel--snap-open {
-    height: 75vh;
-  }
-  .detail-panel--snap-open .detail-panel__body {
-    overflow-y: auto;
-  }
+  .detail-panel--peek { height: auto; min-height: 140px; max-height: 38vh; }
+  .detail-panel--half { height: 50vh; }
+  .detail-panel--full { height: 85vh; }
   .detail-panel__handle {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 10px 0 6px;
+    padding: 8px 0 4px;
     cursor: grab;
     touch-action: none;
   }
-  .detail-panel__body {
-    touch-action: pan-y;
-  }
   .detail-panel__handle-bar {
-    width: 40px;
-    height: 4px;
+    width: 44px;
+    height: 5px;
     border-radius: var(--radius-full);
     background: var(--color-border-strong);
   }
-  .detail-panel__header {
-    padding-top: 6px;
+  .detail-panel__header { padding: 6px 14px 12px; }
+  .detail-panel__body {
+    touch-action: pan-y;
+    overflow-y: auto;
   }
 
   .om-inset {
@@ -1018,22 +1124,19 @@ html, body {
   .detail-panel__handle { display: none; }
 }
 @media (max-width: 380px) {
-  .brand__title { font-size: 13px; }
   .maplibregl-popup-content { min-width: 220px; max-width: calc(100vw - 32px); }
   .popup__title { font-size: 15px; }
-  .sidebar { max-height: 50vh; }
-  .detail-panel { left: 6px; right: 6px; height: 32vh; }
-  .detail-panel--snap-open { height: 70vh; }
   .om-inset { max-width: 130px; }
 }
 @media (max-height: 500px) and (orientation: landscape) {
-  .sidebar { max-height: 45vh; }
-  .detail-panel { height: 30vh; }
-  .detail-panel--snap-open { height: 65vh; }
+  .sidebar--half { height: 40vh; }
+  .sidebar--full { height: 75vh; }
+  .detail-panel--half { height: 45vh; }
+  .detail-panel--full { height: 75vh; }
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  .brand, .sidebar, .maplibregl-popup-content, .maplibregl-ctrl-group, .detail-panel { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--color-surface); }
+  .sidebar, .maplibregl-popup-content, .maplibregl-ctrl-group, .detail-panel { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--color-surface); }
 }
 
 </style>
@@ -1041,22 +1144,19 @@ html, body {
 <body>
   <a href="#main" class="skip-link">Aller au contenu principal</a>
 
-  <div class="loader" id="loader" role="status" aria-live="polite" aria-label="Chargement de la carte">
-    <div class="loader__spinner" aria-hidden="true"></div>
-    <p class="loader__text" id="loaderText">Préparation du réseau…</p>
-    <div class="loader__actions" id="loaderActions" style="display:none;">
+  <div class="splash" id="loader" role="status" aria-live="polite" aria-label="Chargement du réseau">
+    <div class="splash__inner">
+      <p class="splash__title">Réseau avocat <span class="splash__brand">CEGC</span></p>
+      <div class="splash__spinner" aria-hidden="true"></div>
+      <p class="splash__subtitle" id="loaderText">Préparation du réseau…</p>
+    </div>
+    <div class="splash__actions" id="loaderActions" style="display:none;">
       <button class="btn btn--primary" id="retryBtn" type="button">Réessayer</button>
       <button class="btn" id="continueBtn" type="button">Continuer sans carte</button>
     </div>
   </div>
 
   <header class="map-header">
-    <div class="brand">
-      <div class="brand__text">
-        <h1 class="brand__title">CabinetsMAP</h1>
-      </div>
-    </div>
-
     <div class="header__actions">
       <button class="icon-btn om-trigger" id="omTrigger" type="button" aria-label="Centrer sur les DOM-TOM-COM" title="DOM-TOM-COM">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1193,19 +1293,19 @@ html, body {
         antilles: {
           title: 'Antilles-Guyane',
           codes: ['971', '972', '973'],
-          target: [7, 52],
+          target: [6.5, 51.5],
           slots: [[-1.0, 0.55], [1.0, 0.55], [0, -1.1]]
         },
         ocean: {
           title: 'Océan Indien',
           codes: ['974', '976'],
-          target: [10, 39],
+          target: [9, 41],
           slots: [[-0.9, 0], [0.9, 0]]
         },
         pacifique: {
           title: 'Pacifique',
           codes: ['987', '988'],
-          target: [-6, 39],
+          target: [-4, 41],
           slots: [[-0.9, 0], [0.9, 0]]
         }
       },
@@ -1326,7 +1426,7 @@ html, body {
     loaderText.textContent = message;
     loaderActions.style.display = 'flex';
     retryBtn.style.display = canRetry ? 'inline-flex' : 'none';
-    const spinner = loader.querySelector('.loader__spinner');
+    const spinner = loader.querySelector('.splash__spinner');
     if (spinner) spinner.style.display = 'none';
   }
 
@@ -1367,11 +1467,15 @@ html, body {
 
     S.map.on('load', () => {
       S.mapLoaded = true;
-      hideLoader();
       setupMapLayers();
       bindMapEvents();
-      App.emit('map:loaded', {});
-      U.announce(`${S.cabinets.length} cabinets disponibles sur ${S.departements.length} départements.`);
+      // Laisser le loader visible quelques instants de plus pour que la carte
+      // apparaisse complètement stabilisée avant de révéler l’interface.
+      setTimeout(() => {
+        hideLoader();
+        App.emit('map:loaded', {});
+        U.announce(`${S.cabinets.length} cabinets disponibles sur ${S.departements.length} départements.`);
+      }, 800);
     });
 
     S.map.on('error', (e) => {
@@ -1506,7 +1610,11 @@ html, body {
 
   let omInsetMarkers = [];
   let tooltipEl = null;
-  let hoverThrottle = null;
+  let tooltipRaf = null;
+  let hoverDeptId = null;
+  let hoverCabinetId = null;
+  let omHoverId = null;
+  let lastTooltipTargetId = null;
 
   function getTooltip() {
     if (!tooltipEl) tooltipEl = document.getElementById('mapTooltip');
@@ -1672,17 +1780,6 @@ html, body {
     const map = S.map;
     if (!map || !map.getLayer('om-insets-fill')) return;
 
-    map.on('mouseenter', 'om-insets-fill', (e) => {
-      map.getCanvas().style.cursor = 'pointer';
-      if (e.features.length > 0) {
-        map.setFeatureState({ source: 'om-insets', id: e.features[0].id }, { hover: true });
-      }
-    });
-
-    map.on('mouseleave', 'om-insets-fill', () => {
-      map.getCanvas().style.cursor = '';
-    });
-
     map.on('click', 'om-insets-fill', (e) => {
       const feature = e.features && e.features[0];
       if (!feature) return;
@@ -1746,50 +1843,36 @@ html, body {
     S.map.setFeatureState({ source: 'cabinets', id }, { hover: isHover });
   }
 
+  function setOmInsetHoverState(id, isHover) {
+    if (id == null || !S.map) return;
+    S.map.setFeatureState({ source: 'om-insets', id }, { hover: isHover });
+  }
+
+  function updateHoverTargets(nextDeptId, nextCabinetId, nextOmId) {
+    if (nextDeptId !== hoverDeptId) {
+      if (hoverDeptId != null) setDeptHoverState(hoverDeptId, false);
+      if (nextDeptId != null) setDeptHoverState(nextDeptId, true);
+      hoverDeptId = nextDeptId;
+      S.hoveredDeptId = nextDeptId;
+    }
+    if (nextCabinetId !== hoverCabinetId) {
+      if (hoverCabinetId != null) setCabinetHoverState(hoverCabinetId, false);
+      if (nextCabinetId != null) setCabinetHoverState(nextCabinetId, true);
+      hoverCabinetId = nextCabinetId;
+    }
+    if (nextOmId !== omHoverId) {
+      if (omHoverId != null) setOmInsetHoverState(omHoverId, false);
+      if (nextOmId != null) setOmInsetHoverState(nextOmId, true);
+      omHoverId = nextOmId;
+    }
+  }
+
+  function clearHoverTargets() {
+    updateHoverTargets(null, null, null);
+  }
+
   function bindMapEvents() {
     const map = S.map;
-
-    map.on('mouseenter', 'depts-fill', (e) => {
-      map.getCanvas().style.cursor = 'pointer';
-      if (e.features.length > 0) {
-        const next = e.features[0];
-        if (S.hoveredDeptId !== null && S.hoveredDeptId !== next.id) {
-          setDeptHoverState(S.hoveredDeptId, false);
-        }
-        S.hoveredDeptId = next.id;
-        setDeptHoverState(S.hoveredDeptId, true);
-
-        if (!U.isCoarsePointer()) {
-          const code = String(next.properties.code);
-          const cabs = App.getCabinetsForDept(code);
-          if (cabs.length && !S.selectedFeature) {
-            if (hoverThrottle) cancelAnimationFrame(hoverThrottle);
-            hoverThrottle = requestAnimationFrame(() => {
-              const point = e.point;
-              showTooltip(deptTooltipHtml(next, cabs), point.x, point.y);
-            });
-          }
-        }
-      }
-    });
-
-    map.on('mousemove', 'depts-fill', (e) => {
-      if (e.originalEvent && !U.isCoarsePointer()) {
-        const el = getTooltip();
-        if (el && el.classList.contains('map-tooltip--visible')) {
-          positionTooltip(el, e.originalEvent.clientX, e.originalEvent.clientY);
-        }
-      }
-    });
-
-    map.on('mouseleave', 'depts-fill', () => {
-      map.getCanvas().style.cursor = '';
-      if (S.hoveredDeptId !== null) {
-        setDeptHoverState(S.hoveredDeptId, false);
-        S.hoveredDeptId = null;
-      }
-      hideTooltip();
-    });
 
     map.on('click', 'depts-fill', (e) => {
       const feature = e.features && e.features[0];
@@ -1815,38 +1898,6 @@ html, body {
       }
     });
 
-    map.on('mouseenter', 'cabinets-hit', (e) => {
-      map.getCanvas().style.cursor = 'pointer';
-      if (e.features.length > 0) {
-        const feature = e.features[0];
-        setCabinetHoverState(feature.id, true);
-        if (!U.isCoarsePointer()) {
-          if (hoverThrottle) cancelAnimationFrame(hoverThrottle);
-          hoverThrottle = requestAnimationFrame(() => {
-            const point = e.point;
-            showTooltip(cabinetTooltipHtml(feature), point.x, point.y);
-          });
-        }
-      }
-    });
-
-    map.on('mousemove', 'cabinets-hit', (e) => {
-      if (e.originalEvent && !U.isCoarsePointer()) {
-        const el = getTooltip();
-        if (el && el.classList.contains('map-tooltip--visible')) {
-          positionTooltip(el, e.originalEvent.clientX, e.originalEvent.clientY);
-        }
-      }
-    });
-
-    map.on('mouseleave', 'cabinets-hit', (e) => {
-      map.getCanvas().style.cursor = '';
-      if (e.features.length > 0) {
-        setCabinetHoverState(e.features[0].id, false);
-      }
-      hideTooltip();
-    });
-
     map.on('click', 'cabinets-hit', (e) => {
       const feature = e.features && e.features[0];
       if (feature) App.emit('map:cabinetClick', { feature });
@@ -1857,6 +1908,80 @@ html, body {
       e.stopPropagation();
       const feature = e.features && e.features[0];
       if (feature) App.emit('map:cabinetDblClick', { feature });
+    });
+
+    map.on('mousemove', (e) => {
+      if (U.isCoarsePointer() || !e.originalEvent || tooltipRaf) return;
+      tooltipRaf = requestAnimationFrame(() => {
+        tooltipRaf = null;
+        if (!S.map) return;
+        const features = S.map.queryRenderedFeatures(e.point, {
+          layers: ['cabinets-hit', 'depts-fill', 'om-insets-fill']
+        });
+        const top = features[0];
+        if (!top) {
+          clearHoverTargets();
+          hideTooltip();
+          map.getCanvas().style.cursor = '';
+          lastTooltipTargetId = null;
+          return;
+        }
+
+        const layerId = top.layer.id;
+        const targetId = `${layerId}-${top.id}`;
+        let html = '';
+        let show = false;
+
+        if (layerId === 'cabinets-hit') {
+          updateHoverTargets(null, top.id, null);
+          html = cabinetTooltipHtml(top);
+          show = true;
+        } else if ((layerId === 'depts-fill' || layerId === 'om-insets-fill') && !S.selectedFeature) {
+          const code = String(top.properties.code);
+          const cabs = App.getCabinetsForDept(code);
+          if (cabs.length) {
+            updateHoverTargets(
+              layerId === 'depts-fill' ? top.id : null,
+              null,
+              layerId === 'om-insets-fill' ? top.id : null
+            );
+            html = deptTooltipHtml(top, cabs);
+            show = true;
+          } else {
+            updateHoverTargets(null, null, null);
+          }
+        } else {
+          updateHoverTargets(null, null, null);
+        }
+
+        if (show) {
+          if (lastTooltipTargetId !== targetId) {
+            showTooltip(html, e.point.x, e.point.y);
+            lastTooltipTargetId = targetId;
+          } else {
+            const el = getTooltip();
+            if (el && el.classList.contains('map-tooltip--visible')) {
+              positionTooltip(el, e.originalEvent.clientX, e.originalEvent.clientY);
+            }
+          }
+          map.getCanvas().style.cursor = 'pointer';
+        } else {
+          hideTooltip();
+          map.getCanvas().style.cursor = '';
+          lastTooltipTargetId = null;
+        }
+      });
+    });
+
+    map.on('mouseout', () => {
+      if (tooltipRaf) {
+        cancelAnimationFrame(tooltipRaf);
+        tooltipRaf = null;
+      }
+      clearHoverTargets();
+      hideTooltip();
+      map.getCanvas().style.cursor = '';
+      lastTooltipTargetId = null;
     });
 
     map.on('click', (e) => {
@@ -1875,7 +2000,7 @@ html, body {
     if (cabs.length > 1) {
       const others = cabs.slice(1);
       return `
-        <div class="map-tooltip__header">
+        <div class="map-tooltip__header" style="--tt-accent:${main.couleur}">
           <span class="map-tooltip__avatar" style="background:${main.couleur}" aria-hidden="true">${U.initials(main.nom)}</span>
           <div class="map-tooltip__meta">
             <div class="map-tooltip__title">${deptName}</div>
@@ -1885,7 +2010,7 @@ html, body {
       `;
     }
     return `
-      <div class="map-tooltip__header">
+      <div class="map-tooltip__header" style="--tt-accent:${main.couleur}">
         <span class="map-tooltip__avatar" style="background:${main.couleur}" aria-hidden="true">${U.initials(main.nom)}</span>
         <div class="map-tooltip__meta">
           <div class="map-tooltip__title">${main.nom}</div>
@@ -1898,7 +2023,7 @@ html, body {
   function cabinetTooltipHtml(feature) {
     const p = feature.properties;
     return `
-      <div class="map-tooltip__header">
+      <div class="map-tooltip__header" style="--tt-accent:${p.couleur}">
         <span class="map-tooltip__avatar" style="background:${p.couleur}" aria-hidden="true">${U.initials(p.nom)}</span>
         <div class="map-tooltip__meta">
           <div class="map-tooltip__title">${p.nom}</div>
@@ -1940,19 +2065,38 @@ html, body {
   }
 
   function getMobileMapPadding() {
-    if (window.innerWidth <= C.mobileBreakpoint) {
-      return { top: 80, bottom: Math.min(220, window.innerHeight * 0.32), left: 12, right: 12 };
+    if (window.innerWidth > C.mobileBreakpoint) {
+      return { top: 100, bottom: 60, left: 420, right: 380 };
     }
-    return { top: 100, bottom: 60, left: 420, right: 380 };
+    const panelHeight = getMobilePanelHeight();
+    const bottom = Math.max(110, Math.min(panelHeight + 24, window.innerHeight * 0.6));
+    return { top: 80, bottom, left: 12, right: 12 };
+  }
+
+  function getMobilePanelHeight() {
+    if (window.innerWidth > C.mobileBreakpoint) return 0;
+    const detail = document.getElementById('detailPanel');
+    const sidebar = document.getElementById('sidebar');
+    let h = 0;
+    if (detail && !detail.classList.contains('detail-panel--hidden')) {
+      h = Math.max(h, detail.getBoundingClientRect().height);
+    }
+    if (sidebar && !sidebar.classList.contains('sidebar--closed')) {
+      h = Math.max(h, sidebar.getBoundingClientRect().height);
+    }
+    return h;
   }
 
   function recenterMapForMobilePanel() {
     if (!S.map || window.innerWidth > C.mobileBreakpoint) return;
-    const panel = document.getElementById('detailPanel');
-    if (panel.classList.contains('detail-panel--hidden')) return;
-    const panelHeight = panel.getBoundingClientRect().height || window.innerHeight * 0.3;
-    const shiftPixels = Math.max(panelHeight * 0.55, 80);
-    S.map.panBy([0, -shiftPixels], { duration: U.prefersReducedMotion() ? 0 : 400 });
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const panelHeight = getMobilePanelHeight();
+        if (!panelHeight) return;
+        const shiftPixels = Math.max(panelHeight * 0.55, 80);
+        S.map.panBy([0, -shiftPixels], { duration: U.prefersReducedMotion() ? 0 : 400 });
+      });
+    });
   }
 
   function flyToCabinet(feature) {
@@ -2039,6 +2183,7 @@ html, body {
     highlightCabinetTerritory,
     resetDeptOpacity,
     getMobileMapPadding,
+    getMobilePanelHeight,
     setLoaderError,
     hideLoader,
   };
@@ -2062,40 +2207,63 @@ html, body {
   const detailPanel = document.getElementById('detailPanel');
   const detailClose = document.getElementById('detailClose');
 
-  function openSidebar() {
-    sidebar.classList.remove('sidebar--closed');
-    menuToggle.setAttribute('aria-expanded', 'true');
-    menuToggle.setAttribute('aria-label', 'Fermer la liste');
-    menuToggle.classList.add('icon-btn--active');
+  let sidebarSnap = 'peek';
+  const SIDEBAR_SNAPS = ['closed', 'peek', 'half', 'full'];
+
+  function setSidebarSnap(state) {
+    if (!SIDEBAR_SNAPS.includes(state)) state = 'peek';
+    sidebarSnap = state;
+    sidebar.classList.remove('sidebar--closed', 'sidebar--peek', 'sidebar--half', 'sidebar--full');
+    sidebar.style.height = '';
+    if (state !== 'closed') sidebar.classList.add(`sidebar--${state}`);
+    const isOpen = state !== 'closed';
+    menuToggle.setAttribute('aria-expanded', String(isOpen));
+    menuToggle.setAttribute('aria-label', isOpen ? 'Fermer la liste' : 'Ouvrir la liste');
+    menuToggle.classList.toggle('icon-btn--active', isOpen);
+    if (isOpen && S.map) App.map.recenterMapForMobilePanel();
   }
 
-  function closeSidebar() {
-    sidebar.classList.add('sidebar--closed');
-    menuToggle.setAttribute('aria-expanded', 'false');
-    menuToggle.setAttribute('aria-label', 'Ouvrir la liste');
-    menuToggle.classList.remove('icon-btn--active');
-  }
+  function openSidebar() { setSidebarSnap('peek'); }
+  function closeSidebar() { setSidebarSnap('closed'); }
+  function expandSidebarHalf() { setSidebarSnap('half'); }
+  function expandSidebarFull() { setSidebarSnap('full'); }
 
   function toggleSidebar() {
-    sidebar.classList.contains('sidebar--closed') ? openSidebar() : closeSidebar();
+    setSidebarSnap(sidebarSnap === 'closed' ? 'peek' : 'closed');
+  }
+
+  function cycleSidebarSnap() {
+    const idx = SIDEBAR_SNAPS.indexOf(sidebarSnap);
+    setSidebarSnap(SIDEBAR_SNAPS[(idx + 1) % SIDEBAR_SNAPS.length]);
   }
 
   menuToggle.addEventListener('click', toggleSidebar);
-  sidebarHandle.addEventListener('click', toggleSidebar);
   sidebarHandle.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSidebar(); }
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cycleSidebarSnap(); }
   });
 
-  function openBottomSheet() {
-    detailPanel.classList.remove('detail-panel--hidden', 'detail-panel--snap-open');
-    detailPanel.classList.add('detail-panel--snap-peek');
+  let detailSnap = 'peek';
+  const DETAIL_SNAPS = ['hidden', 'peek', 'half', 'full'];
+  const DETAIL_SNAP_HEIGHTS = { peek: 0.32, half: 0.50, full: 0.85 };
+
+  function setDetailSnap(state) {
+    if (!DETAIL_SNAPS.includes(state)) state = 'peek';
+    detailSnap = state;
+    detailPanel.classList.remove('detail-panel--peek', 'detail-panel--half', 'detail-panel--full', 'detail-panel--hidden');
     detailPanel.style.height = '';
+    if (state !== 'hidden') detailPanel.classList.add(`detail-panel--${state}`);
+    if (state !== 'hidden' && S.map) App.map.recenterMapForMobilePanel();
   }
 
-  function closeBottomSheet() {
-    detailPanel.classList.add('detail-panel--hidden');
-    detailPanel.classList.remove('detail-panel--snap-open', 'detail-panel--snap-peek');
-    detailPanel.style.height = '';
+  function openBottomSheet() { setDetailSnap('peek'); }
+  function closeBottomSheet() { setDetailSnap('hidden'); }
+  function expandDetailHalf() { setDetailSnap('half'); }
+  function expandDetailFull() { setDetailSnap('full'); }
+
+  function cycleDetailSnap() {
+    if (detailSnap === 'hidden') { setDetailSnap('peek'); return; }
+    const idx = DETAIL_SNAPS.indexOf(detailSnap);
+    setDetailSnap(DETAIL_SNAPS[(idx + 1) % DETAIL_SNAPS.length]);
   }
 
   function initBottomSheet() {
@@ -2104,9 +2272,15 @@ html, body {
     let startY = 0;
     let startHeight = 0;
     let isDragging = false;
+    let moved = false;
+
+    handle.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cycleDetailSnap(); }
+    });
 
     function onStart(clientY) {
       isDragging = true;
+      moved = false;
       startY = clientY;
       startHeight = detailPanel.getBoundingClientRect().height;
       detailPanel.style.transition = 'none';
@@ -2115,8 +2289,10 @@ html, body {
 
     function onMove(clientY) {
       if (!isDragging) return;
+      if (Math.abs(clientY - startY) > 3) moved = true;
       const delta = startY - clientY;
-      const newHeight = Math.min(window.innerHeight * 0.85, Math.max(80, startHeight + delta));
+      const maxH = window.innerHeight * 0.88;
+      const newHeight = Math.min(maxH, Math.max(80, startHeight + delta));
       detailPanel.style.height = `${newHeight}px`;
     }
 
@@ -2125,23 +2301,30 @@ html, body {
       isDragging = false;
       detailPanel.style.transition = '';
       document.body.style.userSelect = '';
-      const delta = startY - clientY;
+
+      if (!moved) {
+        cycleDetailSnap();
+        return;
+      }
+
       const currentHeight = detailPanel.getBoundingClientRect().height;
       const vh = window.innerHeight;
-      const openThreshold = vh * 0.55;
-      const closeThreshold = vh * 0.22;
 
-      if (delta < -40 || currentHeight > openThreshold) {
-        detailPanel.classList.add('detail-panel--snap-open');
-        detailPanel.classList.remove('detail-panel--snap-peek');
-        detailPanel.style.height = '';
-      } else if (delta > 40 || currentHeight < closeThreshold) {
+      const targets = [
+        { key: 'hidden', height: 0 },
+        { key: 'peek', height: vh * DETAIL_SNAP_HEIGHTS.peek },
+        { key: 'half', height: vh * DETAIL_SNAP_HEIGHTS.half },
+        { key: 'full', height: vh * DETAIL_SNAP_HEIGHTS.full }
+      ];
+      let nearest = targets.reduce((best, t) => {
+        const dist = Math.abs(currentHeight - t.height);
+        return dist < best.dist ? { key: t.key, dist } : best;
+      }, { key: 'peek', dist: Infinity });
+
+      if (nearest.key === 'hidden') {
         closeSelection();
       } else {
-        detailPanel.classList.remove('detail-panel--snap-open');
-        detailPanel.classList.add('detail-panel--snap-peek');
-        detailPanel.style.height = '';
-        App.map.recenterMapForMobilePanel();
+        setDetailSnap(nearest.key);
       }
     }
 
@@ -2157,6 +2340,75 @@ html, body {
     handle.addEventListener('pointercancel', () => {
       isDragging = false;
       detailPanel.style.transition = '';
+      document.body.style.userSelect = '';
+    });
+  }
+
+  function initSidebarDrag() {
+    if (!sidebarHandle) return;
+    let startY = 0;
+    let startHeight = 0;
+    let isDragging = false;
+    let moved = false;
+
+    function onStart(clientY) {
+      isDragging = true;
+      moved = false;
+      startY = clientY;
+      startHeight = sidebar.getBoundingClientRect().height;
+      sidebar.style.transition = 'none';
+      document.body.style.userSelect = 'none';
+    }
+
+    function onMove(clientY) {
+      if (!isDragging) return;
+      if (Math.abs(clientY - startY) > 3) moved = true;
+      const delta = startY - clientY;
+      const maxH = window.innerHeight * 0.88;
+      const newHeight = Math.min(maxH, Math.max(80, startHeight + delta));
+      sidebar.style.height = `${newHeight}px`;
+    }
+
+    function onEnd(clientY) {
+      if (!isDragging) return;
+      isDragging = false;
+      sidebar.style.transition = '';
+      document.body.style.userSelect = '';
+
+      if (!moved) {
+        cycleSidebarSnap();
+        return;
+      }
+
+      const currentHeight = sidebar.getBoundingClientRect().height;
+      const vh = window.innerHeight;
+
+      const targets = [
+        { key: 'closed', height: 0 },
+        { key: 'peek', height: 120 },
+        { key: 'half', height: vh * 0.45 },
+        { key: 'full', height: vh * 0.85 }
+      ];
+      let nearest = targets.reduce((best, t) => {
+        const dist = Math.abs(currentHeight - t.height);
+        return dist < best.dist ? { key: t.key, dist } : best;
+      }, { key: 'peek', dist: Infinity });
+
+      setSidebarSnap(nearest.key);
+    }
+
+    sidebarHandle.addEventListener('pointerdown', (e) => {
+      onStart(e.clientY);
+      sidebarHandle.setPointerCapture(e.pointerId);
+    });
+    sidebarHandle.addEventListener('pointermove', (e) => {
+      if (isDragging) e.preventDefault();
+      onMove(e.clientY);
+    });
+    sidebarHandle.addEventListener('pointerup', (e) => onEnd(e.clientY));
+    sidebarHandle.addEventListener('pointercancel', () => {
+      isDragging = false;
+      sidebar.style.transition = '';
       document.body.style.userSelect = '';
     });
   }
@@ -2521,6 +2773,9 @@ html, body {
 
   App.on('map:selectionCleared', () => {
     closeSelection();
+    if (window.innerWidth <= C.mobileBreakpoint) {
+      closeSidebar();
+    }
   });
 
   App.on('ui:resetSearch', () => {
@@ -2534,6 +2789,7 @@ html, body {
   }
 
   initBottomSheet();
+  initSidebarDrag();
 
   App.ui = {
     renderSidebar,

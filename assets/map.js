@@ -19,7 +19,7 @@
     loaderText.textContent = message;
     loaderActions.style.display = 'flex';
     retryBtn.style.display = canRetry ? 'inline-flex' : 'none';
-    const spinner = loader.querySelector('.loader__spinner');
+    const spinner = loader.querySelector('.splash__spinner');
     if (spinner) spinner.style.display = 'none';
   }
 
@@ -60,11 +60,15 @@
 
     S.map.on('load', () => {
       S.mapLoaded = true;
-      hideLoader();
       setupMapLayers();
       bindMapEvents();
-      App.emit('map:loaded', {});
-      U.announce(`${S.cabinets.length} cabinets disponibles sur ${S.departements.length} départements.`);
+      // Laisser le loader visible quelques instants de plus pour que la carte
+      // apparaisse complètement stabilisée avant de révéler l’interface.
+      setTimeout(() => {
+        hideLoader();
+        App.emit('map:loaded', {});
+        U.announce(`${S.cabinets.length} cabinets disponibles sur ${S.departements.length} départements.`);
+      }, 800);
     });
 
     S.map.on('error', (e) => {
@@ -199,7 +203,11 @@
 
   let omInsetMarkers = [];
   let tooltipEl = null;
-  let hoverThrottle = null;
+  let tooltipRaf = null;
+  let hoverDeptId = null;
+  let hoverCabinetId = null;
+  let omHoverId = null;
+  let lastTooltipTargetId = null;
 
   function getTooltip() {
     if (!tooltipEl) tooltipEl = document.getElementById('mapTooltip');
@@ -365,17 +373,6 @@
     const map = S.map;
     if (!map || !map.getLayer('om-insets-fill')) return;
 
-    map.on('mouseenter', 'om-insets-fill', (e) => {
-      map.getCanvas().style.cursor = 'pointer';
-      if (e.features.length > 0) {
-        map.setFeatureState({ source: 'om-insets', id: e.features[0].id }, { hover: true });
-      }
-    });
-
-    map.on('mouseleave', 'om-insets-fill', () => {
-      map.getCanvas().style.cursor = '';
-    });
-
     map.on('click', 'om-insets-fill', (e) => {
       const feature = e.features && e.features[0];
       if (!feature) return;
@@ -439,50 +436,36 @@
     S.map.setFeatureState({ source: 'cabinets', id }, { hover: isHover });
   }
 
+  function setOmInsetHoverState(id, isHover) {
+    if (id == null || !S.map) return;
+    S.map.setFeatureState({ source: 'om-insets', id }, { hover: isHover });
+  }
+
+  function updateHoverTargets(nextDeptId, nextCabinetId, nextOmId) {
+    if (nextDeptId !== hoverDeptId) {
+      if (hoverDeptId != null) setDeptHoverState(hoverDeptId, false);
+      if (nextDeptId != null) setDeptHoverState(nextDeptId, true);
+      hoverDeptId = nextDeptId;
+      S.hoveredDeptId = nextDeptId;
+    }
+    if (nextCabinetId !== hoverCabinetId) {
+      if (hoverCabinetId != null) setCabinetHoverState(hoverCabinetId, false);
+      if (nextCabinetId != null) setCabinetHoverState(nextCabinetId, true);
+      hoverCabinetId = nextCabinetId;
+    }
+    if (nextOmId !== omHoverId) {
+      if (omHoverId != null) setOmInsetHoverState(omHoverId, false);
+      if (nextOmId != null) setOmInsetHoverState(nextOmId, true);
+      omHoverId = nextOmId;
+    }
+  }
+
+  function clearHoverTargets() {
+    updateHoverTargets(null, null, null);
+  }
+
   function bindMapEvents() {
     const map = S.map;
-
-    map.on('mouseenter', 'depts-fill', (e) => {
-      map.getCanvas().style.cursor = 'pointer';
-      if (e.features.length > 0) {
-        const next = e.features[0];
-        if (S.hoveredDeptId !== null && S.hoveredDeptId !== next.id) {
-          setDeptHoverState(S.hoveredDeptId, false);
-        }
-        S.hoveredDeptId = next.id;
-        setDeptHoverState(S.hoveredDeptId, true);
-
-        if (!U.isCoarsePointer()) {
-          const code = String(next.properties.code);
-          const cabs = App.getCabinetsForDept(code);
-          if (cabs.length && !S.selectedFeature) {
-            if (hoverThrottle) cancelAnimationFrame(hoverThrottle);
-            hoverThrottle = requestAnimationFrame(() => {
-              const point = e.point;
-              showTooltip(deptTooltipHtml(next, cabs), point.x, point.y);
-            });
-          }
-        }
-      }
-    });
-
-    map.on('mousemove', 'depts-fill', (e) => {
-      if (e.originalEvent && !U.isCoarsePointer()) {
-        const el = getTooltip();
-        if (el && el.classList.contains('map-tooltip--visible')) {
-          positionTooltip(el, e.originalEvent.clientX, e.originalEvent.clientY);
-        }
-      }
-    });
-
-    map.on('mouseleave', 'depts-fill', () => {
-      map.getCanvas().style.cursor = '';
-      if (S.hoveredDeptId !== null) {
-        setDeptHoverState(S.hoveredDeptId, false);
-        S.hoveredDeptId = null;
-      }
-      hideTooltip();
-    });
 
     map.on('click', 'depts-fill', (e) => {
       const feature = e.features && e.features[0];
@@ -508,38 +491,6 @@
       }
     });
 
-    map.on('mouseenter', 'cabinets-hit', (e) => {
-      map.getCanvas().style.cursor = 'pointer';
-      if (e.features.length > 0) {
-        const feature = e.features[0];
-        setCabinetHoverState(feature.id, true);
-        if (!U.isCoarsePointer()) {
-          if (hoverThrottle) cancelAnimationFrame(hoverThrottle);
-          hoverThrottle = requestAnimationFrame(() => {
-            const point = e.point;
-            showTooltip(cabinetTooltipHtml(feature), point.x, point.y);
-          });
-        }
-      }
-    });
-
-    map.on('mousemove', 'cabinets-hit', (e) => {
-      if (e.originalEvent && !U.isCoarsePointer()) {
-        const el = getTooltip();
-        if (el && el.classList.contains('map-tooltip--visible')) {
-          positionTooltip(el, e.originalEvent.clientX, e.originalEvent.clientY);
-        }
-      }
-    });
-
-    map.on('mouseleave', 'cabinets-hit', (e) => {
-      map.getCanvas().style.cursor = '';
-      if (e.features.length > 0) {
-        setCabinetHoverState(e.features[0].id, false);
-      }
-      hideTooltip();
-    });
-
     map.on('click', 'cabinets-hit', (e) => {
       const feature = e.features && e.features[0];
       if (feature) App.emit('map:cabinetClick', { feature });
@@ -550,6 +501,80 @@
       e.stopPropagation();
       const feature = e.features && e.features[0];
       if (feature) App.emit('map:cabinetDblClick', { feature });
+    });
+
+    map.on('mousemove', (e) => {
+      if (U.isCoarsePointer() || !e.originalEvent || tooltipRaf) return;
+      tooltipRaf = requestAnimationFrame(() => {
+        tooltipRaf = null;
+        if (!S.map) return;
+        const features = S.map.queryRenderedFeatures(e.point, {
+          layers: ['cabinets-hit', 'depts-fill', 'om-insets-fill']
+        });
+        const top = features[0];
+        if (!top) {
+          clearHoverTargets();
+          hideTooltip();
+          map.getCanvas().style.cursor = '';
+          lastTooltipTargetId = null;
+          return;
+        }
+
+        const layerId = top.layer.id;
+        const targetId = `${layerId}-${top.id}`;
+        let html = '';
+        let show = false;
+
+        if (layerId === 'cabinets-hit') {
+          updateHoverTargets(null, top.id, null);
+          html = cabinetTooltipHtml(top);
+          show = true;
+        } else if ((layerId === 'depts-fill' || layerId === 'om-insets-fill') && !S.selectedFeature) {
+          const code = String(top.properties.code);
+          const cabs = App.getCabinetsForDept(code);
+          if (cabs.length) {
+            updateHoverTargets(
+              layerId === 'depts-fill' ? top.id : null,
+              null,
+              layerId === 'om-insets-fill' ? top.id : null
+            );
+            html = deptTooltipHtml(top, cabs);
+            show = true;
+          } else {
+            updateHoverTargets(null, null, null);
+          }
+        } else {
+          updateHoverTargets(null, null, null);
+        }
+
+        if (show) {
+          if (lastTooltipTargetId !== targetId) {
+            showTooltip(html, e.point.x, e.point.y);
+            lastTooltipTargetId = targetId;
+          } else {
+            const el = getTooltip();
+            if (el && el.classList.contains('map-tooltip--visible')) {
+              positionTooltip(el, e.originalEvent.clientX, e.originalEvent.clientY);
+            }
+          }
+          map.getCanvas().style.cursor = 'pointer';
+        } else {
+          hideTooltip();
+          map.getCanvas().style.cursor = '';
+          lastTooltipTargetId = null;
+        }
+      });
+    });
+
+    map.on('mouseout', () => {
+      if (tooltipRaf) {
+        cancelAnimationFrame(tooltipRaf);
+        tooltipRaf = null;
+      }
+      clearHoverTargets();
+      hideTooltip();
+      map.getCanvas().style.cursor = '';
+      lastTooltipTargetId = null;
     });
 
     map.on('click', (e) => {
@@ -568,7 +593,7 @@
     if (cabs.length > 1) {
       const others = cabs.slice(1);
       return `
-        <div class="map-tooltip__header">
+        <div class="map-tooltip__header" style="--tt-accent:${main.couleur}">
           <span class="map-tooltip__avatar" style="background:${main.couleur}" aria-hidden="true">${U.initials(main.nom)}</span>
           <div class="map-tooltip__meta">
             <div class="map-tooltip__title">${deptName}</div>
@@ -578,7 +603,7 @@
       `;
     }
     return `
-      <div class="map-tooltip__header">
+      <div class="map-tooltip__header" style="--tt-accent:${main.couleur}">
         <span class="map-tooltip__avatar" style="background:${main.couleur}" aria-hidden="true">${U.initials(main.nom)}</span>
         <div class="map-tooltip__meta">
           <div class="map-tooltip__title">${main.nom}</div>
@@ -591,7 +616,7 @@
   function cabinetTooltipHtml(feature) {
     const p = feature.properties;
     return `
-      <div class="map-tooltip__header">
+      <div class="map-tooltip__header" style="--tt-accent:${p.couleur}">
         <span class="map-tooltip__avatar" style="background:${p.couleur}" aria-hidden="true">${U.initials(p.nom)}</span>
         <div class="map-tooltip__meta">
           <div class="map-tooltip__title">${p.nom}</div>
@@ -633,19 +658,38 @@
   }
 
   function getMobileMapPadding() {
-    if (window.innerWidth <= C.mobileBreakpoint) {
-      return { top: 80, bottom: Math.min(220, window.innerHeight * 0.32), left: 12, right: 12 };
+    if (window.innerWidth > C.mobileBreakpoint) {
+      return { top: 100, bottom: 60, left: 420, right: 380 };
     }
-    return { top: 100, bottom: 60, left: 420, right: 380 };
+    const panelHeight = getMobilePanelHeight();
+    const bottom = Math.max(110, Math.min(panelHeight + 24, window.innerHeight * 0.6));
+    return { top: 80, bottom, left: 12, right: 12 };
+  }
+
+  function getMobilePanelHeight() {
+    if (window.innerWidth > C.mobileBreakpoint) return 0;
+    const detail = document.getElementById('detailPanel');
+    const sidebar = document.getElementById('sidebar');
+    let h = 0;
+    if (detail && !detail.classList.contains('detail-panel--hidden')) {
+      h = Math.max(h, detail.getBoundingClientRect().height);
+    }
+    if (sidebar && !sidebar.classList.contains('sidebar--closed')) {
+      h = Math.max(h, sidebar.getBoundingClientRect().height);
+    }
+    return h;
   }
 
   function recenterMapForMobilePanel() {
     if (!S.map || window.innerWidth > C.mobileBreakpoint) return;
-    const panel = document.getElementById('detailPanel');
-    if (panel.classList.contains('detail-panel--hidden')) return;
-    const panelHeight = panel.getBoundingClientRect().height || window.innerHeight * 0.3;
-    const shiftPixels = Math.max(panelHeight * 0.55, 80);
-    S.map.panBy([0, -shiftPixels], { duration: U.prefersReducedMotion() ? 0 : 400 });
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const panelHeight = getMobilePanelHeight();
+        if (!panelHeight) return;
+        const shiftPixels = Math.max(panelHeight * 0.55, 80);
+        S.map.panBy([0, -shiftPixels], { duration: U.prefersReducedMotion() ? 0 : 400 });
+      });
+    });
   }
 
   function flyToCabinet(feature) {
@@ -732,6 +776,7 @@
     highlightCabinetTerritory,
     resetDeptOpacity,
     getMobileMapPadding,
+    getMobilePanelHeight,
     setLoaderError,
     hideLoader,
   };

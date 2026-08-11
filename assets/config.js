@@ -46,19 +46,19 @@
         antilles: {
           title: 'Antilles-Guyane',
           codes: ['971', '972', '973'],
-          target: [7, 52],
+          target: [6.5, 51.5],
           slots: [[-1.0, 0.55], [1.0, 0.55], [0, -1.1]]
         },
         ocean: {
           title: 'Océan Indien',
           codes: ['974', '976'],
-          target: [10, 39],
+          target: [9, 41],
           slots: [[-0.9, 0], [0.9, 0]]
         },
         pacifique: {
           title: 'Pacifique',
           codes: ['987', '988'],
-          target: [-6, 39],
+          target: [-4, 41],
           slots: [[-0.9, 0], [0.9, 0]]
         }
       },
