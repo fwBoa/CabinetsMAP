@@ -563,6 +563,12 @@ html, body {
   visibility: hidden;
   pointer-events: none;
 }
+.detail-panel--hidden {
+  transform: translateX(calc(100% + 40px));
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
 .detail-panel__header {
   padding: 16px 18px;
   border-bottom: 1px solid var(--color-border);
