@@ -256,12 +256,6 @@ html, body {
   visibility: hidden;
   pointer-events: none;
 }
-.sidebar--closed {
-  transform: translateX(calc(-100% - 40px));
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-}
 .sidebar__header {
   padding: 16px 18px;
   border-bottom: 1px solid var(--color-border);
@@ -563,12 +557,6 @@ html, body {
   visibility: hidden;
   pointer-events: none;
 }
-.detail-panel--hidden {
-  transform: translateX(calc(100% + 40px));
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-}
 .detail-panel__header {
   padding: 16px 18px;
   border-bottom: 1px solid var(--color-border);
@@ -617,6 +605,7 @@ html, body {
 }
 .detail-panel__close:hover { background: var(--color-primary-light); color: var(--color-text); }
 .detail-panel__close:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.detail-panel__close svg { pointer-events: none; }
 .detail-panel__body {
   flex: 1;
   overflow-y: auto;

@@ -272,12 +272,6 @@ html, body {
   visibility: hidden;
   pointer-events: none;
 }
-.sidebar--closed {
-  transform: translateX(calc(-100% - 40px));
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-}
 .sidebar__header {
   padding: 16px 18px;
   border-bottom: 1px solid var(--color-border);
@@ -579,12 +573,6 @@ html, body {
   visibility: hidden;
   pointer-events: none;
 }
-.detail-panel--hidden {
-  transform: translateX(calc(100% + 40px));
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-}
 .detail-panel__header {
   padding: 16px 18px;
   border-bottom: 1px solid var(--color-border);
@@ -633,6 +621,7 @@ html, body {
 }
 .detail-panel__close:hover { background: var(--color-primary-light); color: var(--color-text); }
 .detail-panel__close:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.detail-panel__close svg { pointer-events: none; }
 .detail-panel__body {
   flex: 1;
   overflow-y: auto;
@@ -1175,24 +1164,24 @@ html, body {
         antilles: {
           title: 'Antilles-Guyane',
           codes: ['971', '972', '973'],
-          target: [3, 50.5],
-          slots: [[-1.0, 0.55], [1.0, 0.55], [0, -1.1]]
+          target: [9, 51],
+          slots: [[-1.4, 0.5], [1.4, 0.5], [0, -1.1]]
         },
         ocean: {
           title: 'Océan Indien',
           codes: ['974', '976'],
-          target: [5, 49],
-          slots: [[-0.9, 1], [0.9, 1]]
+          target: [10, 42],
+          slots: [[-1.1, 0], [1.1, 0]]
         },
         pacifique: {
           title: 'Pacifique',
           codes: ['987', '988'],
-          target: [-1, 47],
-          slots: [[-0.9, 1], [0.9, 1]]
+          target: [-5, 50],
+          slots: [[-1.1, 0], [1.1, 0]]
         }
       },
       OM_INSET_JUMP_THRESHOLD_DEG: 35,
-      OM_INSET_MAX_SLOT_SIZE: 1.4,
+      OM_INSET_MAX_SLOT_SIZE: 1.8,
       OM_INSET_MIN_SCALE: 0.03,
     },
 
@@ -2120,7 +2109,11 @@ html, body {
     setSidebarSnap(SIDEBAR_SNAPS[(idx + 1) % SIDEBAR_SNAPS.length]);
   }
 
-  menuToggle.addEventListener('click', toggleSidebar);
+  menuToggle.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleSidebar();
+  });
   sidebarHandle.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cycleSidebarSnap(); }
   });
@@ -2434,7 +2427,19 @@ html, body {
     App.emit('ui:clearSelection', {});
   }
 
-  detailClose.addEventListener('click', closeSelection);
+  detailClose.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    closeSelection();
+  });
+  detailPanel.addEventListener('click', (e) => {
+    const closeBtn = e.target.closest('.detail-panel__close');
+    if (closeBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      closeSelection();
+    }
+  });
 
   function renderSidebar() {
     document.getElementById('sidebarKpiCabinets').textContent = S.cabinets.length;

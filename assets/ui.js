@@ -44,7 +44,11 @@
     setSidebarSnap(SIDEBAR_SNAPS[(idx + 1) % SIDEBAR_SNAPS.length]);
   }
 
-  menuToggle.addEventListener('click', toggleSidebar);
+  menuToggle.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleSidebar();
+  });
   sidebarHandle.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cycleSidebarSnap(); }
   });
@@ -358,7 +362,19 @@
     App.emit('ui:clearSelection', {});
   }
 
-  detailClose.addEventListener('click', closeSelection);
+  detailClose.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    closeSelection();
+  });
+  detailPanel.addEventListener('click', (e) => {
+    const closeBtn = e.target.closest('.detail-panel__close');
+    if (closeBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      closeSelection();
+    }
+  });
 
   function renderSidebar() {
     document.getElementById('sidebarKpiCabinets').textContent = S.cabinets.length;
