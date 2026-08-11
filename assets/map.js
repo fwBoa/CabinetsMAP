@@ -193,6 +193,193 @@
         'circle-stroke-width': 0
       }
     });
+
+    setupInsetLayers();
+  }
+
+  let omInsetMarkers = [];
+
+  function eachCoord(geometry, fn) {
+    const coords = geometry.coordinates;
+    if (geometry.type === 'Polygon') {
+      coords.forEach(ring => ring.forEach(fn));
+    } else if (geometry.type === 'MultiPolygon') {
+      coords.forEach(polygon => polygon.forEach(ring => ring.forEach(fn)));
+    }
+  }
+
+  function getGeometryCentroid(geometry) {
+    let lon = 0, lat = 0, n = 0;
+    eachCoord(geometry, (p) => { lon += p[0]; lat += p[1]; n += 1; });
+    return n ? [lon / n, lat / n] : [0, 0];
+  }
+
+  function getGeometryBBox(geometry) {
+    let minLon = Infinity, maxLon = -Infinity, minLat = Infinity, maxLat = -Infinity;
+    eachCoord(geometry, (p) => {
+      if (p[0] < minLon) minLon = p[0];
+      if (p[0] > maxLon) maxLon = p[0];
+      if (p[1] < minLat) minLat = p[1];
+      if (p[1] > maxLat) maxLat = p[1];
+    });
+    return { minLon, maxLon, minLat, maxLat };
+  }
+
+  function createInsetFeature(feature, target, slot, maxSlotSize, minScale) {
+    const geometry = JSON.parse(JSON.stringify(feature.geometry));
+    const bbox = getGeometryBBox(geometry);
+    const w = bbox.maxLon - bbox.minLon;
+    const h = bbox.maxLat - bbox.minLat;
+    const maxDim = Math.max(w || 0, h || 0, 0.0001);
+    let scale = maxSlotSize / maxDim;
+    if (scale < minScale) scale = minScale;
+    if (scale > 3) scale = 3;
+    const centroid = getGeometryCentroid(geometry);
+    const targetLon = target[0] + slot[0];
+    const targetLat = target[1] + slot[1];
+    eachCoord(geometry, (p) => {
+      p[0] = (p[0] - centroid[0]) * scale + targetLon;
+      p[1] = (p[1] - centroid[1]) * scale + targetLat;
+    });
+    return {
+      type: 'Feature',
+      properties: {
+        code: feature.properties.code,
+        nom: feature.properties.nom,
+        fillColor: feature.properties.fillColor,
+        primaryCabinetId: feature.properties.primaryCabinetId,
+        cabinetCount: feature.properties.cabinetCount,
+        omInset: true
+      },
+      geometry
+    };
+  }
+
+  function createInsetGeometries() {
+    const groups = C.OM_INSET_GROUPS;
+    const maxSlot = C.OM_INSET_MAX_SLOT_SIZE;
+    const minScale = C.OM_INSET_MIN_SCALE;
+    const features = [];
+    Object.keys(groups).forEach((key) => {
+      const group = groups[key];
+      group.codes.forEach((code, index) => {
+        const codeStr = String(code);
+        const real = S.departements.find(d => String(d.properties.code) === codeStr);
+        if (!real) return;
+        const slot = group.slots[index] || [0, 0];
+        features.push(createInsetFeature(real, group.target, slot, maxSlot, minScale));
+      });
+    });
+    return { type: 'FeatureCollection', features };
+  }
+
+  function setupInsetLayers() {
+    const map = S.map;
+    if (!map) return;
+    map.addSource('om-insets', {
+      type: 'geojson',
+      data: createInsetGeometries(),
+      promoteId: 'code',
+      generateId: false
+    });
+    map.addLayer({
+      id: 'om-insets-fill',
+      type: 'fill',
+      source: 'om-insets',
+      paint: {
+        'fill-color': ['get', 'fillColor'],
+        'fill-opacity': 0.9
+      }
+    });
+    map.addLayer({
+      id: 'om-insets-outline',
+      type: 'line',
+      source: 'om-insets',
+      paint: {
+        'line-color': '#ffffff',
+        'line-width': 1.2,
+        'line-opacity': 1
+      }
+    });
+    bindInsetEvents();
+    createInsetLabels();
+    updateInsetVisibility();
+  }
+
+  function createInsetLabels() {
+    if (!S.map) return;
+    omInsetMarkers.forEach(m => m.remove());
+    omInsetMarkers = [];
+    const groups = C.OM_INSET_GROUPS;
+    Object.keys(groups).forEach((key) => {
+      const group = groups[key];
+      const el = document.createElement('div');
+      el.className = 'om-inset__label-marker';
+      const inner = document.createElement('div');
+      inner.className = 'om-inset__label-marker__text';
+      inner.textContent = group.title;
+      el.appendChild(inner);
+      const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+        .setLngLat(group.target)
+        .addTo(S.map);
+      omInsetMarkers.push(marker);
+    });
+  }
+
+  function bindInsetEvents() {
+    const map = S.map;
+    if (!map || !map.getLayer('om-insets-fill')) return;
+
+    map.on('mouseenter', 'om-insets-fill', (e) => {
+      map.getCanvas().style.cursor = 'pointer';
+      if (e.features.length > 0) {
+        map.setFeatureState({ source: 'om-insets', id: e.features[0].id }, { hover: true });
+      }
+    });
+
+    map.on('mouseleave', 'om-insets-fill', () => {
+      map.getCanvas().style.cursor = '';
+    });
+
+    map.on('click', 'om-insets-fill', (e) => {
+      const feature = e.features && e.features[0];
+      if (!feature) return;
+      const code = String(feature.properties.code);
+      const real = S.departements.find(d => String(d.properties.code) === code);
+      if (!real || !S.map) return;
+      const cabs = App.getCabinetsForDept(code);
+      if (!cabs.length) return;
+      S.map.flyTo({ center: U.polygonCentroid(real.geometry), zoom: 7, speed: 0.8, curve: 1.2 });
+      if (cabs.length === 1) {
+        App.emit('map:cabinetClick', { feature: cabs[0] });
+      } else {
+        App.emit('map:deptClick', { feature: real, cabs });
+      }
+    });
+
+    map.on('dblclick', 'om-insets-fill', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const feature = e.features && e.features[0];
+      if (!feature || !S.map) return;
+      const code = String(feature.properties.code);
+      const real = S.departements.find(d => String(d.properties.code) === code);
+      if (!real) return;
+      S.map.flyTo({ center: U.polygonCentroid(real.geometry), zoom: 8, speed: 0.8, curve: 1.2 });
+    });
+  }
+
+  function updateInsetVisibility() {
+    const isMobile = window.innerWidth <= C.mobileBreakpoint;
+    const map = S.map;
+    if (map && map.getLayer('om-insets-fill')) {
+      const visibility = isMobile ? 'none' : 'visible';
+      map.setLayoutProperty('om-insets-fill', 'visibility', visibility);
+      map.setLayoutProperty('om-insets-outline', 'visibility', visibility);
+    }
+    omInsetMarkers.forEach(m => { m.getElement().style.display = isMobile ? 'none' : ''; });
+    const chips = document.getElementById('omInsetChips');
+    if (chips) chips.hidden = !isMobile;
   }
 
   function setDeptHoverState(id, isHover) {
@@ -343,10 +530,16 @@
         const code = btn.dataset.code;
         const dept = S.departements.find(d => String(d.properties.code) === code);
         if (!dept || !S.map) return;
-        const center = U.polygonCentroid(dept.geometry);
-        S.map.flyTo({ center, zoom: 7, speed: 0.8, curve: 1.2 });
+        const cabs = App.getCabinetsForDept(code);
+        S.map.flyTo({ center: U.polygonCentroid(dept.geometry), zoom: 7, speed: 0.8, curve: 1.2 });
+        if (cabs.length === 1) {
+          App.emit('map:cabinetClick', { feature: cabs[0] });
+        } else if (cabs.length > 1) {
+          App.emit('map:deptClick', { feature: dept, cabs });
+        }
       });
     });
+    updateInsetVisibility();
   }
 
   function getMobileMapPadding() {

@@ -42,6 +42,28 @@
       OM_ZOOM: 4.5,
       FRANCE_CENTER: [2.5, 46.6],
       FRANCE_ZOOM: 5.2,
+      OM_INSET_GROUPS: {
+        antilles: {
+          title: 'Antilles-Guyane',
+          codes: ['971', '972', '973'],
+          target: [5, 50],
+          slots: [[-0.7, 0.35], [0.7, 0.35], [0, -0.7]]
+        },
+        ocean: {
+          title: 'Océan Indien',
+          codes: ['974', '976'],
+          target: [7, 42.5],
+          slots: [[-0.6, 0], [0.6, 0]]
+        },
+        pacifique: {
+          title: 'Pacifique',
+          codes: ['987', '988'],
+          target: [-3, 42],
+          slots: [[-0.6, 0], [0.6, 0]]
+        }
+      },
+      OM_INSET_MAX_SLOT_SIZE: 1.4,
+      OM_INSET_MIN_SCALE: 0.03,
     },
 
     events: {},
