@@ -771,6 +771,7 @@
     initOmInset,
     flyToCabinet,
     flyTo,
+    goToDept,
     resetView,
     recenterMapForMobilePanel,
     highlightCabinetTerritory,

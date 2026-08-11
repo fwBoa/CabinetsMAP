@@ -303,7 +303,6 @@
     setDetailSnap('peek', { recenter: false });
     if (window.innerWidth <= C.mobileBreakpoint) {
       setSidebarSnap('closed', { recenter: false });
-      setTimeout(() => App.map.recenterMapForMobilePanel(), 350);
     }
   }
 
@@ -348,7 +347,6 @@
     setDetailSnap('peek', { recenter: false });
     if (window.innerWidth <= C.mobileBreakpoint) {
       setSidebarSnap('closed', { recenter: false });
-      setTimeout(() => App.map.recenterMapForMobilePanel(), 350);
     }
   }
 
@@ -563,7 +561,11 @@
   });
 
   App.on('map:cabinetClick', ({ feature }) => {
-    if (feature) highlightCabinet(feature);
+    if (!feature) return;
+    if (window.innerWidth <= C.mobileBreakpoint) {
+      App.map.flyToCabinet(feature);
+    }
+    highlightCabinet(feature);
   });
 
   App.on('map:cabinetDblClick', ({ feature }) => {
@@ -571,7 +573,11 @@
   });
 
   App.on('map:deptClick', ({ feature, cabs }) => {
-    if (feature && cabs) showDeptDetail(feature, cabs);
+    if (!feature || !cabs) return;
+    if (window.innerWidth <= C.mobileBreakpoint) {
+      App.map.goToDept(String(feature.properties.code), 8);
+    }
+    showDeptDetail(feature, cabs);
   });
 
   App.on('map:selectionCleared', () => {
