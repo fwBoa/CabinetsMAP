@@ -425,6 +425,7 @@
 
   document.getElementById('omTrigger').addEventListener('click', () => {
     if (!S.map) return;
+    // Les insets DOM-TOM-COM sont visibles autour de la France ; on garde la vue France.
     S.map.jumpTo({ center: C.FRANCE_CENTER, zoom: C.FRANCE_ZOOM });
   });
 
