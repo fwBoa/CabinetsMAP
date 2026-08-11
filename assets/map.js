@@ -198,6 +198,41 @@
   }
 
   let omInsetMarkers = [];
+  let tooltipEl = null;
+  let hoverThrottle = null;
+
+  function getTooltip() {
+    if (!tooltipEl) tooltipEl = document.getElementById('mapTooltip');
+    return tooltipEl;
+  }
+
+  function showTooltip(html, x, y) {
+    const el = getTooltip();
+    if (!el) return;
+    el.innerHTML = html;
+    el.classList.add('map-tooltip--visible');
+    el.setAttribute('aria-hidden', 'false');
+    positionTooltip(el, x, y);
+  }
+
+  function hideTooltip() {
+    const el = getTooltip();
+    if (!el) return;
+    el.classList.remove('map-tooltip--visible');
+    el.setAttribute('aria-hidden', 'true');
+  }
+
+  function positionTooltip(el, x, y) {
+    const rect = el.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let left = x + 14;
+    let top = y + 14;
+    if (left + rect.width > vw - 8) left = x - rect.width - 8;
+    if (top + rect.height > vh - 8) top = y - rect.height - 8;
+    el.style.left = `${left}px`;
+    el.style.top = `${top}px`;
+  }
 
   function eachCoord(geometry, fn) {
     const coords = geometry.coordinates;
@@ -417,18 +452,26 @@
         S.hoveredDeptId = next.id;
         setDeptHoverState(S.hoveredDeptId, true);
 
-        const code = String(next.properties.code);
-        const cabs = App.getCabinetsForDept(code);
-        if (cabs.length && !S.selectedFeature && !U.isCoarsePointer()) {
-          if (S.hoverPopup) S.hoverPopup.remove();
-          S.hoverPopup = createDeptHoverPopup(next, cabs, e.lngLat).addTo(map);
+        if (!U.isCoarsePointer()) {
+          const code = String(next.properties.code);
+          const cabs = App.getCabinetsForDept(code);
+          if (cabs.length && !S.selectedFeature) {
+            const point = e.point;
+            if (hoverThrottle) clearTimeout(hoverThrottle);
+            hoverThrottle = setTimeout(() => {
+              showTooltip(deptTooltipHtml(next, cabs), point.x, point.y);
+            }, 16);
+          }
         }
       }
     });
 
     map.on('mousemove', 'depts-fill', (e) => {
-      if (S.hoverPopup && e.features.length > 0) {
-        S.hoverPopup.setLngLat(e.lngLat);
+      if (e.originalEvent && !U.isCoarsePointer()) {
+        const el = getTooltip();
+        if (el && el.classList.contains('map-tooltip--visible')) {
+          positionTooltip(el, e.originalEvent.clientX, e.originalEvent.clientY);
+        }
       }
     });
 
@@ -438,7 +481,7 @@
         setDeptHoverState(S.hoveredDeptId, false);
         S.hoveredDeptId = null;
       }
-      if (S.hoverPopup) { S.hoverPopup.remove(); S.hoverPopup = null; }
+      hideTooltip();
     });
 
     map.on('click', 'depts-fill', (e) => {
@@ -468,7 +511,24 @@
     map.on('mouseenter', 'cabinets-hit', (e) => {
       map.getCanvas().style.cursor = 'pointer';
       if (e.features.length > 0) {
-        setCabinetHoverState(e.features[0].id, true);
+        const feature = e.features[0];
+        setCabinetHoverState(feature.id, true);
+        if (!U.isCoarsePointer()) {
+          const point = e.point;
+          if (hoverThrottle) clearTimeout(hoverThrottle);
+          hoverThrottle = setTimeout(() => {
+            showTooltip(cabinetTooltipHtml(feature), point.x, point.y);
+          }, 16);
+        }
+      }
+    });
+
+    map.on('mousemove', 'cabinets-hit', (e) => {
+      if (e.originalEvent && !U.isCoarsePointer()) {
+        const el = getTooltip();
+        if (el && el.classList.contains('map-tooltip--visible')) {
+          positionTooltip(el, e.originalEvent.clientX, e.originalEvent.clientY);
+        }
       }
     });
 
@@ -477,6 +537,7 @@
       if (e.features.length > 0) {
         setCabinetHoverState(e.features[0].id, false);
       }
+      hideTooltip();
     });
 
     map.on('click', 'cabinets-hit', (e) => {
@@ -500,27 +561,44 @@
     });
   }
 
-  function createDeptHoverPopup(feature, cabs, lngLat) {
+  function deptTooltipHtml(feature, cabs) {
     const code = String(feature.properties.code);
     const deptName = App.getDeptName(code);
     const main = cabs[0].properties;
-    const html = `
-      <div class="popup__header">
-        <span class="popup__avatar" style="background:${main.couleur}" aria-hidden="true">${U.initials(main.nom)}</span>
-        <div class="popup__meta">
-          <h3 class="popup__title">${deptName}</h3>
-          <p class="popup__subtitle">${cabs.length > 1 ? cabs.length + ' cabinets couvrent ce territoire' : 'Couvert par ' + main.nom}</p>
+    if (cabs.length > 1) {
+      const others = cabs.slice(1);
+      return `
+        <div class="map-tooltip__header">
+          <span class="map-tooltip__avatar" style="background:${main.couleur}" aria-hidden="true">${U.initials(main.nom)}</span>
+          <div class="map-tooltip__meta">
+            <div class="map-tooltip__title">${deptName}</div>
+            <div class="map-tooltip__text">${cabs.length} cabinets : ${cabs.map(c => c.properties.nom).join(', ')}</div>
+          </div>
+        </div>
+      `;
+    }
+    return `
+      <div class="map-tooltip__header">
+        <span class="map-tooltip__avatar" style="background:${main.couleur}" aria-hidden="true">${U.initials(main.nom)}</span>
+        <div class="map-tooltip__meta">
+          <div class="map-tooltip__title">${main.nom}</div>
+          <div class="map-tooltip__text">Couvre ${deptName}</div>
         </div>
       </div>
     `;
-    return new maplibregl.Popup({
-      offset: 12,
-      closeButton: false,
-      closeOnClick: false,
-      anchor: 'bottom',
-      className: 'hover-popup'
-    }).setLngLat(lngLat || U.polygonCentroid(feature.geometry))
-      .setHTML(html);
+  }
+
+  function cabinetTooltipHtml(feature) {
+    const p = feature.properties;
+    return `
+      <div class="map-tooltip__header">
+        <span class="map-tooltip__avatar" style="background:${p.couleur}" aria-hidden="true">${U.initials(p.nom)}</span>
+        <div class="map-tooltip__meta">
+          <div class="map-tooltip__title">${p.nom}</div>
+          <div class="map-tooltip__text">${p.adresse || ''}</div>
+        </div>
+      </div>
+    `;
   }
 
   function initOmInset() {
