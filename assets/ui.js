@@ -17,7 +17,7 @@
   let sidebarSnap = 'peek';
   const SIDEBAR_SNAPS = ['closed', 'peek', 'half', 'full'];
 
-  function setSidebarSnap(state) {
+  function setSidebarSnap(state, opts = {}) {
     if (!SIDEBAR_SNAPS.includes(state)) state = 'peek';
     sidebarSnap = state;
     sidebar.classList.remove('sidebar--closed', 'sidebar--peek', 'sidebar--half', 'sidebar--full');
@@ -27,7 +27,7 @@
     menuToggle.setAttribute('aria-expanded', String(isOpen));
     menuToggle.setAttribute('aria-label', isOpen ? 'Fermer la liste' : 'Ouvrir la liste');
     menuToggle.classList.toggle('icon-btn--active', isOpen);
-    if (isOpen && S.map) App.map.recenterMapForMobilePanel();
+    if (isOpen && S.map && opts.recenter !== false) App.map.recenterMapForMobilePanel();
   }
 
   function openSidebar() { setSidebarSnap('peek'); }
@@ -53,13 +53,13 @@
   const DETAIL_SNAPS = ['hidden', 'peek', 'half', 'full'];
   const DETAIL_SNAP_HEIGHTS = { peek: 0.32, half: 0.50, full: 0.85 };
 
-  function setDetailSnap(state) {
+  function setDetailSnap(state, opts = {}) {
     if (!DETAIL_SNAPS.includes(state)) state = 'peek';
     detailSnap = state;
     detailPanel.classList.remove('detail-panel--peek', 'detail-panel--half', 'detail-panel--full', 'detail-panel--hidden');
     detailPanel.style.height = '';
     if (state !== 'hidden') detailPanel.classList.add(`detail-panel--${state}`);
-    if (state !== 'hidden' && S.map) App.map.recenterMapForMobilePanel();
+    if (state !== 'hidden' && S.map && opts.recenter !== false) App.map.recenterMapForMobilePanel();
   }
 
   function openBottomSheet() { setDetailSnap('peek'); }
@@ -248,10 +248,6 @@
     showCabinetDetail(feature);
 
     U.announce(`${feature.properties.nom}, ${feature.properties.adresse || 'adresse non renseignée'}`);
-
-    if (window.innerWidth <= C.mobileBreakpoint) {
-      closeSidebar();
-    }
   }
 
   function selectCabinet(feature) {
@@ -304,10 +300,10 @@
       </div>
     `;
 
-    openBottomSheet();
+    setDetailSnap('peek', { recenter: false });
     if (window.innerWidth <= C.mobileBreakpoint) {
-      closeSidebar();
-      App.map.recenterMapForMobilePanel();
+      setSidebarSnap('closed', { recenter: false });
+      setTimeout(() => App.map.recenterMapForMobilePanel(), 350);
     }
   }
 
@@ -349,10 +345,10 @@
       });
     });
 
-    openBottomSheet();
+    setDetailSnap('peek', { recenter: false });
     if (window.innerWidth <= C.mobileBreakpoint) {
-      closeSidebar();
-      App.map.recenterMapForMobilePanel();
+      setSidebarSnap('closed', { recenter: false });
+      setTimeout(() => App.map.recenterMapForMobilePanel(), 350);
     }
   }
 
