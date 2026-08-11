@@ -175,12 +175,11 @@
       id: 'cabinets-hover',
       type: 'circle',
       source: 'cabinets',
-      filter: ['boolean', ['feature-state', 'hover'], false],
       paint: {
         'circle-radius': 8,
         'circle-color': '#ffffff',
-        'circle-opacity': 1,
-        'circle-stroke-width': 3,
+        'circle-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 1, 0],
+        'circle-stroke-width': ['case', ['boolean', ['feature-state', 'hover'], false], 3, 0],
         'circle-stroke-color': ['get', 'couleur'],
         'circle-stroke-opacity': 1
       }
@@ -268,13 +267,38 @@
     return { minLon, maxLon, minLat, maxLat };
   }
 
+  function makeSyntheticCircle(centroid, radiusDeg, segments = 16) {
+    const ring = [];
+    for (let i = 0; i < segments; i++) {
+      const a = (i / segments) * Math.PI * 2;
+      ring.push([centroid[0] + Math.cos(a) * radiusDeg, centroid[1] + Math.sin(a) * radiusDeg]);
+    }
+    ring.push(ring[0]);
+    return { type: 'Polygon', coordinates: [ring] };
+  }
+
+  function makeSyntheticMarker(centroid, radiusDeg) {
+    return makeSyntheticCircle(centroid, radiusDeg, 12);
+  }
+
   function createInsetFeature(feature, target, slot, maxSlotSize, minScale) {
-    const geometry = JSON.parse(JSON.stringify(feature.geometry));
+    let geometry = JSON.parse(JSON.stringify(feature.geometry));
     const bbox = getGeometryBBox(geometry);
     const w = bbox.maxLon - bbox.minLon;
     const h = bbox.maxLat - bbox.minLat;
     const maxDim = Math.max(w || 0, h || 0, 0.0001);
-    let scale = maxSlotSize / maxDim;
+    // Micro-territoires (< 0.3°): remplacer la géométrie par un cercle synthétique
+    // pour qu'ils restent cliquables et identifiables à l'inset.
+    const isMicro = maxDim < 0.3;
+    if (isMicro) {
+      const centroid = getGeometryCentroid(geometry);
+      geometry = makeSyntheticMarker(centroid, 0.25);
+    }
+    const newBbox = getGeometryBBox(geometry);
+    const nw = newBbox.maxLon - newBbox.minLon;
+    const nh = newBbox.maxLat - newBbox.minLat;
+    const newMaxDim = Math.max(nw || 0, nh || 0, 0.0001);
+    let scale = maxSlotSize / newMaxDim;
     if (scale < minScale) scale = minScale;
     if (scale > 3) scale = 3;
     const centroid = getGeometryCentroid(geometry);
@@ -292,7 +316,8 @@
         fillColor: feature.properties.fillColor,
         primaryCabinetId: feature.properties.primaryCabinetId,
         cabinetCount: feature.properties.cabinetCount,
-        omInset: true
+        omInset: true,
+        isSynthetic: isMicro
       },
       geometry
     };
@@ -340,7 +365,23 @@
       source: 'om-insets',
       paint: {
         'line-color': '#ffffff',
-        'line-width': 1.2,
+        'line-width': [
+          'case',
+          ['get', 'isSynthetic'], 1.6,
+          1.2
+        ],
+        'line-opacity': 1
+      }
+    });
+    map.addLayer({
+      id: 'om-insets-outline-dashed',
+      type: 'line',
+      source: 'om-insets',
+      filter: ['==', ['get', 'isSynthetic'], true],
+      paint: {
+        'line-color': '#ffffff',
+        'line-width': 1.6,
+        'line-dasharray': [2, 2],
         'line-opacity': 1
       }
     });
@@ -420,8 +461,16 @@
       const visibility = isMobile ? 'none' : 'visible';
       map.setLayoutProperty('om-insets-fill', 'visibility', visibility);
       map.setLayoutProperty('om-insets-outline', 'visibility', visibility);
+      if (map.getLayer('om-insets-outline-dashed')) {
+        map.setLayoutProperty('om-insets-outline-dashed', 'visibility', visibility);
+      }
     }
     omInsetMarkers.forEach(m => { m.getElement().style.display = isMobile ? 'none' : ''; });
+    if (map && map.getLayer('om-insets-outline-dashed') && map.getLayer('om-insets-outline')) {
+      const visibility = isMobile ? 'none' : 'visible';
+      map.setLayoutProperty('om-insets-outline', 'visibility', visibility);
+      map.setLayoutProperty('om-insets-outline-dashed', 'visibility', visibility);
+    }
     const chips = document.getElementById('omInsetChips');
     if (chips) chips.hidden = !isMobile;
   }

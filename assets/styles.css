@@ -794,6 +794,27 @@ html, body {
   padding: 30px 12px 12px;
   transition: transform 0.3s var(--ease-out), opacity 0.25s var(--ease-out);
 }
+
+.map-disclaimer {
+  position: absolute;
+  bottom: calc(10px + var(--safe-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 8;
+  margin: 0;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--color-text-muted);
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-radius: var(--radius-full);
+  pointer-events: none;
+  letter-spacing: 0.1px;
+  white-space: nowrap;
+  opacity: 0.85;
+}
 .om-inset__label {
   position: absolute;
   top: 8px;
@@ -982,6 +1003,7 @@ html, body {
 }
 @media (max-width: 380px) {
   .om-inset { max-width: 130px; }
+  .map-disclaimer { font-size: 10px; padding: 4px 10px; }
 }
 @media (max-height: 500px) and (orientation: landscape) {
   .sidebar--half { height: 40vh; }

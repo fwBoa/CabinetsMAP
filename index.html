@@ -810,6 +810,27 @@ html, body {
   padding: 30px 12px 12px;
   transition: transform 0.3s var(--ease-out), opacity 0.25s var(--ease-out);
 }
+
+.map-disclaimer {
+  position: absolute;
+  bottom: calc(10px + var(--safe-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 8;
+  margin: 0;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--color-text-muted);
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-radius: var(--radius-full);
+  pointer-events: none;
+  letter-spacing: 0.1px;
+  white-space: nowrap;
+  opacity: 0.85;
+}
 .om-inset__label {
   position: absolute;
   top: 8px;
@@ -998,6 +1019,7 @@ html, body {
 }
 @media (max-width: 380px) {
   .om-inset { max-width: 130px; }
+  .map-disclaimer { font-size: 10px; padding: 4px 10px; }
 }
 @media (max-height: 500px) and (orientation: landscape) {
   .sidebar--half { height: 40vh; }
@@ -1057,6 +1079,9 @@ html, body {
       <span class="om-inset__label" id="omInsetLabel">DOM-TOM-COM</span>
       <div class="om-inset__chips" id="omInsetChips" hidden></div>
     </div>
+    <p class="map-disclaimer" id="mapDisclaimer" aria-label="Note sur la représentation cartographique">
+      Représentation schématique — proportions non respectées
+    </p>
   </main>
 
   <!-- Sidebar -->
@@ -1453,12 +1478,11 @@ html, body {
       id: 'cabinets-hover',
       type: 'circle',
       source: 'cabinets',
-      filter: ['boolean', ['feature-state', 'hover'], false],
       paint: {
         'circle-radius': 8,
         'circle-color': '#ffffff',
-        'circle-opacity': 1,
-        'circle-stroke-width': 3,
+        'circle-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 1, 0],
+        'circle-stroke-width': ['case', ['boolean', ['feature-state', 'hover'], false], 3, 0],
         'circle-stroke-color': ['get', 'couleur'],
         'circle-stroke-opacity': 1
       }
@@ -1546,13 +1570,38 @@ html, body {
     return { minLon, maxLon, minLat, maxLat };
   }
 
+  function makeSyntheticCircle(centroid, radiusDeg, segments = 16) {
+    const ring = [];
+    for (let i = 0; i < segments; i++) {
+      const a = (i / segments) * Math.PI * 2;
+      ring.push([centroid[0] + Math.cos(a) * radiusDeg, centroid[1] + Math.sin(a) * radiusDeg]);
+    }
+    ring.push(ring[0]);
+    return { type: 'Polygon', coordinates: [ring] };
+  }
+
+  function makeSyntheticMarker(centroid, radiusDeg) {
+    return makeSyntheticCircle(centroid, radiusDeg, 12);
+  }
+
   function createInsetFeature(feature, target, slot, maxSlotSize, minScale) {
-    const geometry = JSON.parse(JSON.stringify(feature.geometry));
+    let geometry = JSON.parse(JSON.stringify(feature.geometry));
     const bbox = getGeometryBBox(geometry);
     const w = bbox.maxLon - bbox.minLon;
     const h = bbox.maxLat - bbox.minLat;
     const maxDim = Math.max(w || 0, h || 0, 0.0001);
-    let scale = maxSlotSize / maxDim;
+    // Micro-territoires (< 0.3°): remplacer la géométrie par un cercle synthétique
+    // pour qu'ils restent cliquables et identifiables à l'inset.
+    const isMicro = maxDim < 0.3;
+    if (isMicro) {
+      const centroid = getGeometryCentroid(geometry);
+      geometry = makeSyntheticMarker(centroid, 0.25);
+    }
+    const newBbox = getGeometryBBox(geometry);
+    const nw = newBbox.maxLon - newBbox.minLon;
+    const nh = newBbox.maxLat - newBbox.minLat;
+    const newMaxDim = Math.max(nw || 0, nh || 0, 0.0001);
+    let scale = maxSlotSize / newMaxDim;
     if (scale < minScale) scale = minScale;
     if (scale > 3) scale = 3;
     const centroid = getGeometryCentroid(geometry);
@@ -1570,7 +1619,8 @@ html, body {
         fillColor: feature.properties.fillColor,
         primaryCabinetId: feature.properties.primaryCabinetId,
         cabinetCount: feature.properties.cabinetCount,
-        omInset: true
+        omInset: true,
+        isSynthetic: isMicro
       },
       geometry
     };
@@ -1618,7 +1668,23 @@ html, body {
       source: 'om-insets',
       paint: {
         'line-color': '#ffffff',
-        'line-width': 1.2,
+        'line-width': [
+          'case',
+          ['get', 'isSynthetic'], 1.6,
+          1.2
+        ],
+        'line-opacity': 1
+      }
+    });
+    map.addLayer({
+      id: 'om-insets-outline-dashed',
+      type: 'line',
+      source: 'om-insets',
+      filter: ['==', ['get', 'isSynthetic'], true],
+      paint: {
+        'line-color': '#ffffff',
+        'line-width': 1.6,
+        'line-dasharray': [2, 2],
         'line-opacity': 1
       }
     });
@@ -1698,8 +1764,16 @@ html, body {
       const visibility = isMobile ? 'none' : 'visible';
       map.setLayoutProperty('om-insets-fill', 'visibility', visibility);
       map.setLayoutProperty('om-insets-outline', 'visibility', visibility);
+      if (map.getLayer('om-insets-outline-dashed')) {
+        map.setLayoutProperty('om-insets-outline-dashed', 'visibility', visibility);
+      }
     }
     omInsetMarkers.forEach(m => { m.getElement().style.display = isMobile ? 'none' : ''; });
+    if (map && map.getLayer('om-insets-outline-dashed') && map.getLayer('om-insets-outline')) {
+      const visibility = isMobile ? 'none' : 'visible';
+      map.setLayoutProperty('om-insets-outline', 'visibility', visibility);
+      map.setLayoutProperty('om-insets-outline-dashed', 'visibility', visibility);
+    }
     const chips = document.getElementById('omInsetChips');
     if (chips) chips.hidden = !isMobile;
   }
