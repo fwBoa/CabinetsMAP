@@ -46,24 +46,24 @@
         antilles: {
           title: 'Antilles-Guyane',
           codes: ['971', '972', '973'],
-          target: [6.5, 51.5],
-          slots: [[-1.0, 0.55], [1.0, 0.55], [0, -1.1]]
+          target: [5.5, 50.8],
+          slots: [[-1.05, 0.45], [1.05, 0.45], [0, -0.95]]
         },
         ocean: {
           title: 'Océan Indien',
           codes: ['974', '976'],
           target: [9.5, 40.5],
-          slots: [[-0.9, 0], [0.9, 0]]
+          slots: [[-0.85, 0], [0.85, 0]]
         },
         pacifique: {
           title: 'Pacifique',
           codes: ['987', '988'],
           target: [-3, 41],
-          slots: [[-0.9, 0], [0.9, 0]]
+          slots: [[-0.85, 0], [0.85, 0]]
         }
       },
       OM_INSET_JUMP_THRESHOLD_DEG: 35,
-      OM_INSET_MAX_SLOT_SIZE: 1.4,
+      OM_INSET_MAX_SLOT_SIZE: 1.3,
       OM_INSET_MIN_SCALE: 0.03,
     },
 
