@@ -70,10 +70,11 @@
     S.map.on('error', (e) => {
       const err = e.error || {};
       const msg = String(err.message || e.message || '');
-      const isTileError = msg.toLowerCase().includes('tile') || err.status === 404 || err.status === 503;
-      console.warn('Erreur MapLibre :', e);
-      if (!isTileError) {
-        setLoaderError('Impossible de charger la carte. Vérifiez votre connexion.', true);
+      // Le fond blanc n'utilise pas de tuiles, donc la plupart des erreurs sont non bloquantes
+      const isFatal = msg.toLowerCase().includes('style') || msg.toLowerCase().includes('webgl');
+      console.warn('Erreur MapLibre (non bloquante) :', msg || e);
+      if (isFatal) {
+        setLoaderError('Problème technique avec la carte. Réessayez ou continuez avec la liste.', true);
         App.emit('map:error', e);
       }
     });
