@@ -456,11 +456,11 @@
           const code = String(next.properties.code);
           const cabs = App.getCabinetsForDept(code);
           if (cabs.length && !S.selectedFeature) {
-            const point = e.point;
-            if (hoverThrottle) clearTimeout(hoverThrottle);
-            hoverThrottle = setTimeout(() => {
+            if (hoverThrottle) cancelAnimationFrame(hoverThrottle);
+            hoverThrottle = requestAnimationFrame(() => {
+              const point = e.point;
               showTooltip(deptTooltipHtml(next, cabs), point.x, point.y);
-            }, 16);
+            });
           }
         }
       }
@@ -514,11 +514,11 @@
         const feature = e.features[0];
         setCabinetHoverState(feature.id, true);
         if (!U.isCoarsePointer()) {
-          const point = e.point;
-          if (hoverThrottle) clearTimeout(hoverThrottle);
-          hoverThrottle = setTimeout(() => {
+          if (hoverThrottle) cancelAnimationFrame(hoverThrottle);
+          hoverThrottle = requestAnimationFrame(() => {
+            const point = e.point;
             showTooltip(cabinetTooltipHtml(feature), point.x, point.y);
-          }, 16);
+          });
         }
       }
     });
