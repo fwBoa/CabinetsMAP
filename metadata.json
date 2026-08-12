@@ -295,7 +295,8 @@
         "988"
       ],
       "tribunaux_count": 22,
-      "couleur": "#5e4b35"
+      "couleur": "#5e4b35",
+      "outremer_only": true
     },
     {
       "id": "cabinet-12",

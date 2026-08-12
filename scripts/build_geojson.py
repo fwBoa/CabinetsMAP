@@ -126,6 +126,9 @@ for c in cabinets.values():
         c['adresse'] = None
     del c['addresses']
 
+# Cabinets sans siège sur la carte principale : représentés schématiquement près des insets outre-mer.
+OUTREMER_ONLY = {'SELARL FILAO'}
+
 # Couleurs par cabinet (palette institutionnelle harmonieuse)
 colors = [
     '#1e3a5f', '#2a6f68', '#8b5a2b', '#4a4e69', '#9a4d66',
@@ -144,7 +147,8 @@ for i, (name, c) in enumerate(sorted(cabinets.items(), key=lambda x: x[0])):
         'cours_appel': c['cours_appel'],
         'departements': c['departements'],
         'couleur': colors[i % len(colors)],
-        'badges': []
+        'badges': [],
+        'outremer_only': c['nom'] in OUTREMER_ONLY
     }
     # Géométrie temporaire vide, sera remplie par le géocodeur
     features.append({
@@ -168,7 +172,8 @@ metadata = {
             'adresse': f['properties']['adresse'],
             'departements': f['properties']['departements'],
             'tribunaux_count': len(f['properties']['tribunaux']),
-            'couleur': f['properties']['couleur']
+            'couleur': f['properties']['couleur'],
+            'outremer_only': f['properties']['outremer_only']
         }
         for f in features
     ]

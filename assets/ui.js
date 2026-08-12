@@ -22,7 +22,7 @@
     sidebarSnap = state;
     sidebar.classList.remove('sidebar--closed', 'sidebar--peek', 'sidebar--half', 'sidebar--full');
     sidebar.style.height = '';
-    if (state !== 'closed') sidebar.classList.add(`sidebar--${state}`);
+    sidebar.classList.add(`sidebar--${state}`);
     const isOpen = state !== 'closed';
     menuToggle.setAttribute('aria-expanded', String(isOpen));
     menuToggle.setAttribute('aria-label', isOpen ? 'Fermer la liste' : 'Ouvrir la liste');
@@ -62,7 +62,7 @@
     detailSnap = state;
     detailPanel.classList.remove('detail-panel--peek', 'detail-panel--half', 'detail-panel--full', 'detail-panel--hidden');
     detailPanel.style.height = '';
-    if (state !== 'hidden') detailPanel.classList.add(`detail-panel--${state}`);
+    detailPanel.classList.add(`detail-panel--${state}`);
     if (state !== 'hidden' && S.map && opts.recenter !== false) App.map.recenterMapForMobilePanel();
   }
 
@@ -459,6 +459,7 @@
         btn.classList.add('cabinet-card--hover');
         if (S.map) {
           S.map.setFeatureState({ source: 'cabinets', id }, { hover: true });
+          S.map.setFeatureState({ source: 'om-cabinets', id }, { hover: true });
         }
       });
       btn.addEventListener('mouseleave', () => {
@@ -466,6 +467,7 @@
         btn.classList.remove('cabinet-card--hover');
         if (S.map) {
           S.map.setFeatureState({ source: 'cabinets', id }, { hover: false });
+          S.map.setFeatureState({ source: 'om-cabinets', id }, { hover: false });
         }
       });
     });
@@ -576,9 +578,9 @@
     App.map.initOmInset();
   });
 
-  App.on('map:cabinetClick', ({ feature }) => {
+  App.on('map:cabinetClick', ({ feature, skipMapMove }) => {
     if (!feature) return;
-    if (window.innerWidth <= C.mobileBreakpoint) {
+    if (window.innerWidth <= C.mobileBreakpoint && !skipMapMove) {
       App.map.flyToCabinet(feature);
     }
     highlightCabinet(feature);
@@ -588,9 +590,9 @@
     if (feature) selectCabinet(feature);
   });
 
-  App.on('map:deptClick', ({ feature, cabs }) => {
+  App.on('map:deptClick', ({ feature, cabs, skipMapMove }) => {
     if (!feature || !cabs) return;
-    if (window.innerWidth <= C.mobileBreakpoint) {
+    if (window.innerWidth <= C.mobileBreakpoint && !skipMapMove) {
       App.map.goToDept(String(feature.properties.code), 8);
     }
     showDeptDetail(feature, cabs);

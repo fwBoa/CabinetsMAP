@@ -575,6 +575,7 @@
         ],
         "couleur": "#5e4b35",
         "badges": [],
+        "outremer_only": true,
         "display_name": "Rue Gambetta, Centre-Ville, Pointe-à-Pitre, Guadeloupe, 97110, France",
         "place_id": 302308042
       },

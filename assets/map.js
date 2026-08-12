@@ -146,6 +146,7 @@
       id: 'cabinets-circles',
       type: 'circle',
       source: 'cabinets',
+      filter: ['==', ['coalesce', ['get', 'outremer_only'], false], false],
       paint: {
         'circle-radius': 5,
         'circle-color': '#ffffff',
@@ -160,7 +161,10 @@
       id: 'cabinets-selected',
       type: 'circle',
       source: 'cabinets',
-      filter: ['==', ['get', 'id'], ''],
+      filter: ['all',
+        ['==', ['coalesce', ['get', 'outremer_only'], false], false],
+        ['==', ['get', 'id'], '']
+      ],
       paint: {
         'circle-radius': 8,
         'circle-color': '#ffffff',
@@ -175,6 +179,7 @@
       id: 'cabinets-hover',
       type: 'circle',
       source: 'cabinets',
+      filter: ['==', ['coalesce', ['get', 'outremer_only'], false], false],
       paint: {
         'circle-radius': 8,
         'circle-color': '#ffffff',
@@ -189,6 +194,7 @@
       id: 'cabinets-hit',
       type: 'circle',
       source: 'cabinets',
+      filter: ['==', ['coalesce', ['get', 'outremer_only'], false], false],
       paint: {
         'circle-radius': 18,
         'circle-color': 'transparent',
@@ -198,6 +204,7 @@
     });
 
     setupInsetLayers();
+    setupOmCabinetLayers();
   }
 
   let omInsetMarkers = [];
@@ -206,6 +213,7 @@
   let hoverDeptId = null;
   let hoverCabinetId = null;
   let omHoverId = null;
+  let hoverOmCabinetId = null;
   let lastTooltipTargetId = null;
 
   function getTooltip() {
@@ -422,26 +430,161 @@
       if (!real || !S.map) return;
       const cabs = App.getCabinetsForDept(code);
       if (!cabs.length) return;
-      goToDept(code, 7);
+      // Les insets sont des représentations schématiques placées près de la France.
+      // Un clic simple ouvre la fiche sans quitter la vue actuelle ;
+      // le double-clic permet de naviguer vers le territoire réel.
       if (cabs.length === 1) {
-        App.emit('map:cabinetClick', { feature: cabs[0] });
+        App.emit('map:cabinetClick', { feature: cabs[0], skipMapMove: true });
       } else {
-        App.emit('map:deptClick', { feature: real, cabs });
+        App.emit('map:deptClick', { feature: real, cabs, skipMapMove: true });
       }
     });
 
     map.on('dblclick', 'om-insets-fill', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      const feature = e.features && e.features[0];
-      if (!feature || !S.map) return;
-      const code = String(feature.properties.code);
-      goToDept(code, 8);
+      // Les insets sont schématiques : on ne zoome jamais vers le territoire réel,
+      // même en double-clic.
     });
   }
 
+  const OM_CABINET_ANCHOR = [8, 41.5];
+
+  function createOmCabinetFeatures() {
+    const outremer = S.cabinets.filter(f => f.properties && f.properties.outremer_only);
+    return {
+      type: 'FeatureCollection',
+      features: outremer.map((f, index) => {
+        const spread = (index - (outremer.length - 1) / 2) * 1.4;
+        return {
+          type: 'Feature',
+          properties: { ...f.properties },
+          geometry: {
+            type: 'Point',
+            coordinates: [OM_CABINET_ANCHOR[0] + spread, OM_CABINET_ANCHOR[1]]
+          }
+        };
+      })
+    };
+  }
+
+  function setupOmCabinetLayers() {
+    const map = S.map;
+    if (!map) return;
+    const data = createOmCabinetFeatures();
+    if (!data.features.length) return;
+
+    map.addSource('om-cabinets', {
+      type: 'geojson',
+      data,
+      promoteId: 'id',
+      generateId: false
+    });
+
+    map.addLayer({
+      id: 'om-cabinets-circles',
+      type: 'circle',
+      source: 'om-cabinets',
+      paint: {
+        'circle-radius': 6,
+        'circle-color': '#ffffff',
+        'circle-opacity': 1,
+        'circle-stroke-width': 2,
+        'circle-stroke-color': ['get', 'couleur'],
+        'circle-stroke-opacity': 1
+      }
+    });
+
+    map.addLayer({
+      id: 'om-cabinets-labels',
+      type: 'symbol',
+      source: 'om-cabinets',
+      layout: {
+        'text-field': ['get', 'nom'],
+        'text-size': 11,
+        'text-anchor': 'bottom',
+        'text-offset': [0, -1.2],
+        'text-justify': 'center',
+        'text-font': ['Lato Regular'],
+        'text-max-width': 18,
+        'text-line-height': 1.2,
+        'text-allow-overlap': false,
+        'text-ignore-placement': false
+      },
+      paint: {
+        'text-color': '#334155',
+        'text-halo-color': '#ffffff',
+        'text-halo-width': 2
+      }
+    });
+
+    map.addLayer({
+      id: 'om-cabinets-hover',
+      type: 'circle',
+      source: 'om-cabinets',
+      paint: {
+        'circle-radius': 9,
+        'circle-color': '#ffffff',
+        'circle-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 1, 0],
+        'circle-stroke-width': ['case', ['boolean', ['feature-state', 'hover'], false], 3, 0],
+        'circle-stroke-color': ['get', 'couleur'],
+        'circle-stroke-opacity': 1
+      }
+    });
+
+    map.addLayer({
+      id: 'om-cabinets-selected',
+      type: 'circle',
+      source: 'om-cabinets',
+      filter: ['==', ['get', 'id'], ''],
+      paint: {
+        'circle-radius': 9,
+        'circle-color': '#ffffff',
+        'circle-opacity': 1,
+        'circle-stroke-width': 3,
+        'circle-stroke-color': ['get', 'couleur'],
+        'circle-stroke-opacity': 1
+      }
+    });
+
+    map.addLayer({
+      id: 'om-cabinets-hit',
+      type: 'circle',
+      source: 'om-cabinets',
+      paint: {
+        'circle-radius': 20,
+        'circle-color': 'transparent',
+        'circle-opacity': 0,
+        'circle-stroke-width': 0
+      }
+    });
+
+    map.on('click', 'om-cabinets-hit', (e) => {
+      const feature = e.features && e.features[0];
+      if (feature) App.emit('map:cabinetClick', { feature, skipMapMove: true });
+    });
+
+    map.on('dblclick', 'om-cabinets-hit', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const feature = e.features && e.features[0];
+      if (feature) App.emit('map:cabinetDblClick', { feature });
+    });
+  }
+
+  function updateOmCabinetSelection(cabinetId) {
+    if (!S.map || !S.map.getLayer('om-cabinets-selected')) return;
+    S.map.setFilter('om-cabinets-selected', ['==', ['get', 'id'], String(cabinetId || '')]);
+  }
+
+  const OM_CODES = ['971', '972', '973', '974', '976', '987', '988'];
+
+  function isOmCode(code) {
+    return OM_CODES.includes(String(code));
+  }
+
   function goToDept(code, zoom) {
-    if (!S.map) return;
+    if (!S.map || isOmCode(code)) return;
     const real = S.departements.find(d => String(d.properties.code) === String(code));
     if (!real) return;
     const center = U.polygonCentroid(real.geometry);
@@ -457,8 +600,8 @@
   function updateInsetVisibility() {
     const isMobile = window.innerWidth <= C.mobileBreakpoint;
     const map = S.map;
+    const visibility = isMobile ? 'none' : 'visible';
     if (map && map.getLayer('om-insets-fill')) {
-      const visibility = isMobile ? 'none' : 'visible';
       map.setLayoutProperty('om-insets-fill', 'visibility', visibility);
       map.setLayoutProperty('om-insets-outline', 'visibility', visibility);
       if (map.getLayer('om-insets-outline-dashed')) {
@@ -466,11 +609,12 @@
       }
     }
     omInsetMarkers.forEach(m => { m.getElement().style.display = isMobile ? 'none' : ''; });
-    if (map && map.getLayer('om-insets-outline-dashed') && map.getLayer('om-insets-outline')) {
-      const visibility = isMobile ? 'none' : 'visible';
-      map.setLayoutProperty('om-insets-outline', 'visibility', visibility);
-      map.setLayoutProperty('om-insets-outline-dashed', 'visibility', visibility);
-    }
+    // Les marqueurs de cabinets outre-mer sont liés aux insets visuels.
+    ['om-cabinets-circles', 'om-cabinets-hover', 'om-cabinets-selected', 'om-cabinets-hit', 'om-cabinets-labels'].forEach(layerId => {
+      if (map && map.getLayer(layerId)) {
+        map.setLayoutProperty(layerId, 'visibility', visibility);
+      }
+    });
     const chips = document.getElementById('omInsetChips');
     if (chips) chips.hidden = !isMobile;
   }
@@ -490,7 +634,12 @@
     S.map.setFeatureState({ source: 'om-insets', id }, { hover: isHover });
   }
 
-  function updateHoverTargets(nextDeptId, nextCabinetId, nextOmId) {
+  function setOmCabinetHoverState(id, isHover) {
+    if (id == null || !S.map) return;
+    S.map.setFeatureState({ source: 'om-cabinets', id }, { hover: isHover });
+  }
+
+  function updateHoverTargets(nextDeptId, nextCabinetId, nextOmId, nextOmCabinetId = null) {
     if (nextDeptId !== hoverDeptId) {
       if (hoverDeptId != null) setDeptHoverState(hoverDeptId, false);
       if (nextDeptId != null) setDeptHoverState(nextDeptId, true);
@@ -507,10 +656,15 @@
       if (nextOmId != null) setOmInsetHoverState(nextOmId, true);
       omHoverId = nextOmId;
     }
+    if (nextOmCabinetId !== hoverOmCabinetId) {
+      if (hoverOmCabinetId != null) setOmCabinetHoverState(hoverOmCabinetId, false);
+      if (nextOmCabinetId != null) setOmCabinetHoverState(nextOmCabinetId, true);
+      hoverOmCabinetId = nextOmCabinetId;
+    }
   }
 
   function clearHoverTargets() {
-    updateHoverTargets(null, null, null);
+    updateHoverTargets(null, null, null, null);
   }
 
   function bindMapEvents() {
@@ -533,7 +687,9 @@
       e.stopPropagation();
       const feature = e.features && e.features[0];
       if (!feature) return;
-      const cabs = App.getCabinetsForDept(String(feature.properties.code));
+      const code = String(feature.properties.code);
+      if (isOmCode(code)) return;
+      const cabs = App.getCabinetsForDept(code);
       if (cabs.length >= 1) {
         const center = U.polygonCentroid(feature.geometry);
         map.flyTo({ center, zoom: 8, speed: 0.8, curve: 1.2, padding: getMobileMapPadding() });
@@ -558,7 +714,7 @@
         tooltipRaf = null;
         if (!S.map) return;
         const features = S.map.queryRenderedFeatures(e.point, {
-          layers: ['cabinets-hit', 'depts-fill', 'om-insets-fill']
+          layers: ['cabinets-hit', 'om-cabinets-hit', 'depts-fill', 'om-insets-fill']
         });
         const top = features[0];
         if (!top) {
@@ -575,7 +731,11 @@
         let show = false;
 
         if (layerId === 'cabinets-hit') {
-          updateHoverTargets(null, top.id, null);
+          updateHoverTargets(null, top.id, null, null);
+          html = cabinetTooltipHtml(top);
+          show = true;
+        } else if (layerId === 'om-cabinets-hit') {
+          updateHoverTargets(null, null, null, top.id);
           html = cabinetTooltipHtml(top);
           show = true;
         } else if ((layerId === 'depts-fill' || layerId === 'om-insets-fill') && !S.selectedFeature) {
@@ -585,15 +745,16 @@
             updateHoverTargets(
               layerId === 'depts-fill' ? top.id : null,
               null,
-              layerId === 'om-insets-fill' ? top.id : null
+              layerId === 'om-insets-fill' ? top.id : null,
+              null
             );
             html = deptTooltipHtml(top, cabs);
             show = true;
           } else {
-            updateHoverTargets(null, null, null);
+            updateHoverTargets(null, null, null, null);
           }
         } else {
-          updateHoverTargets(null, null, null);
+          updateHoverTargets(null, null, null, null);
         }
 
         if (show) {
@@ -627,8 +788,8 @@
     });
 
     map.on('click', (e) => {
-      const deptFeatures = map.queryRenderedFeatures(e.point, { layers: ['depts-fill'] });
-      const cabFeatures = map.queryRenderedFeatures(e.point, { layers: ['cabinets-hit'] });
+      const deptFeatures = map.queryRenderedFeatures(e.point, { layers: ['depts-fill', 'om-insets-fill'] });
+      const cabFeatures = map.queryRenderedFeatures(e.point, { layers: ['cabinets-hit', 'om-cabinets-hit'] });
       if (!deptFeatures.length && !cabFeatures.length) {
         App.emit('map:selectionCleared', {});
       }
@@ -695,11 +856,12 @@
         const dept = S.departements.find(d => String(d.properties.code) === code);
         if (!dept || !S.map) return;
         const cabs = App.getCabinetsForDept(code);
-        goToDept(code, 7);
+        // Les chips mobile remplacent les insets visuels ; ils ouvrent la fiche
+        // sans déplacer la carte, car le territoire réel est hors champ.
         if (cabs.length === 1) {
-          App.emit('map:cabinetClick', { feature: cabs[0] });
+          App.emit('map:cabinetClick', { feature: cabs[0], skipMapMove: true });
         } else if (cabs.length > 1) {
-          App.emit('map:deptClick', { feature: dept, cabs });
+          App.emit('map:deptClick', { feature: dept, cabs, skipMapMove: true });
         }
       });
     });
@@ -744,6 +906,12 @@
   function flyToCabinet(feature) {
     if (!S.map || !feature) return;
     const p = feature.properties;
+    if (p.outremer_only) {
+      // Les cabinets outre-mer uniquement n'ont pas de siège sur la carte principale.
+      // Ils sont représentés par des insets et un marqueur schématique ;
+      // on ne déplace pas la carte pour rester sur la vue France.
+      return;
+    }
     const depts = (p.departements || []).map(code => S.departements.find(d => String(d.properties.code) === code)).filter(Boolean);
     if (depts.length) {
       const bounds = depts.reduce((acc, d) => {
@@ -793,12 +961,14 @@
     });
     S.map.getSource('depts-dim').setData({ type: 'FeatureCollection', features: dimFeatures });
     S.map.setFilter('cabinets-selected', ['==', ['get', 'id'], String(cabinetId || '')]);
+    updateOmCabinetSelection(cabinetId);
   }
 
   function resetDeptOpacity() {
     if (!S.map) return;
     S.map.getSource('depts-dim').setData({ type: 'FeatureCollection', features: [] });
     S.map.setFilter('cabinets-selected', ['==', ['get', 'id'], '']);
+    updateOmCabinetSelection(null);
     if (S.hoveredDeptId != null) {
       setDeptHoverState(S.hoveredDeptId, false);
       S.hoveredDeptId = null;
