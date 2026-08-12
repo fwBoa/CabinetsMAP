@@ -975,11 +975,9 @@ html, body {
   .sidebar__toolbar { padding: 0 14px 6px; }
   .sidebar__list { padding: 4px 8px; }
   .sidebar__header {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    background: var(--color-surface);
+    padding: 6px 14px 12px;
   }
+  .sidebar--peek .sidebar__header { display: none; }
   .sidebar__om-chips:not([hidden]) {
     display: flex;
     flex-wrap: wrap;
