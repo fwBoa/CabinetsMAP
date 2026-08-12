@@ -896,6 +896,10 @@ html, body {
 }
 .maplibregl-marker { z-index: 12 !important; }
 
+@media (max-width: 768px) {
+  .maplibregl-marker { z-index: 1 !important; }
+}
+
 /* Mobile bottom sheet */
 @media (max-width: 768px) {
   #menuToggle { display: none; }
@@ -917,6 +921,7 @@ html, body {
     transform: translateY(0);
     padding-bottom: var(--safe-bottom);
     box-shadow: 0 -6px 40px rgba(15, 23, 42, 0.14);
+    z-index: 100;
     transition: transform 0.35s var(--ease-out), opacity 0.25s var(--ease-out), visibility 0.25s var(--ease-out), height 0.3s var(--ease-out);
   }
   @supports (height: 100dvh) {
@@ -978,17 +983,18 @@ html, body {
     right: 8px;
     bottom: 0;
     width: auto;
-    height: 38vh;
+    height: 85vh;
     max-height: none;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     transform: translateY(0);
     box-shadow: 0 -6px 40px rgba(15, 23, 42, 0.14);
     padding-bottom: var(--safe-bottom);
     overflow: hidden;
+    z-index: 100;
     transition: transform 0.35s var(--ease-out), opacity 0.25s var(--ease-out), visibility 0.25s var(--ease-out), height 0.3s var(--ease-out);
   }
   @supports (height: 100dvh) {
-    .detail-panel { height: 38dvh; }
+    .detail-panel { height: 85dvh; }
     .detail-panel--half { height: 50dvh; }
     .detail-panel--full { height: 85dvh; }
   }
@@ -998,9 +1004,10 @@ html, body {
     visibility: hidden;
     pointer-events: none;
   }
-  .detail-panel--peek { height: 38vh; min-height: 140px; }
-  .detail-panel--half { height: 50vh; }
+  .detail-panel--peek,
+  .detail-panel--half,
   .detail-panel--full { height: 85vh; }
+  .detail-panel--peek { min-height: 140px; }
   .detail-panel__handle {
     display: flex;
     align-items: center;
