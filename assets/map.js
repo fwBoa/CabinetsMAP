@@ -870,7 +870,8 @@
 
   function getMobileMapPadding() {
     if (window.innerWidth > C.mobileBreakpoint) {
-      return { top: 100, bottom: 60, left: 420, right: 380 };
+      // Padding s'adapte aux largeurs fluides des panneaux (max ~460px / ~420px).
+      return { top: 100, bottom: 60, left: 480, right: 440 };
     }
     const panelHeight = getMobilePanelHeight();
     const bottom = Math.max(110, Math.min(panelHeight + 24, window.innerHeight * 0.6));
