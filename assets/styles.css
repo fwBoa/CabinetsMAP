@@ -898,6 +898,7 @@ html, body {
 
 /* Mobile bottom sheet */
 @media (max-width: 768px) {
+  #menuToggle { display: none; }
   .header__actions { gap: 6px; }
   .icon-btn { width: 36px; height: 36px; }
   .icon-btn svg { width: 18px; height: 18px; }
@@ -957,6 +958,21 @@ html, body {
   .sidebar__kpis { margin-bottom: 8px; }
   .sidebar__toolbar { padding: 0 14px 6px; }
   .sidebar__list { padding: 4px 8px; }
+  .sidebar__header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--color-surface);
+  }
+  .sidebar__om-chips:not([hidden]) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 14px 10px;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .sidebar--peek .sidebar__om-chips,
+  .sidebar--closed .sidebar__om-chips { display: none; }
 
   .detail-panel {
     top: auto;
@@ -1007,14 +1023,7 @@ html, body {
     overflow-y: auto;
   }
 
-  .om-inset {
-    width: auto;
-    max-width: 150px;
-    bottom: calc(12px + var(--safe-bottom));
-    left: calc(12px + var(--safe-left));
-    right: auto;
-    padding: 18px 8px 8px;
-  }
+  .om-inset { display: none; }
   .om-inset__label { top: 5px; left: 8px; font-size: 9px; }
   .om-inset__chip { font-size: 11px; padding: 4px 7px; min-height: 32px; }
   .maplibregl-ctrl-bottom-right { bottom: calc(12px + var(--safe-bottom)) !important; right: calc(12px + var(--safe-right)) !important; }

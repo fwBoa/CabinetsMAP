@@ -914,6 +914,7 @@ html, body {
 
 /* Mobile bottom sheet */
 @media (max-width: 768px) {
+  #menuToggle { display: none; }
   .header__actions { gap: 6px; }
   .icon-btn { width: 36px; height: 36px; }
   .icon-btn svg { width: 18px; height: 18px; }
@@ -973,6 +974,21 @@ html, body {
   .sidebar__kpis { margin-bottom: 8px; }
   .sidebar__toolbar { padding: 0 14px 6px; }
   .sidebar__list { padding: 4px 8px; }
+  .sidebar__header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--color-surface);
+  }
+  .sidebar__om-chips:not([hidden]) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 14px 10px;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .sidebar--peek .sidebar__om-chips,
+  .sidebar--closed .sidebar__om-chips { display: none; }
 
   .detail-panel {
     top: auto;
@@ -1023,14 +1039,7 @@ html, body {
     overflow-y: auto;
   }
 
-  .om-inset {
-    width: auto;
-    max-width: 150px;
-    bottom: calc(12px + var(--safe-bottom));
-    left: calc(12px + var(--safe-left));
-    right: auto;
-    padding: 18px 8px 8px;
-  }
+  .om-inset { display: none; }
   .om-inset__label { top: 5px; left: 8px; font-size: 9px; }
   .om-inset__chip { font-size: 11px; padding: 4px 7px; min-height: 32px; }
   .maplibregl-ctrl-bottom-right { bottom: calc(12px + var(--safe-bottom)) !important; right: calc(12px + var(--safe-right)) !important; }
@@ -1166,6 +1175,8 @@ html, body {
       <span class="sidebar__count" id="resultCount" aria-live="polite"></span>
       <button class="sidebar__reset" id="resetFiltersBtn" type="button" hidden>Tout effacer</button>
     </div>
+
+    <div class="sidebar__om-chips" id="sidebarOmChips" hidden></div>
 
     <ul class="sidebar__list" id="cabinetList" role="list"></ul>
 
@@ -1973,8 +1984,10 @@ html, body {
         map.setLayoutProperty(layerId, 'visibility', visibility);
       }
     });
-    const chips = document.getElementById('omInsetChips');
-    if (chips) chips.hidden = !isMobile;
+    const floatChips = document.getElementById('omInsetChips');
+    const sidebarChips = document.getElementById('sidebarOmChips');
+    if (floatChips) floatChips.hidden = isMobile; // desktop : chips dans l'inset flottant
+    if (sidebarChips) sidebarChips.hidden = !isMobile; // mobile : chips dans la sidebar
   }
 
   function setDeptHoverState(id, isHover) {
@@ -2067,7 +2080,7 @@ html, body {
     });
 
     map.on('mousemove', (e) => {
-      if (U.isCoarsePointer() || !e.originalEvent || tooltipRaf) return;
+      if (window.innerWidth <= C.mobileBreakpoint || U.isCoarsePointer() || !e.originalEvent || tooltipRaf) return;
       tooltipRaf = requestAnimationFrame(() => {
         tooltipRaf = null;
         if (!S.map) return;
@@ -2146,6 +2159,7 @@ html, body {
     });
 
     map.on('click', (e) => {
+      hideTooltip();
       const deptFeatures = map.queryRenderedFeatures(e.point, { layers: ['depts-fill', 'om-insets-fill'] });
       const cabFeatures = map.queryRenderedFeatures(e.point, { layers: ['cabinets-hit', 'om-cabinets-hit'] });
       if (!deptFeatures.length && !cabFeatures.length) {
@@ -2194,11 +2208,9 @@ html, body {
     `;
   }
 
-  function initOmInset() {
-    const container = document.getElementById('omInsetChips');
-    if (!container) return;
+  function createOmChipsHTML() {
     const omCodes = ['971', '972', '973', '974', '976', '987', '988'];
-    container.innerHTML = omCodes.map(code => {
+    return omCodes.map(code => {
       const entry = S.deptIndex.get(code);
       const color = entry ? entry.color : '#cccccc';
       return `
@@ -2208,14 +2220,16 @@ html, body {
         </button>
       `;
     }).join('');
+  }
+
+  function bindOmChips(container) {
     container.querySelectorAll('.om-inset__chip').forEach(btn => {
       btn.addEventListener('click', () => {
         const code = btn.dataset.code;
         const dept = S.departements.find(d => String(d.properties.code) === code);
         if (!dept || !S.map) return;
         const cabs = App.getCabinetsForDept(code);
-        // Les chips mobile remplacent les insets visuels ; ils ouvrent la fiche
-        // sans déplacer la carte, car le territoire réel est hors champ.
+        // Les chips outre-mer ouvrent la fiche sans déplacer la carte.
         if (cabs.length === 1) {
           App.emit('map:cabinetClick', { feature: cabs[0], skipMapMove: true });
         } else if (cabs.length > 1) {
@@ -2223,6 +2237,17 @@ html, body {
         }
       });
     });
+  }
+
+  function initOmInset() {
+    const floatContainer = document.getElementById('omInsetChips');
+    const sidebarContainer = document.getElementById('sidebarOmChips');
+    if (!floatContainer || !sidebarContainer) return;
+    const html = createOmChipsHTML();
+    floatContainer.innerHTML = html;
+    sidebarContainer.innerHTML = html;
+    bindOmChips(floatContainer);
+    bindOmChips(sidebarContainer);
     updateInsetVisibility();
   }
 

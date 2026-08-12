@@ -615,8 +615,10 @@
         map.setLayoutProperty(layerId, 'visibility', visibility);
       }
     });
-    const chips = document.getElementById('omInsetChips');
-    if (chips) chips.hidden = !isMobile;
+    const floatChips = document.getElementById('omInsetChips');
+    const sidebarChips = document.getElementById('sidebarOmChips');
+    if (floatChips) floatChips.hidden = isMobile; // desktop : chips dans l'inset flottant
+    if (sidebarChips) sidebarChips.hidden = !isMobile; // mobile : chips dans la sidebar
   }
 
   function setDeptHoverState(id, isHover) {
@@ -709,7 +711,7 @@
     });
 
     map.on('mousemove', (e) => {
-      if (U.isCoarsePointer() || !e.originalEvent || tooltipRaf) return;
+      if (window.innerWidth <= C.mobileBreakpoint || U.isCoarsePointer() || !e.originalEvent || tooltipRaf) return;
       tooltipRaf = requestAnimationFrame(() => {
         tooltipRaf = null;
         if (!S.map) return;
@@ -788,6 +790,7 @@
     });
 
     map.on('click', (e) => {
+      hideTooltip();
       const deptFeatures = map.queryRenderedFeatures(e.point, { layers: ['depts-fill', 'om-insets-fill'] });
       const cabFeatures = map.queryRenderedFeatures(e.point, { layers: ['cabinets-hit', 'om-cabinets-hit'] });
       if (!deptFeatures.length && !cabFeatures.length) {
@@ -836,11 +839,9 @@
     `;
   }
 
-  function initOmInset() {
-    const container = document.getElementById('omInsetChips');
-    if (!container) return;
+  function createOmChipsHTML() {
     const omCodes = ['971', '972', '973', '974', '976', '987', '988'];
-    container.innerHTML = omCodes.map(code => {
+    return omCodes.map(code => {
       const entry = S.deptIndex.get(code);
       const color = entry ? entry.color : '#cccccc';
       return `
@@ -850,14 +851,16 @@
         </button>
       `;
     }).join('');
+  }
+
+  function bindOmChips(container) {
     container.querySelectorAll('.om-inset__chip').forEach(btn => {
       btn.addEventListener('click', () => {
         const code = btn.dataset.code;
         const dept = S.departements.find(d => String(d.properties.code) === code);
         if (!dept || !S.map) return;
         const cabs = App.getCabinetsForDept(code);
-        // Les chips mobile remplacent les insets visuels ; ils ouvrent la fiche
-        // sans déplacer la carte, car le territoire réel est hors champ.
+        // Les chips outre-mer ouvrent la fiche sans déplacer la carte.
         if (cabs.length === 1) {
           App.emit('map:cabinetClick', { feature: cabs[0], skipMapMove: true });
         } else if (cabs.length > 1) {
@@ -865,6 +868,17 @@
         }
       });
     });
+  }
+
+  function initOmInset() {
+    const floatContainer = document.getElementById('omInsetChips');
+    const sidebarContainer = document.getElementById('sidebarOmChips');
+    if (!floatContainer || !sidebarContainer) return;
+    const html = createOmChipsHTML();
+    floatContainer.innerHTML = html;
+    sidebarContainer.innerHTML = html;
+    bindOmChips(floatContainer);
+    bindOmChips(sidebarContainer);
     updateInsetVisibility();
   }
 
