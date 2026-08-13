@@ -600,7 +600,7 @@
   function updateInsetVisibility() {
     const isMobile = window.innerWidth <= C.mobileBreakpoint;
     const map = S.map;
-    const visibility = isMobile ? 'none' : 'visible';
+    const visibility = 'visible';
     if (map && map.getLayer('om-insets-fill')) {
       map.setLayoutProperty('om-insets-fill', 'visibility', visibility);
       map.setLayoutProperty('om-insets-outline', 'visibility', visibility);
@@ -608,7 +608,7 @@
         map.setLayoutProperty('om-insets-outline-dashed', 'visibility', visibility);
       }
     }
-    omInsetMarkers.forEach(m => { m.getElement().style.display = isMobile ? 'none' : ''; });
+    omInsetMarkers.forEach(m => { m.getElement().style.display = ''; });
     // Les marqueurs de cabinets outre-mer sont liés aux insets visuels.
     ['om-cabinets-circles', 'om-cabinets-hover', 'om-cabinets-selected', 'om-cabinets-hit', 'om-cabinets-labels'].forEach(layerId => {
       if (map && map.getLayer(layerId)) {
@@ -618,7 +618,7 @@
     const floatChips = document.getElementById('omInsetChips');
     const sidebarChips = document.getElementById('sidebarOmChips');
     if (floatChips) floatChips.hidden = isMobile; // desktop : chips dans l'inset flottant
-    if (sidebarChips) sidebarChips.hidden = !isMobile; // mobile : chips dans la sidebar
+    if (sidebarChips) sidebarChips.hidden = true; // mobile : plus de chips, insets visuels suffisants
   }
 
   function setDeptHoverState(id, isHover) {
