@@ -331,6 +331,38 @@
     };
   }
 
+  function createInsetBackdropGeometries() {
+    const groups = C.OM_INSET_GROUPS;
+    const padding = 1.0;
+    const features = [];
+    Object.keys(groups).forEach((key) => {
+      const group = groups[key];
+      const slots = group.slots || [[0, 0]];
+      const offsets = slots.map(s => s[0]);
+      const minOffset = Math.min(...offsets);
+      const maxOffset = Math.max(...offsets);
+      const minLon = group.target[0] + minOffset - padding;
+      const maxLon = group.target[0] + maxOffset + padding;
+      const minLat = group.target[1] - padding;
+      const maxLat = group.target[1] + padding;
+      features.push({
+        type: 'Feature',
+        properties: { omInsetBackdrop: true, group: key },
+        geometry: {
+          type: 'Polygon',
+          coordinates: [[
+            [minLon, minLat],
+            [maxLon, minLat],
+            [maxLon, maxLat],
+            [minLon, maxLat],
+            [minLon, minLat]
+          ]]
+        }
+      });
+    });
+    return { type: 'FeatureCollection', features };
+  }
+
   function createInsetGeometries() {
     const groups = C.OM_INSET_GROUPS;
     const maxSlot = C.OM_INSET_MAX_SLOT_SIZE;
@@ -352,12 +384,26 @@
   function setupInsetLayers() {
     const map = S.map;
     if (!map) return;
+    map.addSource('om-insets-backdrop', {
+      type: 'geojson',
+      data: createInsetBackdropGeometries(),
+      generateId: false
+    });
     map.addSource('om-insets', {
       type: 'geojson',
       data: createInsetGeometries(),
       promoteId: 'code',
       generateId: false
     });
+    map.addLayer({
+      id: 'om-insets-backdrop',
+      type: 'fill',
+      source: 'om-insets-backdrop',
+      paint: {
+        'fill-color': 'rgba(255, 255, 255, 0.55)',
+        'fill-outline-color': 'rgba(0, 0, 0, 0.06)'
+      }
+    }, 'om-insets-fill');
     map.addLayer({
       id: 'om-insets-fill',
       type: 'fill',
@@ -405,16 +451,24 @@
     const groups = C.OM_INSET_GROUPS;
     Object.keys(groups).forEach((key) => {
       const group = groups[key];
-      const el = document.createElement('div');
-      el.className = 'om-inset__label-marker';
-      const inner = document.createElement('div');
-      inner.className = 'om-inset__label-marker__text';
-      inner.textContent = group.title;
-      el.appendChild(inner);
-      const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
-        .setLngLat(group.target)
-        .addTo(S.map);
-      omInsetMarkers.push(marker);
+      group.codes.forEach((code, index) => {
+        const codeStr = String(code);
+        const dept = S.departements.find(d => String(d.properties.code) === codeStr);
+        const slot = group.slots[index] || [0, 0];
+        const el = document.createElement('div');
+        el.className = 'om-inset__label-marker';
+        const inner = document.createElement('div');
+        inner.className = 'om-inset__label-marker__text';
+        inner.textContent = dept ? dept.properties.nom : codeStr;
+        el.appendChild(inner);
+        // Label sous l'inset (anchor='top' = haut de l'élément ancré à la coordonnée)
+        const lng = group.target[0] + slot[0];
+        const lat = group.target[1] + slot[1] - 0.75;
+        const marker = new maplibregl.Marker({ element: el, anchor: 'top' })
+          .setLngLat([lng, lat])
+          .addTo(S.map);
+        omInsetMarkers.push(marker);
+      });
     });
   }
 
@@ -607,6 +661,9 @@
       if (map.getLayer('om-insets-outline-dashed')) {
         map.setLayoutProperty('om-insets-outline-dashed', 'visibility', visibility);
       }
+    }
+    if (map && map.getLayer('om-insets-backdrop')) {
+      map.setLayoutProperty('om-insets-backdrop', 'visibility', visibility);
     }
     omInsetMarkers.forEach(m => { m.getElement().style.display = ''; });
     // Les marqueurs de cabinets outre-mer sont liés aux insets visuels.

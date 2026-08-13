@@ -972,6 +972,7 @@ html, body {
     padding: 24px 8px 8px;
   }
   .om-inset__label { top: 6px; left: 8px; font-size: 8px; }
+  .om-inset__label-marker__text { font-size: 8px; padding: 2px 5px; }
   .om-inset__chip { font-size: 10px; padding: 3px 6px; min-height: 26px; }
   .om-inset__chip-dot { width: 6px; height: 6px; }
 
