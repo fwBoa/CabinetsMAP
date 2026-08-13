@@ -250,6 +250,10 @@
   }
 
   function eachCoord(geometry, fn) {
+    if (geometry.type === 'Point') {
+      fn(geometry.coordinates);
+      return;
+    }
     const coords = geometry.coordinates;
     if (geometry.type === 'Polygon') {
       coords.forEach(ring => ring.forEach(fn));
@@ -259,12 +263,18 @@
   }
 
   function getGeometryCentroid(geometry) {
+    if (geometry.type === 'Point') return geometry.coordinates.slice();
     let lon = 0, lat = 0, n = 0;
     eachCoord(geometry, (p) => { lon += p[0]; lat += p[1]; n += 1; });
     return n ? [lon / n, lat / n] : [0, 0];
   }
 
   function getGeometryBBox(geometry) {
+    if (geometry.type === 'Point') {
+      const [lon, lat] = geometry.coordinates;
+      const delta = 0.0001;
+      return { minLon: lon - delta, maxLon: lon + delta, minLat: lat - delta, maxLat: lat + delta };
+    }
     let minLon = Infinity, maxLon = -Infinity, minLat = Infinity, maxLat = -Infinity;
     eachCoord(geometry, (p) => {
       if (p[0] < minLon) minLon = p[0];
@@ -272,11 +282,6 @@
       if (p[1] < minLat) minLat = p[1];
       if (p[1] > maxLat) maxLat = p[1];
     });
-    // Géométrie Point : forcer une petite boîte pour que le traitement d'inset fonctionne.
-    if (minLon === maxLon && minLat === maxLat) {
-      const delta = 0.0001;
-      minLon -= delta; maxLon += delta; minLat -= delta; maxLat += delta;
-    }
     return { minLon, maxLon, minLat, maxLat };
   }
 
@@ -401,15 +406,6 @@
       generateId: false
     });
     map.addLayer({
-      id: 'om-insets-backdrop',
-      type: 'fill',
-      source: 'om-insets-backdrop',
-      paint: {
-        'fill-color': 'rgba(255, 255, 255, 0.55)',
-        'fill-outline-color': 'rgba(0, 0, 0, 0.06)'
-      }
-    }, 'om-insets-fill');
-    map.addLayer({
       id: 'om-insets-fill',
       type: 'fill',
       source: 'om-insets',
@@ -418,6 +414,15 @@
         'fill-opacity': 0.9
       }
     });
+    map.addLayer({
+      id: 'om-insets-backdrop',
+      type: 'fill',
+      source: 'om-insets-backdrop',
+      paint: {
+        'fill-color': 'rgba(255, 255, 255, 0.55)',
+        'fill-outline-color': 'rgba(0, 0, 0, 0.06)'
+      }
+    }, 'om-insets-fill');
     map.addLayer({
       id: 'om-insets-outline',
       type: 'line',
