@@ -14,8 +14,6 @@
   const detailPanel = document.getElementById('detailPanel');
   const detailClose = document.getElementById('detailClose');
   const sheetDetailView = document.getElementById('sheetDetailView');
-  const sheetDetailBack = document.getElementById('sheetDetailBack');
-  const sheetDetailExpand = document.getElementById('sheetDetailExpand');
   const sheetDetailClose = document.getElementById('sheetDetailClose');
 
   // Desktop sidebar state
@@ -44,42 +42,41 @@
     setSidebarSnap(sidebarSnap === 'closed' ? 'peek' : 'closed');
   }
 
-  // Mobile single-sheet state
-  const SHEET_SNAPS = ['closed', 'peek', 'half', 'full'];
-  let sheetSnap = 'peek';
-  const SHEET_HEIGHTS = { closed: 44, peek: 180, half: 0.55, full: 0.75 };
+  // Mobile territory card state
+  const SHEET_SNAPS = ['closed', 'open'];
+  let sheetSnap = 'closed';
 
   function isMobile() { return window.innerWidth <= C.mobileBreakpoint; }
 
   function setSheetSnap(state, opts = {}) {
-    if (!SHEET_SNAPS.includes(state)) state = 'peek';
+    if (!SHEET_SNAPS.includes(state)) state = 'closed';
     sheetSnap = state;
-    sidebar.classList.remove('bottom-sheet--closed', 'bottom-sheet--peek', 'bottom-sheet--half', 'bottom-sheet--full');
+    sidebar.classList.remove('bottom-sheet--closed', 'bottom-sheet--open');
     sidebar.style.height = '';
     sidebar.classList.add(`bottom-sheet--${state}`);
 
     if (state === 'closed') {
       menuToggle.setAttribute('aria-expanded', 'false');
-      menuToggle.setAttribute('aria-label', 'Ouvrir la liste');
+      menuToggle.setAttribute('aria-label', 'Ouvrir la fiche');
       menuToggle.classList.remove('icon-btn--active');
     } else {
       menuToggle.setAttribute('aria-expanded', 'true');
-      menuToggle.setAttribute('aria-label', 'Fermer la liste');
+      menuToggle.setAttribute('aria-label', 'Fermer la fiche');
       menuToggle.classList.add('icon-btn--active');
     }
 
     if (state !== 'closed' && S.map && opts.recenter !== false) App.map.recenterMapForMobilePanel();
   }
 
-  function openSheet() { setSheetSnap('peek'); }
+  function openSheet() { setSheetSnap('open'); }
   function closeSheet() { setSheetSnap('closed'); }
-  function expandSheetHalf() { setSheetSnap('half'); }
-  function expandSheetFull() { setSheetSnap('full'); }
 
-  function cycleSheetSnap() {
-    if (sheetSnap === 'closed') { setSheetSnap('peek'); return; }
-    const idx = SHEET_SNAPS.indexOf(sheetSnap);
-    setSheetSnap(SHEET_SNAPS[(idx + 1) % SHEET_SNAPS.length]);
+  function toggleSheet() {
+    if (sheetSnap === 'closed') {
+      if (S.selectedFeature) openSheet(); else return;
+    } else {
+      closeSheet();
+    }
   }
 
   function initSheetDrag() {
@@ -90,7 +87,10 @@
     let moved = false;
 
     sidebarHandle.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cycleSheetSnap(); }
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleSheet();
+      }
     });
 
     function onStart(clientY) {
@@ -106,7 +106,7 @@
       if (!isDragging) return;
       if (Math.abs(clientY - startY) > 3) moved = true;
       const delta = startY - clientY;
-      const maxH = window.innerHeight * 0.92;
+      const maxH = window.innerHeight * 0.55;
       const newHeight = Math.min(maxH, Math.max(44, startHeight + delta));
       sidebar.style.height = `${newHeight}px`;
     }
@@ -118,25 +118,13 @@
       document.body.style.userSelect = '';
 
       if (!moved) {
-        cycleSheetSnap();
+        toggleSheet();
         return;
       }
 
       const currentHeight = sidebar.getBoundingClientRect().height;
-      const vh = window.innerHeight;
-
-      const targets = [
-        { key: 'closed', height: SHEET_HEIGHTS.closed },
-        { key: 'peek', height: SHEET_HEIGHTS.peek },
-        { key: 'half', height: Math.round(vh * SHEET_HEIGHTS.half) },
-        { key: 'full', height: Math.round(vh * SHEET_HEIGHTS.full) }
-      ];
-      let nearest = targets.reduce((best, t) => {
-        const dist = Math.abs(currentHeight - t.height);
-        return dist < best.dist ? { key: t.key, dist } : best;
-      }, { key: 'peek', dist: Infinity });
-
-      setSheetSnap(nearest.key);
+      const threshold = window.innerHeight * 0.22;
+      setSheetSnap(currentHeight < threshold ? 'closed' : 'open');
     }
 
     sidebarHandle.addEventListener('pointerdown', (e) => {
@@ -191,9 +179,25 @@
     `;
   }
 
-  function renderMobileDetailBody(p) {
+  function renderMobileTerritoryNote(feature, cabs) {
+    if (!feature || !feature.properties) return '';
+    const p = feature.properties;
+
+    if (p.nom) {
+      // Cabinet
+      return `
+        <h3 class="sheet-detail__title">${p.nom}</h3>
+        <p class="sheet-detail__subtitle">${(p.departements || []).length} départements couverts · Siège : ${p.adresse || 'non renseigné'}</p>
+      `;
+    }
+
+    // Department
+    const code = String(p.code);
+    const deptName = App.getDeptName(code);
+    const count = cabs ? cabs.length : 0;
     return `
-      <p class="sheet-detail__territory">${(p.departements || []).length} départements couverts · Siège : ${p.adresse || 'non renseigné'}</p>
+      <h3 class="sheet-detail__title">${deptName}</h3>
+      <p class="sheet-detail__subtitle">${count} cabinet${count > 1 ? 's' : ''} intervient${count > 1 ? 'ent' : ''} sur ce département</p>
     `;
   }
 
@@ -228,9 +232,9 @@
     document.getElementById('detailBody').innerHTML = renderDetailBody(p);
 
     if (isMobile()) {
-      document.getElementById('sheetDetailBody').innerHTML = renderMobileDetailBody(p);
+      document.getElementById('sheetDetailBody').innerHTML = renderMobileTerritoryNote(feature);
       sheetDetailView.hidden = false;
-      setSheetSnap('half', { recenter: false });
+      setSheetSnap('open', { recenter: false });
     } else {
       setSidebarSnap('peek', { recenter: false });
       setDetailSnap('peek', { recenter: false });
@@ -276,9 +280,9 @@
     });
 
     if (isMobile()) {
-      // On mobile, department detail is just the list of cabinets in the same sheet list.
-      sheetDetailView.hidden = true;
-      setSheetSnap('half', { recenter: false });
+      document.getElementById('sheetDetailBody').innerHTML = renderMobileTerritoryNote(feature, cabs);
+      sheetDetailView.hidden = false;
+      setSheetSnap('open', { recenter: false });
     } else {
       setDetailSnap('peek', { recenter: false });
     }
@@ -302,7 +306,7 @@
     closeBottomSheet();
     if (isMobile()) {
       sheetDetailView.hidden = true;
-      setSheetSnap('half', { recenter: false });
+      setSheetSnap('closed', { recenter: false });
     } else {
       setSidebarSnap('peek', { recenter: false });
     }
@@ -329,21 +333,6 @@
     closeSelection();
   });
 
-  sheetDetailExpand.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (isMobile()) setSheetSnap('full', { recenter: false });
-  });
-
-  sheetDetailBack.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (isMobile()) {
-      sheetDetailView.hidden = true;
-      setSheetSnap('half', { recenter: false });
-    }
-  });
-
   detailPanel.addEventListener('click', (e) => {
     const closeBtn = e.target.closest('.detail-panel__close');
     if (closeBtn) {
@@ -357,7 +346,7 @@
     e.preventDefault();
     e.stopPropagation();
     if (isMobile()) {
-      setSheetSnap(sheetSnap === 'closed' ? 'peek' : 'closed');
+      toggleSheet();
     } else {
       toggleSidebar();
     }
@@ -534,13 +523,8 @@
         handled = true;
       }
       if (isMobile() && sheetSnap !== 'closed') {
-        if (!sheetDetailView.hidden) {
-          sheetDetailView.hidden = true;
-          setSheetSnap('half', { recenter: false });
-        } else {
-          closeSheet();
-          menuToggle.focus();
-        }
+        closeSelection();
+        menuToggle.focus();
         handled = true;
       } else if (!isMobile() && !sidebar.classList.contains('sidebar--closed')) {
         closeSidebar();
@@ -556,13 +540,9 @@
       detailPanel.classList.add('detail-panel--mobile-hidden');
       sidebar.classList.remove('sidebar--closed', 'sidebar--peek', 'sidebar--half', 'sidebar--full');
       sidebar.classList.add('bottom-sheet', `bottom-sheet--${sheetSnap}`);
-      if (S.selectedFeature && sheetSnap !== 'full') {
-        sheetDetailView.hidden = false;
-        setSheetSnap('full', { recenter: false });
-      }
     } else {
       detailPanel.classList.remove('detail-panel--mobile-hidden');
-      sidebar.classList.remove('bottom-sheet', 'bottom-sheet--closed', 'bottom-sheet--peek', 'bottom-sheet--half', 'bottom-sheet--full');
+      sidebar.classList.remove('bottom-sheet', 'bottom-sheet--closed', 'bottom-sheet--open');
       sidebar.style.height = '';
       setSidebarSnap(sidebarSnap === 'closed' ? 'closed' : 'peek', { recenter: false });
       if (S.selectedFeature) {

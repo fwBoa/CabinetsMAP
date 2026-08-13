@@ -924,7 +924,7 @@ html, body {
   .maplibregl-marker { z-index: 1 !important; }
 }
 
-/* Mobile bottom sheet */
+/* Mobile territory card */
 @media (max-width: 768px) {
   #menuToggle { display: none; }
   .header__actions { gap: 6px; }
@@ -941,7 +941,6 @@ html, body {
   .maplibregl-ctrl-bottom-right { z-index: 2 !important; }
 
   .detail-panel { display: none; }
-  .detail-panel--mobile-hidden { display: none; }
 
   .sidebar {
     position: fixed;
@@ -962,35 +961,18 @@ html, body {
     box-shadow: 0 -4px 24px rgba(15, 23, 42, 0.14);
     border: 1px solid var(--color-border);
     z-index: 100;
-    transition: transform 0.35s var(--ease-out), height 0.3s var(--ease-out);
+    transition: transform 0.35s var(--ease-out);
   }
 
-  .bottom-sheet--closed {
-    transform: translateY(calc(100% - 44px));
-    height: auto;
-  }
-  .bottom-sheet--peek { height: 180px; }
-  .bottom-sheet--half { height: 55vh; }
-  .bottom-sheet--full { height: 75vh; }
-  @supports (height: 100dvh) {
-    .bottom-sheet--peek { height: 180px; }
-    .bottom-sheet--half { height: 55dvh; }
-    .bottom-sheet--full { height: 75dvh; }
-  }
+  .bottom-sheet--closed { transform: translateY(calc(100% - 44px)); }
+  .bottom-sheet--open { transform: translateY(0); }
 
-  .bottom-sheet--closed .sidebar__header,
-  .bottom-sheet--closed .sidebar__toolbar,
-  .bottom-sheet--closed .sidebar__list,
-  .bottom-sheet--closed .sidebar__legend,
-  .bottom-sheet--closed .sheet-detail,
-  .bottom-sheet--peek .sidebar__toolbar,
-  .bottom-sheet--peek .sidebar__legend,
-  .bottom-sheet--peek .sidebar__om-chips,
-  .bottom-sheet--full .sidebar__header,
-  .bottom-sheet--full .sidebar__toolbar,
-  .bottom-sheet--full .sidebar__list,
-  .bottom-sheet--full .sidebar__legend,
-  .bottom-sheet--full .sidebar__om-chips { display: none; }
+  .sidebar__header,
+  .sidebar__toolbar,
+  .sidebar__list,
+  .sidebar__legend,
+  .sidebar__om-chips,
+  .om-inset { display: none !important; }
 
   .sidebar__handle {
     position: relative;
@@ -1018,70 +1000,50 @@ html, body {
     letter-spacing: 0.6px;
     margin-top: 4px;
   }
-  .bottom-sheet--peek .sidebar__handle-label,
-  .bottom-sheet--half .sidebar__handle-label,
-  .bottom-sheet--full .sidebar__handle-label { display: none; }
-
-  .sidebar__header { padding: 6px 14px 12px; border-bottom: 1px solid var(--color-border); }
-  .sidebar__title { font-size: 15px; margin-bottom: 8px; }
-  .sidebar__kpis { margin-bottom: 8px; }
-  .sidebar__toolbar { padding: 0 14px 6px; }
-  .sidebar__list { padding: 4px 8px; flex: 1; overflow-y: auto; }
-  .sidebar__om-chips:not([hidden]) {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    padding: 6px 14px 10px;
-    border-bottom: 1px solid var(--color-border);
-  }
+  .bottom-sheet--open .sidebar__handle-label { display: none; }
 
   .sheet-detail {
     display: none;
     flex-direction: column;
-    height: 100%;
+    max-height: 45vh;
     overflow: hidden;
   }
   .sheet-detail:not([hidden]) { display: flex; }
   .sheet-detail__header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+    justify-content: flex-end;
     padding: 6px 14px 12px;
-    border-bottom: 1px solid var(--color-border);
   }
-  .sheet-detail__back,
-  .sheet-detail__expand,
   .sheet-detail__close {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    padding: 8px 12px;
+    width: 44px;
+    height: 44px;
     border: none;
-    border-radius: var(--radius-sm);
+    border-radius: 50%;
     background: var(--color-bg);
     color: var(--color-text);
-    font-size: 13px;
-    font-weight: 600;
     cursor: pointer;
-    min-height: 44px;
   }
-  .sheet-detail__expand {
-    margin-left: auto;
-    margin-right: 8px;
-  }
-  .sheet-detail__close {
-    padding: 8px;
-  }
-  .sheet-detail__back svg,
-  .sheet-detail__expand svg,
-  .sheet-detail__close svg { width: 16px; height: 16px; }
+  .sheet-detail__close svg { width: 18px; height: 18px; }
   .sheet-detail__body {
-    flex: 1;
     overflow-y: auto;
     touch-action: pan-y;
-    padding: 12px 14px calc(12px + var(--safe-bottom));
+    padding: 0 14px calc(12px + var(--safe-bottom));
+  }
+  .sheet-detail__title {
+    margin: 0 0 6px;
+    font-family: var(--font-serif);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--color-text);
+  }
+  .sheet-detail__subtitle {
+    margin: 0 0 12px;
+    font-size: 13px;
+    color: var(--color-text-secondary);
   }
   .sheet-detail__territory {
     margin: 0;
@@ -1095,14 +1057,6 @@ html, body {
 @media (min-width: 769px) {
   .sidebar__handle { display: none; }
   .detail-panel__handle { display: none; }
-}
-@media (max-width: 480px) {
-  .bottom-sheet--peek { height: 200px; }
-}
-@media (max-height: 500px) and (orientation: landscape) {
-  .bottom-sheet--peek { height: 150px; }
-  .bottom-sheet--half { height: 45vh; }
-  .bottom-sheet--full { height: 82vh; }
 }
 
 /* Large screens — comfortable scaling without wasting space */
@@ -1222,21 +1176,9 @@ html, body {
 
     <div class="sidebar__legend" id="cabinetLegend"></div>
 
-    <!-- Mobile-only detail view inside the sheet -->
-    <div class="sheet-detail" id="sheetDetailView" hidden aria-label="Détails du cabinet">
+    <!-- Mobile-only territory card -->
+    <div class="sheet-detail" id="sheetDetailView" hidden aria-label="Détails du territoire">
       <div class="sheet-detail__header">
-        <button class="sheet-detail__back" id="sheetDetailBack" type="button" aria-label="Retour à la liste">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-          Retour
-        </button>
-        <button class="sheet-detail__expand" id="sheetDetailExpand" type="button" aria-label="Agrandir les détails" title="Agrandir">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <polyline points="6 3 6 12" />
-            <polyline points="18 21 18 12" />
-          </svg>
-        </button>
         <button class="sheet-detail__close" id="sheetDetailClose" type="button" aria-label="Fermer les détails">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="18" y1="6" x2="6" y2="18" />
@@ -2469,8 +2411,6 @@ html, body {
   const detailPanel = document.getElementById('detailPanel');
   const detailClose = document.getElementById('detailClose');
   const sheetDetailView = document.getElementById('sheetDetailView');
-  const sheetDetailBack = document.getElementById('sheetDetailBack');
-  const sheetDetailExpand = document.getElementById('sheetDetailExpand');
   const sheetDetailClose = document.getElementById('sheetDetailClose');
 
   // Desktop sidebar state
@@ -2499,42 +2439,41 @@ html, body {
     setSidebarSnap(sidebarSnap === 'closed' ? 'peek' : 'closed');
   }
 
-  // Mobile single-sheet state
-  const SHEET_SNAPS = ['closed', 'peek', 'half', 'full'];
-  let sheetSnap = 'peek';
-  const SHEET_HEIGHTS = { closed: 44, peek: 180, half: 0.55, full: 0.75 };
+  // Mobile territory card state
+  const SHEET_SNAPS = ['closed', 'open'];
+  let sheetSnap = 'closed';
 
   function isMobile() { return window.innerWidth <= C.mobileBreakpoint; }
 
   function setSheetSnap(state, opts = {}) {
-    if (!SHEET_SNAPS.includes(state)) state = 'peek';
+    if (!SHEET_SNAPS.includes(state)) state = 'closed';
     sheetSnap = state;
-    sidebar.classList.remove('bottom-sheet--closed', 'bottom-sheet--peek', 'bottom-sheet--half', 'bottom-sheet--full');
+    sidebar.classList.remove('bottom-sheet--closed', 'bottom-sheet--open');
     sidebar.style.height = '';
     sidebar.classList.add(`bottom-sheet--${state}`);
 
     if (state === 'closed') {
       menuToggle.setAttribute('aria-expanded', 'false');
-      menuToggle.setAttribute('aria-label', 'Ouvrir la liste');
+      menuToggle.setAttribute('aria-label', 'Ouvrir la fiche');
       menuToggle.classList.remove('icon-btn--active');
     } else {
       menuToggle.setAttribute('aria-expanded', 'true');
-      menuToggle.setAttribute('aria-label', 'Fermer la liste');
+      menuToggle.setAttribute('aria-label', 'Fermer la fiche');
       menuToggle.classList.add('icon-btn--active');
     }
 
     if (state !== 'closed' && S.map && opts.recenter !== false) App.map.recenterMapForMobilePanel();
   }
 
-  function openSheet() { setSheetSnap('peek'); }
+  function openSheet() { setSheetSnap('open'); }
   function closeSheet() { setSheetSnap('closed'); }
-  function expandSheetHalf() { setSheetSnap('half'); }
-  function expandSheetFull() { setSheetSnap('full'); }
 
-  function cycleSheetSnap() {
-    if (sheetSnap === 'closed') { setSheetSnap('peek'); return; }
-    const idx = SHEET_SNAPS.indexOf(sheetSnap);
-    setSheetSnap(SHEET_SNAPS[(idx + 1) % SHEET_SNAPS.length]);
+  function toggleSheet() {
+    if (sheetSnap === 'closed') {
+      if (S.selectedFeature) openSheet(); else return;
+    } else {
+      closeSheet();
+    }
   }
 
   function initSheetDrag() {
@@ -2545,7 +2484,10 @@ html, body {
     let moved = false;
 
     sidebarHandle.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cycleSheetSnap(); }
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleSheet();
+      }
     });
 
     function onStart(clientY) {
@@ -2561,7 +2503,7 @@ html, body {
       if (!isDragging) return;
       if (Math.abs(clientY - startY) > 3) moved = true;
       const delta = startY - clientY;
-      const maxH = window.innerHeight * 0.92;
+      const maxH = window.innerHeight * 0.55;
       const newHeight = Math.min(maxH, Math.max(44, startHeight + delta));
       sidebar.style.height = `${newHeight}px`;
     }
@@ -2573,25 +2515,13 @@ html, body {
       document.body.style.userSelect = '';
 
       if (!moved) {
-        cycleSheetSnap();
+        toggleSheet();
         return;
       }
 
       const currentHeight = sidebar.getBoundingClientRect().height;
-      const vh = window.innerHeight;
-
-      const targets = [
-        { key: 'closed', height: SHEET_HEIGHTS.closed },
-        { key: 'peek', height: SHEET_HEIGHTS.peek },
-        { key: 'half', height: Math.round(vh * SHEET_HEIGHTS.half) },
-        { key: 'full', height: Math.round(vh * SHEET_HEIGHTS.full) }
-      ];
-      let nearest = targets.reduce((best, t) => {
-        const dist = Math.abs(currentHeight - t.height);
-        return dist < best.dist ? { key: t.key, dist } : best;
-      }, { key: 'peek', dist: Infinity });
-
-      setSheetSnap(nearest.key);
+      const threshold = window.innerHeight * 0.22;
+      setSheetSnap(currentHeight < threshold ? 'closed' : 'open');
     }
 
     sidebarHandle.addEventListener('pointerdown', (e) => {
@@ -2646,9 +2576,25 @@ html, body {
     `;
   }
 
-  function renderMobileDetailBody(p) {
+  function renderMobileTerritoryNote(feature, cabs) {
+    if (!feature || !feature.properties) return '';
+    const p = feature.properties;
+
+    if (p.nom) {
+      // Cabinet
+      return `
+        <h3 class="sheet-detail__title">${p.nom}</h3>
+        <p class="sheet-detail__subtitle">${(p.departements || []).length} départements couverts · Siège : ${p.adresse || 'non renseigné'}</p>
+      `;
+    }
+
+    // Department
+    const code = String(p.code);
+    const deptName = App.getDeptName(code);
+    const count = cabs ? cabs.length : 0;
     return `
-      <p class="sheet-detail__territory">${(p.departements || []).length} départements couverts · Siège : ${p.adresse || 'non renseigné'}</p>
+      <h3 class="sheet-detail__title">${deptName}</h3>
+      <p class="sheet-detail__subtitle">${count} cabinet${count > 1 ? 's' : ''} intervient${count > 1 ? 'ent' : ''} sur ce département</p>
     `;
   }
 
@@ -2683,9 +2629,9 @@ html, body {
     document.getElementById('detailBody').innerHTML = renderDetailBody(p);
 
     if (isMobile()) {
-      document.getElementById('sheetDetailBody').innerHTML = renderMobileDetailBody(p);
+      document.getElementById('sheetDetailBody').innerHTML = renderMobileTerritoryNote(feature);
       sheetDetailView.hidden = false;
-      setSheetSnap('half', { recenter: false });
+      setSheetSnap('open', { recenter: false });
     } else {
       setSidebarSnap('peek', { recenter: false });
       setDetailSnap('peek', { recenter: false });
@@ -2731,9 +2677,9 @@ html, body {
     });
 
     if (isMobile()) {
-      // On mobile, department detail is just the list of cabinets in the same sheet list.
-      sheetDetailView.hidden = true;
-      setSheetSnap('half', { recenter: false });
+      document.getElementById('sheetDetailBody').innerHTML = renderMobileTerritoryNote(feature, cabs);
+      sheetDetailView.hidden = false;
+      setSheetSnap('open', { recenter: false });
     } else {
       setDetailSnap('peek', { recenter: false });
     }
@@ -2757,7 +2703,7 @@ html, body {
     closeBottomSheet();
     if (isMobile()) {
       sheetDetailView.hidden = true;
-      setSheetSnap('half', { recenter: false });
+      setSheetSnap('closed', { recenter: false });
     } else {
       setSidebarSnap('peek', { recenter: false });
     }
@@ -2784,21 +2730,6 @@ html, body {
     closeSelection();
   });
 
-  sheetDetailExpand.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (isMobile()) setSheetSnap('full', { recenter: false });
-  });
-
-  sheetDetailBack.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (isMobile()) {
-      sheetDetailView.hidden = true;
-      setSheetSnap('half', { recenter: false });
-    }
-  });
-
   detailPanel.addEventListener('click', (e) => {
     const closeBtn = e.target.closest('.detail-panel__close');
     if (closeBtn) {
@@ -2812,7 +2743,7 @@ html, body {
     e.preventDefault();
     e.stopPropagation();
     if (isMobile()) {
-      setSheetSnap(sheetSnap === 'closed' ? 'peek' : 'closed');
+      toggleSheet();
     } else {
       toggleSidebar();
     }
@@ -2989,13 +2920,8 @@ html, body {
         handled = true;
       }
       if (isMobile() && sheetSnap !== 'closed') {
-        if (!sheetDetailView.hidden) {
-          sheetDetailView.hidden = true;
-          setSheetSnap('half', { recenter: false });
-        } else {
-          closeSheet();
-          menuToggle.focus();
-        }
+        closeSelection();
+        menuToggle.focus();
         handled = true;
       } else if (!isMobile() && !sidebar.classList.contains('sidebar--closed')) {
         closeSidebar();
@@ -3011,13 +2937,9 @@ html, body {
       detailPanel.classList.add('detail-panel--mobile-hidden');
       sidebar.classList.remove('sidebar--closed', 'sidebar--peek', 'sidebar--half', 'sidebar--full');
       sidebar.classList.add('bottom-sheet', `bottom-sheet--${sheetSnap}`);
-      if (S.selectedFeature && sheetSnap !== 'full') {
-        sheetDetailView.hidden = false;
-        setSheetSnap('full', { recenter: false });
-      }
     } else {
       detailPanel.classList.remove('detail-panel--mobile-hidden');
-      sidebar.classList.remove('bottom-sheet', 'bottom-sheet--closed', 'bottom-sheet--peek', 'bottom-sheet--half', 'bottom-sheet--full');
+      sidebar.classList.remove('bottom-sheet', 'bottom-sheet--closed', 'bottom-sheet--open');
       sidebar.style.height = '';
       setSidebarSnap(sidebarSnap === 'closed' ? 'closed' : 'peek', { recenter: false });
       if (S.selectedFeature) {
