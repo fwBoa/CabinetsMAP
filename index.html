@@ -969,13 +969,13 @@ html, body {
     transform: translateY(calc(100% - 44px));
     height: auto;
   }
-  .bottom-sheet--peek { height: 200px; }
+  .bottom-sheet--peek { height: 180px; }
   .bottom-sheet--half { height: 55vh; }
-  .bottom-sheet--full { height: 88vh; }
+  .bottom-sheet--full { height: 75vh; }
   @supports (height: 100dvh) {
-    .bottom-sheet--peek { height: 200px; }
+    .bottom-sheet--peek { height: 180px; }
     .bottom-sheet--half { height: 55dvh; }
-    .bottom-sheet--full { height: 88dvh; }
+    .bottom-sheet--full { height: 75dvh; }
   }
 
   .bottom-sheet--closed .sidebar__header,
@@ -1046,13 +1046,16 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 8px;
     padding: 6px 14px 12px;
     border-bottom: 1px solid var(--color-border);
   }
   .sheet-detail__back,
+  .sheet-detail__expand,
   .sheet-detail__close {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
     padding: 8px 12px;
     border: none;
@@ -1064,11 +1067,16 @@ html, body {
     cursor: pointer;
     min-height: 44px;
   }
-  .sheet-detail__back svg,
-  .sheet-detail__close svg { width: 16px; height: 16px; }
+  .sheet-detail__expand {
+    margin-left: auto;
+    margin-right: 8px;
+  }
   .sheet-detail__close {
     padding: 8px;
   }
+  .sheet-detail__back svg,
+  .sheet-detail__expand svg,
+  .sheet-detail__close svg { width: 16px; height: 16px; }
   .sheet-detail__body {
     flex: 1;
     overflow-y: auto;
@@ -1216,6 +1224,12 @@ html, body {
             <polyline points="15 18 9 12 15 6" />
           </svg>
           Retour
+        </button>
+        <button class="sheet-detail__expand" id="sheetDetailExpand" type="button" aria-label="Agrandir les détails" title="Agrandir">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="6 3 6 12" />
+            <polyline points="18 21 18 12" />
+          </svg>
         </button>
         <button class="sheet-detail__close" id="sheetDetailClose" type="button" aria-label="Fermer les détails">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -2450,6 +2464,7 @@ html, body {
   const detailClose = document.getElementById('detailClose');
   const sheetDetailView = document.getElementById('sheetDetailView');
   const sheetDetailBack = document.getElementById('sheetDetailBack');
+  const sheetDetailExpand = document.getElementById('sheetDetailExpand');
   const sheetDetailClose = document.getElementById('sheetDetailClose');
 
   // Desktop sidebar state
@@ -2481,7 +2496,7 @@ html, body {
   // Mobile single-sheet state
   const SHEET_SNAPS = ['closed', 'peek', 'half', 'full'];
   let sheetSnap = 'peek';
-  const SHEET_HEIGHTS = { closed: 44, peek: 200, half: 0.55, full: 0.88 };
+  const SHEET_HEIGHTS = { closed: 44, peek: 180, half: 0.55, full: 0.75 };
 
   function isMobile() { return window.innerWidth <= C.mobileBreakpoint; }
 
@@ -2684,7 +2699,7 @@ html, body {
     if (isMobile()) {
       document.getElementById('sheetDetailBody').innerHTML = renderDetailBody(p);
       sheetDetailView.hidden = false;
-      setSheetSnap('full', { recenter: false });
+      setSheetSnap('half', { recenter: false });
     } else {
       setSidebarSnap('peek', { recenter: false });
       setDetailSnap('peek', { recenter: false });
@@ -2731,7 +2746,7 @@ html, body {
 
     if (isMobile()) {
       sheetDetailView.hidden = false;
-      setSheetSnap('full', { recenter: false });
+      setSheetSnap('half', { recenter: false });
     } else {
       setDetailSnap('peek', { recenter: false });
     }
@@ -2780,6 +2795,12 @@ html, body {
     e.preventDefault();
     e.stopPropagation();
     closeSelection();
+  });
+
+  sheetDetailExpand.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isMobile()) setSheetSnap('full', { recenter: false });
   });
 
   sheetDetailBack.addEventListener('click', (e) => {

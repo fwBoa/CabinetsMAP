@@ -15,6 +15,7 @@
   const detailClose = document.getElementById('detailClose');
   const sheetDetailView = document.getElementById('sheetDetailView');
   const sheetDetailBack = document.getElementById('sheetDetailBack');
+  const sheetDetailExpand = document.getElementById('sheetDetailExpand');
   const sheetDetailClose = document.getElementById('sheetDetailClose');
 
   // Desktop sidebar state
@@ -46,7 +47,7 @@
   // Mobile single-sheet state
   const SHEET_SNAPS = ['closed', 'peek', 'half', 'full'];
   let sheetSnap = 'peek';
-  const SHEET_HEIGHTS = { closed: 44, peek: 200, half: 0.55, full: 0.88 };
+  const SHEET_HEIGHTS = { closed: 44, peek: 180, half: 0.55, full: 0.75 };
 
   function isMobile() { return window.innerWidth <= C.mobileBreakpoint; }
 
@@ -249,7 +250,7 @@
     if (isMobile()) {
       document.getElementById('sheetDetailBody').innerHTML = renderDetailBody(p);
       sheetDetailView.hidden = false;
-      setSheetSnap('full', { recenter: false });
+      setSheetSnap('half', { recenter: false });
     } else {
       setSidebarSnap('peek', { recenter: false });
       setDetailSnap('peek', { recenter: false });
@@ -296,7 +297,7 @@
 
     if (isMobile()) {
       sheetDetailView.hidden = false;
-      setSheetSnap('full', { recenter: false });
+      setSheetSnap('half', { recenter: false });
     } else {
       setDetailSnap('peek', { recenter: false });
     }
@@ -345,6 +346,12 @@
     e.preventDefault();
     e.stopPropagation();
     closeSelection();
+  });
+
+  sheetDetailExpand.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isMobile()) setSheetSnap('full', { recenter: false });
   });
 
   sheetDetailBack.addEventListener('click', (e) => {
