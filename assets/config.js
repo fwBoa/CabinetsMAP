@@ -59,12 +59,13 @@
           title: 'Pacifique',
           codes: ['986', '987', '988'],
           target: [8, 36],
-          slots: [[-1.85, 0], [0, 0], [1.85, 0]]
+          slots: [[-1.6, 0], [0, 0], [1.6, 0]]
         }
       },
       OM_INSET_JUMP_THRESHOLD_DEG: 35,
       OM_INSET_MAX_SLOT_SIZE: 1.3,
       OM_INSET_MIN_SCALE: 0.03,
+      OM_INSET_MIN_RENDER_DIM: 0.9,
     },
 
     events: {},

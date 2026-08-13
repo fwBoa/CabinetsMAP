@@ -285,13 +285,27 @@
     return { minLon, maxLon, minLat, maxLat };
   }
 
+  function makeBoundingBoxPolygon(minLon, minLat, maxLon, maxLat) {
+    return {
+      type: 'Polygon',
+      coordinates: [[
+        [minLon, minLat],
+        [maxLon, minLat],
+        [maxLon, maxLat],
+        [minLon, maxLat],
+        [minLon, minLat]
+      ]]
+    };
+  }
+
   function makeSyntheticCircle(centroid, radiusDeg, segments = 16) {
     const ring = [];
     for (let i = 0; i < segments; i++) {
       const a = (i / segments) * Math.PI * 2;
       ring.push([centroid[0] + Math.cos(a) * radiusDeg, centroid[1] + Math.sin(a) * radiusDeg]);
     }
-    ring.push(ring[0]);
+    // Cloner le premier point pour éviter une double transformation lors d'eachCoord.
+    ring.push([ring[0][0], ring[0][1]]);
     return { type: 'Polygon', coordinates: [ring] };
   }
 
@@ -301,16 +315,20 @@
 
   function createInsetFeature(feature, target, slot, maxSlotSize, minScale) {
     let geometry = JSON.parse(JSON.stringify(feature.geometry));
+    const code = String(feature.properties.code);
     const bbox = getGeometryBBox(geometry);
     const w = bbox.maxLon - bbox.minLon;
     const h = bbox.maxLat - bbox.minLat;
     const maxDim = Math.max(w || 0, h || 0, 0.0001);
-    // Micro-territoires (< 0.3°): remplacer la géométrie par un cercle synthétique
-    // pour qu'ils restent cliquables et identifiables à l'inset.
+    // Les archipels très étendus (Polynésie française, etc.) sont représentés par
+    // une bounding box compacte pour obtenir un inset cohérent et lisible.
+    const isCompacted = maxDim > 3;
     const isMicro = maxDim < 0.3;
-    if (isMicro) {
+    if (isCompacted) {
+      geometry = makeBoundingBoxPolygon(bbox.minLon, bbox.minLat, bbox.maxLon, bbox.maxLat);
+    } else if (isMicro) {
       const centroid = getGeometryCentroid(geometry);
-      geometry = makeSyntheticMarker(centroid, 0.25);
+      geometry = makeSyntheticMarker(centroid, 0.35);
     }
     const newBbox = getGeometryBBox(geometry);
     const nw = newBbox.maxLon - newBbox.minLon;
@@ -319,6 +337,11 @@
     let scale = maxSlotSize / newMaxDim;
     if (scale < minScale) scale = minScale;
     if (scale > 3) scale = 3;
+    // Taille minimum de rendu lisible, indépendante de la taille réelle du territoire.
+    const minRenderDim = C.OM_INSET_MIN_RENDER_DIM || 0.9;
+    const minScaleByWidth = (nw || 0.0001) < minRenderDim ? minRenderDim / (nw || 0.0001) : 0;
+    const minScaleByHeight = (nh || 0.0001) < minRenderDim ? minRenderDim / (nh || 0.0001) : 0;
+    scale = Math.max(scale, minScaleByWidth, minScaleByHeight);
     const centroid = getGeometryCentroid(geometry);
     const targetLon = target[0] + slot[0];
     const targetLat = target[1] + slot[1];
@@ -335,7 +358,7 @@
         primaryCabinetId: feature.properties.primaryCabinetId,
         cabinetCount: feature.properties.cabinetCount,
         omInset: true,
-        isSynthetic: isMicro
+        isSynthetic: isMicro || isCompacted
       },
       geometry
     };
