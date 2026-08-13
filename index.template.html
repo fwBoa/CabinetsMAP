@@ -65,10 +65,11 @@
     </p>
   </main>
 
-  <!-- Sidebar -->
+  <!-- Sidebar / mobile bottom sheet -->
   <aside class="sidebar sidebar--closed" id="sidebar" aria-label="Liste des cabinets">
     <div class="sidebar__handle" id="sidebarHandle" aria-label="Ouvrir ou fermer la liste" role="button" tabindex="0">
       <span class="sidebar__handle-bar" aria-hidden="true"></span>
+      <span class="sidebar__handle-label" aria-hidden="true">Cabinets</span>
     </div>
 
     <div class="sidebar__header">
@@ -98,6 +99,25 @@
     <ul class="sidebar__list" id="cabinetList" role="list"></ul>
 
     <div class="sidebar__legend" id="cabinetLegend"></div>
+
+    <!-- Mobile-only detail view inside the sheet -->
+    <div class="sheet-detail" id="sheetDetailView" hidden aria-label="Détails du cabinet">
+      <div class="sheet-detail__header">
+        <button class="sheet-detail__back" id="sheetDetailBack" type="button" aria-label="Retour à la liste">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          Retour
+        </button>
+        <button class="sheet-detail__close" id="sheetDetailClose" type="button" aria-label="Fermer les détails">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="sheet-detail__body" id="sheetDetailBody"></div>
+    </div>
   </aside>
 
   <!-- Detail panel -->

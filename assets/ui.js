@@ -13,7 +13,11 @@
   const searchClear = document.getElementById('searchClear');
   const detailPanel = document.getElementById('detailPanel');
   const detailClose = document.getElementById('detailClose');
+  const sheetDetailView = document.getElementById('sheetDetailView');
+  const sheetDetailBack = document.getElementById('sheetDetailBack');
+  const sheetDetailClose = document.getElementById('sheetDetailClose');
 
+  // Desktop sidebar state
   let sidebarSnap = 'peek';
   const SIDEBAR_SNAPS = ['closed', 'peek', 'half', 'full'];
 
@@ -39,145 +43,54 @@
     setSidebarSnap(sidebarSnap === 'closed' ? 'peek' : 'closed');
   }
 
-  function cycleSidebarSnap() {
-    const idx = SIDEBAR_SNAPS.indexOf(sidebarSnap);
-    setSidebarSnap(SIDEBAR_SNAPS[(idx + 1) % SIDEBAR_SNAPS.length]);
+  // Mobile single-sheet state
+  const SHEET_SNAPS = ['closed', 'peek', 'half', 'full'];
+  let sheetSnap = 'peek';
+  const SHEET_HEIGHTS = { closed: 44, peek: 200, half: 0.55, full: 0.88 };
+
+  function isMobile() { return window.innerWidth <= C.mobileBreakpoint; }
+
+  function setSheetSnap(state, opts = {}) {
+    if (!SHEET_SNAPS.includes(state)) state = 'peek';
+    sheetSnap = state;
+    sidebar.classList.remove('bottom-sheet--closed', 'bottom-sheet--peek', 'bottom-sheet--half', 'bottom-sheet--full');
+    sidebar.style.height = '';
+    sidebar.classList.add(`bottom-sheet--${state}`);
+
+    if (state === 'closed') {
+      menuToggle.setAttribute('aria-expanded', 'false');
+      menuToggle.setAttribute('aria-label', 'Ouvrir la liste');
+      menuToggle.classList.remove('icon-btn--active');
+    } else {
+      menuToggle.setAttribute('aria-expanded', 'true');
+      menuToggle.setAttribute('aria-label', 'Fermer la liste');
+      menuToggle.classList.add('icon-btn--active');
+    }
+
+    if (state !== 'closed' && S.map && opts.recenter !== false) App.map.recenterMapForMobilePanel();
   }
 
-  menuToggle.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    toggleSidebar();
-  });
-  sidebarHandle.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cycleSidebarSnap(); }
-  });
+  function openSheet() { setSheetSnap('peek'); }
+  function closeSheet() { setSheetSnap('closed'); }
+  function expandSheetHalf() { setSheetSnap('half'); }
+  function expandSheetFull() { setSheetSnap('full'); }
 
-  let detailSnap = 'peek';
-  const DETAIL_SNAPS = ['hidden', 'peek', 'half', 'full'];
-  const DETAIL_SNAP_HEIGHTS = { peek: 0.40, half: 0.65, full: 0.92 };
-
-  function setDetailSnap(state, opts = {}) {
-    if (!DETAIL_SNAPS.includes(state)) state = 'peek';
-    detailSnap = state;
-    detailPanel.classList.remove('detail-panel--peek', 'detail-panel--half', 'detail-panel--full', 'detail-panel--hidden');
-    detailPanel.style.height = '';
-    detailPanel.classList.add(`detail-panel--${state}`);
-    if (state !== 'hidden' && S.map && opts.recenter !== false) App.map.recenterMapForMobilePanel();
+  function cycleSheetSnap() {
+    if (sheetSnap === 'closed') { setSheetSnap('peek'); return; }
+    const idx = SHEET_SNAPS.indexOf(sheetSnap);
+    setSheetSnap(SHEET_SNAPS[(idx + 1) % SHEET_SNAPS.length]);
   }
 
-  function openBottomSheet() { setDetailSnap('peek'); }
-  function closeBottomSheet() { setDetailSnap('hidden'); }
-  function expandDetailHalf() { setDetailSnap('half'); }
-  function expandDetailFull() { setDetailSnap('full'); }
-
-  function cycleDetailSnap() {
-    if (detailSnap === 'hidden') { setDetailSnap('peek'); return; }
-    const idx = DETAIL_SNAPS.indexOf(detailSnap);
-    setDetailSnap(DETAIL_SNAPS[(idx + 1) % DETAIL_SNAPS.length]);
-  }
-
-  function initBottomSheet() {
-    const handle = document.getElementById('detailPanelHandle');
-    if (!handle) return;
-    let startY = 0;
-    let startHeight = 0;
-    let isDragging = false;
-    let moved = false;
-
-    handle.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cycleDetailSnap(); }
-    });
-
-    function onStart(clientY) {
-      isDragging = true;
-      moved = false;
-      startY = clientY;
-      startHeight = detailPanel.getBoundingClientRect().height;
-      detailPanel.style.transition = 'none';
-      document.body.style.userSelect = 'none';
-    }
-
-    function onMove(clientY) {
-      if (!isDragging) return;
-      if (Math.abs(clientY - startY) > 3) moved = true;
-      const delta = startY - clientY;
-      const maxH = window.innerHeight * 0.88;
-      const newHeight = Math.min(maxH, Math.max(80, startHeight + delta));
-      detailPanel.style.height = `${newHeight}px`;
-    }
-
-    function onEnd(clientY) {
-      if (!isDragging) return;
-      isDragging = false;
-      detailPanel.style.transition = '';
-      document.body.style.userSelect = '';
-
-      if (!moved) {
-        // Let the click handler (which fires after pointerup) perform the cycle.
-        return;
-      }
-
-      const currentHeight = detailPanel.getBoundingClientRect().height;
-      const vh = window.innerHeight;
-
-      const targets = [
-        { key: 'peek', height: vh * DETAIL_SNAP_HEIGHTS.peek },
-        { key: 'half', height: vh * DETAIL_SNAP_HEIGHTS.half },
-        { key: 'full', height: vh * DETAIL_SNAP_HEIGHTS.full }
-      ];
-      let nearest = targets.reduce((best, t) => {
-        const dist = Math.abs(currentHeight - t.height);
-        return dist < best.dist ? { key: t.key, dist } : best;
-      }, { key: 'peek', dist: Infinity });
-
-      setDetailSnap(nearest.key);
-    }
-
-    let tapCycled = false;
-
-    function onPointerDown(e) {
-      onStart(e.clientY);
-      handle.setPointerCapture(e.pointerId);
-    }
-    function onPointerMove(e) {
-      if (isDragging) e.preventDefault();
-      onMove(e.clientY);
-    }
-    function onPointerUp(e) {
-      onEnd(e.clientY);
-      // If it was a non-dragging tap, pointerup leaves `moved === false`.
-      // The click handler below will then perform the cycle once.
-    }
-    // Pointer events are used only for drag; the native click event is removed
-    // because pointerdown+pointerup on a pointer-captured element also synthesizes
-    // a click, and the two cycles would double-step the snap state.
-    function onClick(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      if (!moved) cycleDetailSnap();
-    }
-
-    handle.addEventListener('pointerdown', onPointerDown);
-    handle.addEventListener('pointermove', onPointerMove);
-    handle.addEventListener('pointerup', onPointerUp);
-    // Do not listen to click: pointerup already fires at the same time and our
-    // cycle would be called twice (peek -> half -> full in a single tap).
-    // The keyboard and screen-reader activation is already covered by pointerdown/up.
-    // Keep a single-purpose click listener on the handle itself is avoided.
-    handle.addEventListener('pointercancel', () => {
-      isDragging = false;
-      detailPanel.style.transition = '';
-      document.body.style.userSelect = '';
-    });
-  }
-
-  function initSidebarDrag() {
+  function initSheetDrag() {
     if (!sidebarHandle) return;
     let startY = 0;
     let startHeight = 0;
     let isDragging = false;
     let moved = false;
+
+    sidebarHandle.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cycleSheetSnap(); }
+    });
 
     function onStart(clientY) {
       isDragging = true;
@@ -192,19 +105,19 @@
       if (!isDragging) return;
       if (Math.abs(clientY - startY) > 3) moved = true;
       const delta = startY - clientY;
-      const maxH = window.innerHeight * 0.88;
-      const newHeight = Math.min(maxH, Math.max(80, startHeight + delta));
+      const maxH = window.innerHeight * 0.92;
+      const newHeight = Math.min(maxH, Math.max(44, startHeight + delta));
       sidebar.style.height = `${newHeight}px`;
     }
 
-    function onEnd(clientY) {
+    function onEnd() {
       if (!isDragging) return;
       isDragging = false;
       sidebar.style.transition = '';
       document.body.style.userSelect = '';
 
       if (!moved) {
-        cycleSidebarSnap();
+        cycleSheetSnap();
         return;
       }
 
@@ -212,17 +125,17 @@
       const vh = window.innerHeight;
 
       const targets = [
-        { key: 'closed', height: 0 },
-        { key: 'peek', height: 120 },
-        { key: 'half', height: vh * 0.45 },
-        { key: 'full', height: vh * 0.85 }
+        { key: 'closed', height: SHEET_HEIGHTS.closed },
+        { key: 'peek', height: SHEET_HEIGHTS.peek },
+        { key: 'half', height: Math.round(vh * SHEET_HEIGHTS.half) },
+        { key: 'full', height: Math.round(vh * SHEET_HEIGHTS.full) }
       ];
       let nearest = targets.reduce((best, t) => {
         const dist = Math.abs(currentHeight - t.height);
         return dist < best.dist ? { key: t.key, dist } : best;
       }, { key: 'peek', dist: Infinity });
 
-      setSidebarSnap(nearest.key);
+      setSheetSnap(nearest.key);
     }
 
     sidebarHandle.addEventListener('pointerdown', (e) => {
@@ -241,6 +154,14 @@
     });
   }
 
+  function syncPanelState(state, opts = {}) {
+    if (isMobile()) {
+      setSheetSnap(state, opts);
+    } else {
+      setSidebarSnap(state === 'closed' ? 'closed' : 'peek', opts);
+    }
+  }
+
   function activateSidebarCard(id) {
     clearActiveCard();
     const card = document.querySelector(`.cabinet-card[data-id="${id}"]`);
@@ -256,6 +177,43 @@
   function clearActiveCard() {
     document.querySelectorAll('.cabinet-card').forEach(btn => btn.classList.remove('cabinet-card--active', 'cabinet-card--hover'));
     document.querySelectorAll('.legend__item').forEach(item => item.classList.remove('legend__item--active'));
+  }
+
+  function renderDetailBody(p) {
+    const deptsHtml = (p.departements || []).map(code => `<span class="detail-panel__dept">${code}</span>`).join('');
+
+    const contactButtons = [];
+    if (p.phone) {
+      contactButtons.push(`<a class="detail-panel__btn" href="tel:${p.phone.replace(/[^\d+]/g, '')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${p.phone}</a>`);
+    }
+    if (p.emails && p.emails.length) {
+      contactButtons.push(`<a class="detail-panel__btn" href="mailto:${p.emails[0]}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>${p.emails[0]}</a>`);
+    }
+
+    const tribunauxNote = (Array.isArray(p.tribunaux) && p.tribunaux.length)
+      ? `<div class="detail-panel__section">
+           <p class="detail-panel__section-title">Tribunaux de rattachement</p>
+           <p class="detail-panel__text">${p.tribunaux.join(' · ')}</p>
+         </div>`
+      : '';
+
+    return `
+      <div class="detail-panel__section">
+        <p class="detail-panel__section-title">Adresse</p>
+        <p class="detail-panel__text">${p.adresse || 'Adresse non renseignée'}</p>
+      </div>
+      <div class="detail-panel__section">
+        <p class="detail-panel__section-title">Départements couverts</p>
+        <div class="detail-panel__departments">${deptsHtml || '<span class="detail-panel__text">Non renseigné</span>'}</div>
+      </div>
+      ${tribunauxNote}
+      <div class="detail-panel__section">
+        <div class="detail-panel__actions">
+          ${p.adresse ? `<a class="detail-panel__btn" href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.adresse)}" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>Itinéraire</a>` : ''}
+          ${contactButtons.join('')}
+        </div>
+      </div>
+    `;
   }
 
   function highlightCabinet(feature) {
@@ -279,51 +237,22 @@
 
   function showCabinetDetail(feature) {
     const p = feature.properties;
+
+    // Desktop detail panel
     const avatar = document.getElementById('detailAvatar');
     avatar.style.background = p.couleur;
     avatar.textContent = U.initials(p.nom);
     document.getElementById('detailTitle').textContent = p.nom;
     document.getElementById('detailSubtitle').textContent = `${(p.departements || []).length} départements couverts · Siège : ${p.adresse || 'non renseigné'}`;
+    document.getElementById('detailBody').innerHTML = renderDetailBody(p);
 
-    const body = document.getElementById('detailBody');
-    const deptsHtml = (p.departements || []).map(code => `<span class="detail-panel__dept">${code}</span>`).join('');
-
-    const contactButtons = [];
-    if (p.phone) {
-      contactButtons.push(`<a class="detail-panel__btn" href="tel:${p.phone.replace(/[^\d+]/g, '')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${p.phone}</a>`);
-    }
-    if (p.emails && p.emails.length) {
-      contactButtons.push(`<a class="detail-panel__btn" href="mailto:${p.emails[0]}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>${p.emails[0]}</a>`);
-    }
-
-    const tribunauxNote = (Array.isArray(p.tribunaux) && p.tribunaux.length)
-      ? `<div class="detail-panel__section">
-           <p class="detail-panel__section-title">Tribunaux de rattachement</p>
-           <p class="detail-panel__text">${p.tribunaux.join(' · ')}</p>
-         </div>`
-      : '';
-
-    body.innerHTML = `
-      <div class="detail-panel__section">
-        <p class="detail-panel__section-title">Adresse</p>
-        <p class="detail-panel__text">${p.adresse || 'Adresse non renseignée'}</p>
-      </div>
-      <div class="detail-panel__section">
-        <p class="detail-panel__section-title">Départements couverts</p>
-        <div class="detail-panel__departments">${deptsHtml || '<span class="detail-panel__text">Non renseigné</span>'}</div>
-      </div>
-      ${tribunauxNote}
-      <div class="detail-panel__section">
-        <div class="detail-panel__actions">
-          ${p.adresse ? `<a class="detail-panel__btn" href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.adresse)}" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>Itinéraire</a>` : ''}
-          ${contactButtons.join('')}
-        </div>
-      </div>
-    `;
-
-    setDetailSnap('peek', { recenter: false });
-    if (window.innerWidth <= C.mobileBreakpoint) {
-      setSidebarSnap('closed', { recenter: false });
+    if (isMobile()) {
+      document.getElementById('sheetDetailBody').innerHTML = renderDetailBody(p);
+      sheetDetailView.hidden = false;
+      setSheetSnap('full', { recenter: false });
+    } else {
+      setSidebarSnap('peek', { recenter: false });
+      setDetailSnap('peek', { recenter: false });
     }
   }
 
@@ -365,10 +294,23 @@
       });
     });
 
-    setDetailSnap('peek', { recenter: false });
-    if (window.innerWidth <= C.mobileBreakpoint) {
-      setSidebarSnap('closed', { recenter: false });
+    if (isMobile()) {
+      sheetDetailView.hidden = false;
+      setSheetSnap('full', { recenter: false });
+    } else {
+      setDetailSnap('peek', { recenter: false });
     }
+  }
+
+  function setDetailSnap(state, opts = {}) {
+    detailPanel.classList.remove('detail-panel--peek', 'detail-panel--half', 'detail-panel--full', 'detail-panel--hidden');
+    detailPanel.style.height = '';
+    detailPanel.classList.add(`detail-panel--${state}`);
+    if (state !== 'hidden' && S.map && opts.recenter !== false) App.map.recenterMapForMobilePanel();
+  }
+
+  function closeBottomSheet() {
+    setDetailSnap('hidden');
   }
 
   function closeSelection() {
@@ -376,10 +318,21 @@
     S.activeCabinetId = null;
     clearActiveCard();
     closeBottomSheet();
-    if (window.innerWidth <= C.mobileBreakpoint) {
+    if (isMobile()) {
+      sheetDetailView.hidden = true;
+      setSheetSnap('half', { recenter: false });
+    } else {
       setSidebarSnap('peek', { recenter: false });
     }
     App.emit('ui:clearSelection', {});
+  }
+
+  function resetAll() {
+    searchInput.value = '';
+    S.searchTerm = '';
+    searchClear.hidden = true;
+    renderList();
+    U.announce('Recherche réinitialisée.');
   }
 
   detailClose.addEventListener('click', (e) => {
@@ -387,14 +340,38 @@
     e.stopPropagation();
     closeSelection();
   });
-  // Tap on the handle is handled by pointerup in initBottomSheet();
-  // do not bind a separate click listener to avoid double-cycling.
+
+  sheetDetailClose.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    closeSelection();
+  });
+
+  sheetDetailBack.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isMobile()) {
+      sheetDetailView.hidden = true;
+      setSheetSnap('half', { recenter: false });
+    }
+  });
+
   detailPanel.addEventListener('click', (e) => {
     const closeBtn = e.target.closest('.detail-panel__close');
     if (closeBtn) {
       e.preventDefault();
       e.stopPropagation();
       closeSelection();
+    }
+  });
+
+  menuToggle.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isMobile()) {
+      setSheetSnap(sheetSnap === 'closed' ? 'peek' : 'closed');
+    } else {
+      toggleSidebar();
     }
   });
 
@@ -527,14 +504,6 @@
     renderList();
   });
 
-  function resetAll() {
-    searchInput.value = '';
-    S.searchTerm = '';
-    searchClear.hidden = true;
-    renderList();
-    U.announce('Recherche réinitialisée.');
-  }
-
   function renderLegend() {
     const legend = document.getElementById('cabinetLegend');
     legend.innerHTML = '<p class="legend__title">Cabinets par couleur</p>';
@@ -550,7 +519,7 @@
       item.innerHTML = `<span class="legend__swatch" style="background:${p.couleur}" aria-hidden="true"></span><span>${p.nom}</span>`;
       item.addEventListener('click', () => {
         selectCabinet(cab);
-        if (window.innerWidth <= C.mobileBreakpoint) closeSidebar();
+        if (isMobile()) setSheetSnap('full', { recenter: false });
       });
       items.appendChild(item);
     });
@@ -566,7 +535,6 @@
 
   document.getElementById('omTrigger').addEventListener('click', () => {
     if (!S.map) return;
-    // Les insets DOM-TOM-COM sont visibles autour de la France ; on garde la vue France.
     S.map.jumpTo({ center: C.FRANCE_CENTER, zoom: C.FRANCE_ZOOM });
   });
 
@@ -577,7 +545,16 @@
         closeSelection();
         handled = true;
       }
-      if (window.innerWidth <= C.mobileBreakpoint && !sidebar.classList.contains('sidebar--closed')) {
+      if (isMobile() && sheetSnap !== 'closed') {
+        if (!sheetDetailView.hidden) {
+          sheetDetailView.hidden = true;
+          setSheetSnap('half', { recenter: false });
+        } else {
+          closeSheet();
+          menuToggle.focus();
+        }
+        handled = true;
+      } else if (!isMobile() && !sidebar.classList.contains('sidebar--closed')) {
         closeSidebar();
         menuToggle.focus();
         handled = true;
@@ -586,14 +563,28 @@
     }
   });
 
-  function updateSidebarForViewport() {
-    if (window.innerWidth > C.mobileBreakpoint) {
-      openSidebar();
+  function updateLayoutForViewport() {
+    if (isMobile()) {
+      detailPanel.classList.add('detail-panel--mobile-hidden');
+      sidebar.classList.remove('sidebar--closed', 'sidebar--peek', 'sidebar--half', 'sidebar--full');
+      sidebar.classList.add('bottom-sheet', `bottom-sheet--${sheetSnap}`);
+      if (S.selectedFeature && sheetSnap !== 'full') {
+        sheetDetailView.hidden = false;
+        setSheetSnap('full', { recenter: false });
+      }
     } else {
-      closeSidebar();
+      detailPanel.classList.remove('detail-panel--mobile-hidden');
+      sidebar.classList.remove('bottom-sheet', 'bottom-sheet--closed', 'bottom-sheet--peek', 'bottom-sheet--half', 'bottom-sheet--full');
+      sidebar.style.height = '';
+      setSidebarSnap(sidebarSnap === 'closed' ? 'closed' : 'peek', { recenter: false });
+      if (S.selectedFeature) {
+        setDetailSnap('peek', { recenter: false });
+      } else {
+        setDetailSnap('hidden');
+      }
     }
   }
-  window.addEventListener('resize', U.debounce(updateSidebarForViewport, 150));
+  window.addEventListener('resize', U.debounce(updateLayoutForViewport, 150));
 
   App.on('map:loaded', () => {
     renderSidebar();
@@ -602,7 +593,7 @@
 
   App.on('map:cabinetClick', ({ feature, skipMapMove }) => {
     if (!feature) return;
-    if (window.innerWidth <= C.mobileBreakpoint && !skipMapMove) {
+    if (isMobile() && !skipMapMove) {
       App.map.flyToCabinet(feature);
     }
     highlightCabinet(feature);
@@ -614,7 +605,7 @@
 
   App.on('map:deptClick', ({ feature, cabs, skipMapMove }) => {
     if (!feature || !cabs) return;
-    if (window.innerWidth <= C.mobileBreakpoint && !skipMapMove) {
+    if (isMobile() && !skipMapMove) {
       App.map.goToDept(String(feature.properties.code), 8);
     }
     showDeptDetail(feature, cabs);
@@ -628,14 +619,8 @@
     resetAll();
   });
 
-  if (window.innerWidth > C.mobileBreakpoint) {
-    openSidebar();
-  } else {
-    closeSidebar();
-  }
-
-  initBottomSheet();
-  initSidebarDrag();
+  initSheetDrag();
+  updateLayoutForViewport();
 
   App.ui = {
     renderSidebar,
@@ -651,5 +636,10 @@
     resetAll,
     activateSidebarCard,
     clearActiveCard,
+    openSheet,
+    closeSheet,
+    expandSheetHalf,
+    expandSheetFull,
+    setSheetSnap,
   };
 })();
