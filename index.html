@@ -1083,48 +1083,11 @@ html, body {
     touch-action: pan-y;
     padding: 12px 14px calc(12px + var(--safe-bottom));
   }
-  .sheet-detail__row {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 10px 0;
-    border-bottom: 1px solid var(--color-border);
-    text-decoration: none;
-    color: var(--color-text);
-  }
-  .sheet-detail__row:last-child { border-bottom: none; }
-  .sheet-detail__label {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-    color: var(--color-text-muted);
-  }
-  .sheet-detail__value {
-    font-size: 14px;
-    line-height: 1.4;
-    color: var(--color-text);
-  }
-  a.sheet-detail__link .sheet-detail__value {
-    color: var(--color-primary);
-  }
-  .sheet-detail__departments {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    padding-top: 4px;
-  }
-  .sheet-detail__dept {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 3px 9px;
-    border-radius: var(--radius-full);
-    background: var(--color-bg);
-    border: 1px solid var(--color-border);
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--color-text);
+  .sheet-detail__territory {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--color-text-secondary);
   }
 
   .maplibregl-ctrl-bottom-right { bottom: calc(12px + var(--safe-bottom)) !important; right: calc(12px + var(--safe-right)) !important; }
@@ -2684,26 +2647,8 @@ html, body {
   }
 
   function renderMobileDetailBody(p) {
-    const deptsHtml = (p.departements || []).map(code => `<span class="sheet-detail__dept">${code}</span>`).join('');
-    const phone = p.phone ? p.phone.replace(/[^\d+]/g, '') : null;
-
     return `
-      ${p.adresse ? `<a class="sheet-detail__row sheet-detail__link" href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.adresse)}" target="_blank" rel="noopener noreferrer">
-        <span class="sheet-detail__label">Adresse</span>
-        <span class="sheet-detail__value">${p.adresse}</span>
-      </a>` : ''}
-      ${phone ? `<a class="sheet-detail__row sheet-detail__link" href="tel:${phone}">
-        <span class="sheet-detail__label">Téléphone</span>
-        <span class="sheet-detail__value">${p.phone}</span>
-      </a>` : ''}
-      ${p.emails && p.emails.length ? `<a class="sheet-detail__row sheet-detail__link" href="mailto:${p.emails[0]}">
-        <span class="sheet-detail__label">Email</span>
-        <span class="sheet-detail__value">${p.emails[0]}</span>
-      </a>` : ''}
-      <div class="sheet-detail__row">
-        <span class="sheet-detail__label">Départements couverts</span>
-        <div class="sheet-detail__departments">${deptsHtml || '<span class="sheet-detail__value">Non renseigné</span>'}</div>
-      </div>
+      <p class="sheet-detail__territory">${(p.departements || []).length} départements couverts · Siège : ${p.adresse || 'non renseigné'}</p>
     `;
   }
 

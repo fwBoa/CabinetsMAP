@@ -192,26 +192,8 @@
   }
 
   function renderMobileDetailBody(p) {
-    const deptsHtml = (p.departements || []).map(code => `<span class="sheet-detail__dept">${code}</span>`).join('');
-    const phone = p.phone ? p.phone.replace(/[^\d+]/g, '') : null;
-
     return `
-      ${p.adresse ? `<a class="sheet-detail__row sheet-detail__link" href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.adresse)}" target="_blank" rel="noopener noreferrer">
-        <span class="sheet-detail__label">Adresse</span>
-        <span class="sheet-detail__value">${p.adresse}</span>
-      </a>` : ''}
-      ${phone ? `<a class="sheet-detail__row sheet-detail__link" href="tel:${phone}">
-        <span class="sheet-detail__label">Téléphone</span>
-        <span class="sheet-detail__value">${p.phone}</span>
-      </a>` : ''}
-      ${p.emails && p.emails.length ? `<a class="sheet-detail__row sheet-detail__link" href="mailto:${p.emails[0]}">
-        <span class="sheet-detail__label">Email</span>
-        <span class="sheet-detail__value">${p.emails[0]}</span>
-      </a>` : ''}
-      <div class="sheet-detail__row">
-        <span class="sheet-detail__label">Départements couverts</span>
-        <div class="sheet-detail__departments">${deptsHtml || '<span class="sheet-detail__value">Non renseigné</span>'}</div>
-      </div>
+      <p class="sheet-detail__territory">${(p.departements || []).length} départements couverts · Siège : ${p.adresse || 'non renseigné'}</p>
     `;
   }
 
