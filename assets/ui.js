@@ -55,7 +55,7 @@
 
   let detailSnap = 'peek';
   const DETAIL_SNAPS = ['hidden', 'peek', 'half', 'full'];
-  const DETAIL_SNAP_HEIGHTS = { peek: 0.32, half: 0.50, full: 0.85 };
+    const DETAIL_SNAP_HEIGHTS = { peek: 0.40, half: 0.65, full: 0.92 };
 
   function setDetailSnap(state, opts = {}) {
     if (!DETAIL_SNAPS.includes(state)) state = 'peek';
@@ -114,7 +114,7 @@
       document.body.style.userSelect = '';
 
       if (!moved) {
-        cycleDetailSnap();
+        // Let the click handler (which fires after pointerup) perform the cycle.
         return;
       }
 
@@ -122,7 +122,6 @@
       const vh = window.innerHeight;
 
       const targets = [
-        { key: 'hidden', height: 0 },
         { key: 'peek', height: vh * DETAIL_SNAP_HEIGHTS.peek },
         { key: 'half', height: vh * DETAIL_SNAP_HEIGHTS.half },
         { key: 'full', height: vh * DETAIL_SNAP_HEIGHTS.full }
@@ -132,22 +131,40 @@
         return dist < best.dist ? { key: t.key, dist } : best;
       }, { key: 'peek', dist: Infinity });
 
-      if (nearest.key === 'hidden') {
-        closeSelection();
-      } else {
-        setDetailSnap(nearest.key);
-      }
+      setDetailSnap(nearest.key);
     }
 
-    handle.addEventListener('pointerdown', (e) => {
+    let tapCycled = false;
+
+    function onPointerDown(e) {
       onStart(e.clientY);
       handle.setPointerCapture(e.pointerId);
-    });
-    handle.addEventListener('pointermove', (e) => {
+    }
+    function onPointerMove(e) {
       if (isDragging) e.preventDefault();
       onMove(e.clientY);
-    });
-    handle.addEventListener('pointerup', (e) => onEnd(e.clientY));
+    }
+    function onPointerUp(e) {
+      onEnd(e.clientY);
+      // If it was a non-dragging tap, pointerup leaves `moved === false`.
+      // The click handler below will then perform the cycle once.
+    }
+    // Pointer events are used only for drag; the native click event is removed
+    // because pointerdown+pointerup on a pointer-captured element also synthesizes
+    // a click, and the two cycles would double-step the snap state.
+    function onClick(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!moved) cycleDetailSnap();
+    }
+
+    handle.addEventListener('pointerdown', onPointerDown);
+    handle.addEventListener('pointermove', onPointerMove);
+    handle.addEventListener('pointerup', onPointerUp);
+    // Do not listen to click: pointerup already fires at the same time and our
+    // cycle would be called twice (peek -> half -> full in a single tap).
+    // The keyboard and screen-reader activation is already covered by pointerdown/up.
+    // Keep a single-purpose click listener on the handle itself is avoided.
     handle.addEventListener('pointercancel', () => {
       isDragging = false;
       detailPanel.style.transition = '';
@@ -359,6 +376,9 @@
     S.activeCabinetId = null;
     clearActiveCard();
     closeBottomSheet();
+    if (window.innerWidth <= C.mobileBreakpoint) {
+      setSidebarSnap('peek', { recenter: false });
+    }
     App.emit('ui:clearSelection', {});
   }
 
@@ -367,6 +387,8 @@
     e.stopPropagation();
     closeSelection();
   });
+  // Tap on the handle is handled by pointerup in initBottomSheet();
+  // do not bind a separate click listener to avoid double-cycling.
   detailPanel.addEventListener('click', (e) => {
     const closeBtn = e.target.closest('.detail-panel__close');
     if (closeBtn) {
@@ -600,9 +622,6 @@
 
   App.on('map:selectionCleared', () => {
     closeSelection();
-    if (window.innerWidth <= C.mobileBreakpoint) {
-      closeSidebar();
-    }
   });
 
   App.on('ui:resetSearch', () => {

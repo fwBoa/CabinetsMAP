@@ -313,10 +313,14 @@ html, body {
 
 /* Search */
 .search { position: relative; }
+.search__input::-webkit-search-decoration,
+.search__input::-webkit-search-cancel-button,
+.search__input::-webkit-search-results-button,
+.search__input::-webkit-search-results-decoration { display: none; }
 .search__input {
   width: 100%;
   height: 44px;
-  padding: 0 36px 0 40px;
+  padding: 0 44px 0 40px;
   font-family: var(--font-sans);
   font-size: 14px;
   border: 1px solid var(--color-border-strong);
@@ -326,6 +330,10 @@ html, body {
   transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out), transform 0.15s var(--ease-out);
 }
 .search__input:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--focus-ring); }
+.search__input::-webkit-search-decoration,
+.search__input::-webkit-search-cancel-button,
+.search__input::-webkit-search-results-button,
+.search__input::-webkit-search-results-decoration { display: none; -webkit-appearance: none; }
 .search__icon {
   position: absolute;
   left: 13px;
@@ -937,7 +945,7 @@ html, body {
     transform: translateY(0);
     padding-bottom: var(--safe-bottom);
     box-shadow: 0 -6px 40px rgba(15, 23, 42, 0.14);
-    z-index: 100;
+    z-index: 200;
     transition: transform 0.35s var(--ease-out), opacity 0.25s var(--ease-out), visibility 0.25s var(--ease-out), height 0.3s var(--ease-out);
   }
   @supports (height: 100dvh) {
@@ -950,6 +958,7 @@ html, body {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
+    z-index: 210;
   }
   .sidebar--half { height: 45vh; }
   .sidebar--full { height: 85vh; }
@@ -960,6 +969,8 @@ html, body {
   .sidebar--peek .sidebar__toolbar,
   .sidebar--peek .sidebar__legend { display: none; }
   .sidebar__handle {
+    position: relative;
+    z-index: 210;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -999,7 +1010,7 @@ html, body {
     right: 8px;
     bottom: 0;
     width: auto;
-    height: 85vh;
+    height: 40vh;
     max-height: none;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     transform: translateY(0);
@@ -1010,8 +1021,8 @@ html, body {
     transition: transform 0.35s var(--ease-out), opacity 0.25s var(--ease-out), visibility 0.25s var(--ease-out), height 0.3s var(--ease-out);
   }
   @supports (height: 100dvh) {
-    .detail-panel { height: 85dvh; }
-    .detail-panel--half { height: 50dvh; }
+    .detail-panel { height: 40dvh; }
+    .detail-panel--half { height: 65dvh; }
     .detail-panel--full { height: 85dvh; }
   }
   .detail-panel--hidden {
@@ -1020,10 +1031,9 @@ html, body {
     visibility: hidden;
     pointer-events: none;
   }
-  .detail-panel--peek,
-  .detail-panel--half,
+  .detail-panel--peek { height: 40vh; min-height: 260px; }
+  .detail-panel--half { height: 65vh; }
   .detail-panel--full { height: 85vh; }
-  .detail-panel--peek { min-height: 140px; }
   .detail-panel__handle {
     display: flex;
     align-items: center;
@@ -2452,7 +2462,7 @@ html, body {
 
   let detailSnap = 'peek';
   const DETAIL_SNAPS = ['hidden', 'peek', 'half', 'full'];
-  const DETAIL_SNAP_HEIGHTS = { peek: 0.32, half: 0.50, full: 0.85 };
+    const DETAIL_SNAP_HEIGHTS = { peek: 0.40, half: 0.65, full: 0.92 };
 
   function setDetailSnap(state, opts = {}) {
     if (!DETAIL_SNAPS.includes(state)) state = 'peek';
@@ -2511,7 +2521,7 @@ html, body {
       document.body.style.userSelect = '';
 
       if (!moved) {
-        cycleDetailSnap();
+        // Let the click handler (which fires after pointerup) perform the cycle.
         return;
       }
 
@@ -2519,7 +2529,6 @@ html, body {
       const vh = window.innerHeight;
 
       const targets = [
-        { key: 'hidden', height: 0 },
         { key: 'peek', height: vh * DETAIL_SNAP_HEIGHTS.peek },
         { key: 'half', height: vh * DETAIL_SNAP_HEIGHTS.half },
         { key: 'full', height: vh * DETAIL_SNAP_HEIGHTS.full }
@@ -2529,22 +2538,40 @@ html, body {
         return dist < best.dist ? { key: t.key, dist } : best;
       }, { key: 'peek', dist: Infinity });
 
-      if (nearest.key === 'hidden') {
-        closeSelection();
-      } else {
-        setDetailSnap(nearest.key);
-      }
+      setDetailSnap(nearest.key);
     }
 
-    handle.addEventListener('pointerdown', (e) => {
+    let tapCycled = false;
+
+    function onPointerDown(e) {
       onStart(e.clientY);
       handle.setPointerCapture(e.pointerId);
-    });
-    handle.addEventListener('pointermove', (e) => {
+    }
+    function onPointerMove(e) {
       if (isDragging) e.preventDefault();
       onMove(e.clientY);
-    });
-    handle.addEventListener('pointerup', (e) => onEnd(e.clientY));
+    }
+    function onPointerUp(e) {
+      onEnd(e.clientY);
+      // If it was a non-dragging tap, pointerup leaves `moved === false`.
+      // The click handler below will then perform the cycle once.
+    }
+    // Pointer events are used only for drag; the native click event is removed
+    // because pointerdown+pointerup on a pointer-captured element also synthesizes
+    // a click, and the two cycles would double-step the snap state.
+    function onClick(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!moved) cycleDetailSnap();
+    }
+
+    handle.addEventListener('pointerdown', onPointerDown);
+    handle.addEventListener('pointermove', onPointerMove);
+    handle.addEventListener('pointerup', onPointerUp);
+    // Do not listen to click: pointerup already fires at the same time and our
+    // cycle would be called twice (peek -> half -> full in a single tap).
+    // The keyboard and screen-reader activation is already covered by pointerdown/up.
+    // Keep a single-purpose click listener on the handle itself is avoided.
     handle.addEventListener('pointercancel', () => {
       isDragging = false;
       detailPanel.style.transition = '';
@@ -2756,6 +2783,9 @@ html, body {
     S.activeCabinetId = null;
     clearActiveCard();
     closeBottomSheet();
+    if (window.innerWidth <= C.mobileBreakpoint) {
+      setSidebarSnap('peek', { recenter: false });
+    }
     App.emit('ui:clearSelection', {});
   }
 
@@ -2764,6 +2794,8 @@ html, body {
     e.stopPropagation();
     closeSelection();
   });
+  // Tap on the handle is handled by pointerup in initBottomSheet();
+  // do not bind a separate click listener to avoid double-cycling.
   detailPanel.addEventListener('click', (e) => {
     const closeBtn = e.target.closest('.detail-panel__close');
     if (closeBtn) {
@@ -2997,9 +3029,6 @@ html, body {
 
   App.on('map:selectionCleared', () => {
     closeSelection();
-    if (window.innerWidth <= C.mobileBreakpoint) {
-      closeSidebar();
-    }
   });
 
   App.on('ui:resetSearch', () => {
