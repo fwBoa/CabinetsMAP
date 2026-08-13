@@ -272,6 +272,11 @@
       if (p[1] < minLat) minLat = p[1];
       if (p[1] > maxLat) maxLat = p[1];
     });
+    // Géométrie Point : forcer une petite boîte pour que le traitement d'inset fonctionne.
+    if (minLon === maxLon && minLat === maxLat) {
+      const delta = 0.0001;
+      minLon -= delta; maxLon += delta; minLat -= delta; maxLat += delta;
+    }
     return { minLon, maxLon, minLat, maxLat };
   }
 
@@ -631,7 +636,7 @@
     S.map.setFilter('om-cabinets-selected', ['==', ['get', 'id'], String(cabinetId || '')]);
   }
 
-  const OM_CODES = ['971', '972', '973', '974', '976', '987', '988'];
+  const OM_CODES = ['971', '972', '973', '974', '976', '986', '987', '988'];
 
   function isOmCode(code) {
     return OM_CODES.includes(String(code));
@@ -897,7 +902,7 @@
   }
 
   function createOmChipsHTML() {
-    const omCodes = ['971', '972', '973', '974', '976', '987', '988'];
+    const omCodes = ['971', '972', '973', '974', '976', '986', '987', '988'];
     return omCodes.map(code => {
       const entry = S.deptIndex.get(code);
       const color = entry ? entry.color : '#cccccc';
