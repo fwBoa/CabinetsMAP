@@ -632,8 +632,6 @@
     clearActiveCard,
     openSheet,
     closeSheet,
-    expandSheetHalf,
-    expandSheetFull,
     setSheetSnap,
   };
 })();

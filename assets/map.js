@@ -298,19 +298,69 @@
     };
   }
 
-  function makeSyntheticCircle(centroid, radiusDeg, segments = 16) {
+  function makeSyntheticCircle(centroid, radiusDeg, segments = 64) {
     const ring = [];
     for (let i = 0; i < segments; i++) {
       const a = (i / segments) * Math.PI * 2;
       ring.push([centroid[0] + Math.cos(a) * radiusDeg, centroid[1] + Math.sin(a) * radiusDeg]);
     }
-    // Cloner le premier point pour éviter une double transformation lors d'eachCoord.
     ring.push([ring[0][0], ring[0][1]]);
     return { type: 'Polygon', coordinates: [ring] };
   }
 
   function makeSyntheticMarker(centroid, radiusDeg) {
     return makeSyntheticCircle(centroid, radiusDeg, 12);
+  }
+
+  function makeArchipelagoMarkers(geometry, radiusDeg, targetClusterCount) {
+    const type = geometry.type;
+    const polygons = type === 'Polygon' ? [geometry.coordinates]
+      : type === 'MultiPolygon' ? geometry.coordinates
+      : [];
+    if (!polygons.length) return geometry;
+    const centroids = polygons.map(poly => {
+      const ring = poly[0];
+      let lon = 0, lat = 0;
+      ring.forEach(p => { lon += p[0]; lat += p[1]; });
+      return [lon / ring.length, lat / ring.length];
+    });
+    let clusterCentroids;
+    if (targetClusterCount && centroids.length > targetClusterCount) {
+      clusterCentroids = clusterByGrid(centroids, targetClusterCount);
+    } else {
+      clusterCentroids = centroids;
+    }
+    const circles = clusterCentroids.map(c => makeSyntheticMarker(c, radiusDeg));
+    return { type: 'MultiPolygon', coordinates: circles.map(f => f.coordinates) };
+  }
+
+  function clusterByGrid(centroids, targetCount) {
+    let best = null;
+    let bestGap = Infinity;
+    let cellSize = 1.0;
+    for (let iter = 0; iter < 30; iter++) {
+      const cells = new Map();
+      centroids.forEach((c, i) => {
+        const key = `${Math.floor(c[0] / cellSize)}|${Math.floor(c[1] / cellSize)}`;
+        if (!cells.has(key)) cells.set(key, []);
+        cells.get(key).push(i);
+      });
+      const n = cells.size;
+      const gap = Math.abs(n - targetCount);
+      if (gap < bestGap) {
+        bestGap = gap;
+        best = Array.from(cells.values()).map(indices => {
+          let lon = 0, lat = 0;
+          indices.forEach(i => { lon += centroids[i][0]; lat += centroids[i][1]; });
+          return [lon / indices.length, lat / indices.length];
+        });
+        if (n === targetCount) break;
+      }
+      if (n > targetCount) cellSize *= 1.4;
+      else cellSize /= 1.3;
+      if (cellSize < 0.01 || cellSize > 100) break;
+    }
+    return best || centroids;
   }
 
   function createInsetFeature(feature, target, slot, maxSlotSize, minScale) {
@@ -320,13 +370,16 @@
     const w = bbox.maxLon - bbox.minLon;
     const h = bbox.maxLat - bbox.minLat;
     const maxDim = Math.max(w || 0, h || 0, 0.0001);
-    // Les archipels très étendus (Polynésie française, etc.) sont représentés par
-    // une bounding box compacte pour obtenir un inset cohérent et lisible.
-    const isCompacted = maxDim > 3;
-    const isMicro = maxDim < 0.3;
-    if (isCompacted) {
+    const oversize = maxDim > maxSlotSize;
+    const tooMicro = maxDim < 0.3;
+    const polyCount = geometry.type === 'MultiPolygon' ? geometry.coordinates.length
+      : geometry.type === 'Polygon' ? 1 : 0;
+    const isArchipelago = oversize && polyCount >= 3;
+    if (isArchipelago) {
+      geometry = makeArchipelagoMarkers(feature.geometry, 0.4, 5);
+    } else if (oversize) {
       geometry = makeBoundingBoxPolygon(bbox.minLon, bbox.minLat, bbox.maxLon, bbox.maxLat);
-    } else if (isMicro) {
+    } else if (tooMicro) {
       const centroid = getGeometryCentroid(geometry);
       geometry = makeSyntheticMarker(centroid, 0.35);
     }
@@ -358,7 +411,7 @@
         primaryCabinetId: feature.properties.primaryCabinetId,
         cabinetCount: feature.properties.cabinetCount,
         omInset: true,
-        isSynthetic: isMicro || isCompacted
+        isSynthetic: tooMicro || oversize || isArchipelago
       },
       geometry
     };
@@ -398,7 +451,7 @@
 
   function createInsetGeometries() {
     const groups = C.OM_INSET_GROUPS;
-    const maxSlot = C.OM_INSET_MAX_SLOT_SIZE;
+    const defaultMaxSlot = C.OM_INSET_MAX_SLOT_SIZE;
     const minScale = C.OM_INSET_MIN_SCALE;
     const features = [];
     Object.keys(groups).forEach((key) => {
@@ -408,7 +461,53 @@
         const real = S.departements.find(d => String(d.properties.code) === codeStr);
         if (!real) return;
         const slot = group.slots[index] || [0, 0];
-        features.push(createInsetFeature(real, group.target, slot, maxSlot, minScale));
+        const slotSize = (group.slotSizes && group.slotSizes[index] != null)
+          ? group.slotSizes[index]
+          : defaultMaxSlot;
+        const f = createInsetFeature(real, group.target, slot, slotSize, minScale);
+        if (f) features.push(f);
+      });
+    });
+    return { type: 'FeatureCollection', features };
+  }
+
+  function createCircularInsetGeometries() {
+    const groups = C.OM_INSET_GROUPS;
+    const defaultMaxSlot = C.OM_INSET_MAX_SLOT_SIZE;
+    const minScale = C.OM_INSET_MIN_SCALE;
+    const features = [];
+    Object.keys(groups).forEach((key) => {
+      const group = groups[key];
+      group.codes.forEach((code, index) => {
+        const codeStr = String(code);
+        const real = S.departements.find(d => String(d.properties.code) === codeStr);
+        if (!real) return;
+        const slot = group.slots[index] || [0, 0];
+        const slotSize = (group.slotSizes && group.slotSizes[index] != null)
+          ? group.slotSizes[index]
+          : defaultMaxSlot;
+        const feature = createInsetFeature(real, group.target, slot, slotSize, minScale);
+        if (!feature) return;
+        if (!feature.properties.isSynthetic) return;
+        if (feature.geometry.type !== 'MultiPolygon') return;
+        feature.geometry.coordinates.forEach(polygon => {
+          const ring = polygon[0];
+          let lon = 0, lat = 0;
+          ring.forEach(p => { lon += p[0]; lat += p[1]; });
+          const cx = lon / ring.length;
+          const cy = lat / ring.length;
+          let maxD = 0;
+          ring.forEach(p => { const d = Math.hypot(p[0]-cx, p[1]-cy); if (d > maxD) maxD = d; });
+          features.push({
+            type: 'Feature',
+            properties: {
+              code: feature.properties.code,
+              fillColor: feature.properties.fillColor,
+              radiusDeg: maxD
+            },
+            geometry: { type: 'Point', coordinates: [cx, cy] }
+          });
+        });
       });
     });
     return { type: 'FeatureCollection', features };
@@ -583,29 +682,7 @@
     });
 
     map.addLayer({
-      id: 'om-cabinets-labels',
-      type: 'symbol',
-      source: 'om-cabinets',
-      layout: {
-        'text-field': ['get', 'nom'],
-        'text-size': 11,
-        'text-anchor': 'bottom',
-        'text-offset': [0, -1.2],
-        'text-justify': 'center',
-        'text-font': ['Lato Regular'],
-        'text-max-width': 18,
-        'text-line-height': 1.2,
-        'text-allow-overlap': false,
-        'text-ignore-placement': false
-      },
-      paint: {
-        'text-color': '#334155',
-        'text-halo-color': '#ffffff',
-        'text-halo-width': 2
-      }
-    });
-
-    map.addLayer({
+      id: 'om-cabinets-hover',
       id: 'om-cabinets-hover',
       type: 'circle',
       source: 'om-cabinets',
@@ -700,7 +777,7 @@
     }
     omInsetMarkers.forEach(m => { m.getElement().style.display = ''; });
     // Les marqueurs de cabinets outre-mer sont liés aux insets visuels.
-    ['om-cabinets-circles', 'om-cabinets-hover', 'om-cabinets-selected', 'om-cabinets-hit', 'om-cabinets-labels'].forEach(layerId => {
+    ['om-cabinets-circles', 'om-cabinets-hover', 'om-cabinets-selected', 'om-cabinets-hit'].forEach(layerId => {
       if (map && map.getLayer(layerId)) {
         map.setLayoutProperty(layerId, 'visibility', visibility);
       }
