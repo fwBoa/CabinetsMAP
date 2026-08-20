@@ -795,8 +795,12 @@ html, body {
   pointer-events: none;
   letter-spacing: 0.1px;
   white-space: nowrap;
-  opacity: 0.85;
+  /* Cache par defaut : la carte est lisible a l'ouverture. Apparait
+     uniquement quand l'utilisateur zoome fortement (>= 9). */
+  opacity: 0;
+  transition: opacity 0.3s var(--ease-out);
 }
+.map-disclaimer.map-disclaimer--visible { opacity: 0.9; }
 .om-inset__label {
   position: absolute;
   top: 8px;

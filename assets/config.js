@@ -65,6 +65,9 @@
       OM_INSET_MAX_SLOT_SIZE: 1.3,
       OM_INSET_MIN_SCALE: 0.03,
       OM_INSET_MIN_RENDER_DIM: 0.9,
+      // Au-dela de ce zoom, l'ecart entre la metropole et les outremers
+      // (representes en insets) devient trompeur : on affiche un disclaimer.
+      DISCLAIMER_MIN_ZOOM: 9,
     },
 
     events: {},

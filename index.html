@@ -813,8 +813,12 @@ html, body {
   pointer-events: none;
   letter-spacing: 0.1px;
   white-space: nowrap;
-  opacity: 0.85;
+  /* Cache par defaut : la carte est lisible a l'ouverture. Apparait
+     uniquement quand l'utilisateur zoome fortement (>= 9). */
+  opacity: 0;
+  transition: opacity 0.3s var(--ease-out);
 }
+.map-disclaimer.map-disclaimer--visible { opacity: 0.9; }
 .om-inset__label {
   position: absolute;
   top: 8px;
@@ -1328,6 +1332,9 @@ html, body {
       OM_INSET_MAX_SLOT_SIZE: 1.3,
       OM_INSET_MIN_SCALE: 0.03,
       OM_INSET_MIN_RENDER_DIM: 0.9,
+      // Au-dela de ce zoom, l'ecart entre la metropole et les outremers
+      // (representes en insets) devient trompeur : on affiche un disclaimer.
+      DISCLAIMER_MIN_ZOOM: 9,
     },
 
     events: {},
@@ -1483,6 +1490,7 @@ html, body {
       S.mapLoaded = true;
       setupMapLayers();
       setupCompassVisibility();
+      setupDisclaimerVisibility();
       bindMapEvents();
       // Laisser le loader visible quelques instants de plus pour que la carte
       // apparaisse complètement stabilisée avant de révéler l’interface.
@@ -2335,6 +2343,25 @@ html, body {
     S.map.on('rotate', updateCompassVisibility);
     S.map.on('pitch', updateCompassVisibility);
     S.map.on('moveend', updateCompassVisibility);
+  }
+
+  // Affiche le disclaimer 'proportions non respectees' uniquement quand
+  // l'utilisateur zoome fortement : a ce niveau, l'ecart entre la metropole
+  // (a l'echelle reelle) et les outremers (repliees en insets) devient
+  // trompeur et le message prend tout son sens.
+  function updateDisclaimerVisibility() {
+    if (!S.map) return;
+    const disclaimer = document.getElementById('mapDisclaimer');
+    if (!disclaimer) return;
+    const visible = S.map.getZoom() >= C.DISCLAIMER_MIN_ZOOM;
+    disclaimer.classList.toggle('map-disclaimer--visible', visible);
+  }
+
+  function setupDisclaimerVisibility() {
+    if (!S.map) return;
+    updateDisclaimerVisibility();
+    S.map.on('zoom', updateDisclaimerVisibility);
+    S.map.on('moveend', updateDisclaimerVisibility);
   }
 
   function setDeptHoverState(id, isHover) {

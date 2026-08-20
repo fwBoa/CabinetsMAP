@@ -60,6 +60,7 @@
       S.mapLoaded = true;
       setupMapLayers();
       setupCompassVisibility();
+      setupDisclaimerVisibility();
       bindMapEvents();
       // Laisser le loader visible quelques instants de plus pour que la carte
       // apparaisse complètement stabilisée avant de révéler l’interface.
@@ -912,6 +913,25 @@
     S.map.on('rotate', updateCompassVisibility);
     S.map.on('pitch', updateCompassVisibility);
     S.map.on('moveend', updateCompassVisibility);
+  }
+
+  // Affiche le disclaimer 'proportions non respectees' uniquement quand
+  // l'utilisateur zoome fortement : a ce niveau, l'ecart entre la metropole
+  // (a l'echelle reelle) et les outremers (repliees en insets) devient
+  // trompeur et le message prend tout son sens.
+  function updateDisclaimerVisibility() {
+    if (!S.map) return;
+    const disclaimer = document.getElementById('mapDisclaimer');
+    if (!disclaimer) return;
+    const visible = S.map.getZoom() >= C.DISCLAIMER_MIN_ZOOM;
+    disclaimer.classList.toggle('map-disclaimer--visible', visible);
+  }
+
+  function setupDisclaimerVisibility() {
+    if (!S.map) return;
+    updateDisclaimerVisibility();
+    S.map.on('zoom', updateDisclaimerVisibility);
+    S.map.on('moveend', updateDisclaimerVisibility);
   }
 
   function setDeptHoverState(id, isHover) {
