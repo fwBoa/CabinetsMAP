@@ -3268,13 +3268,6 @@ html, body {
     if (feature) selectCabinet(feature);
   });
 
-  document.getElementById('cabinetList').addEventListener('dblclick', (e) => {
-    const card = e.target.closest('.cabinet-card');
-    if (!card) return;
-    const feature = App.getCabinetById(card.dataset.id);
-    if (feature) selectCabinet(feature);
-  });
-
   const handleSearch = U.debounce((value) => {
     S.searchTerm = value;
     renderList();
