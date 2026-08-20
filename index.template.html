@@ -102,11 +102,12 @@
     <!-- Mobile-only territory card -->
     <div class="sheet-detail" id="sheetDetailView" hidden aria-label="Détails du territoire">
       <div class="sheet-detail__header">
-        <button class="sheet-detail__close" id="sheetDetailClose" type="button" aria-label="Fermer les détails">
+        <button class="sheet-detail__close" id="sheetDetailClose" type="button" aria-label="Retour à la liste des cabinets">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
+            <line x1="19" y1="12" x2="5" y2="12" />
+            <polyline points="12 19 5 12 12 5" />
           </svg>
+          <span class="sheet-detail__close-label">Retour</span>
         </button>
       </div>
       <div class="sheet-detail__body" id="sheetDetailBody"></div>
@@ -124,12 +125,21 @@
         <h2 class="detail-panel__title" id="detailTitle"></h2>
         <p class="detail-panel__subtitle" id="detailSubtitle"></p>
       </div>
-      <button class="detail-panel__close" id="detailClose" type="button" aria-label="Fermer les détails">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <line x1="18" y1="6" x2="6" y2="18" />
-          <line x1="6" y1="6" x2="18" y2="18" />
-        </svg>
-      </button>
+      <div class="detail-panel__actions">
+        <button class="detail-panel__back" id="detailBack" type="button" aria-label="Retour à la liste des cabinets" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="19" y1="12" x2="5" y2="12" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+          <span>Retour</span>
+        </button>
+        <button class="detail-panel__close" id="detailClose" type="button" aria-label="Fermer les détails">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
     </div>
     <div class="detail-panel__body" id="detailBody"></div>
   </aside>

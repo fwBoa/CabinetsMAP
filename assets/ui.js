@@ -13,6 +13,7 @@
   const searchClear = document.getElementById('searchClear');
   const detailPanel = document.getElementById('detailPanel');
   const detailClose = document.getElementById('detailClose');
+  const detailBack = document.getElementById('detailBack');
   const sheetDetailView = document.getElementById('sheetDetailView');
   const sheetDetailClose = document.getElementById('sheetDetailClose');
 
@@ -264,6 +265,8 @@
     document.getElementById('detailTitle').textContent = p.nom;
     document.getElementById('detailSubtitle').textContent = `${(p.departements || []).length} départements couverts · Siège : ${p.adresse || 'non renseigné'}`;
     document.getElementById('detailBody').innerHTML = renderDetailBody(p);
+    // Un cabinet reste dans le detailPanel : pas de bouton 'retour à la liste'.
+    if (detailBack) detailBack.hidden = true;
 
     if (isMobile()) {
       document.getElementById('sheetDetailBody').innerHTML = renderMobileTerritoryNote(feature);
@@ -290,6 +293,8 @@
     const count = cabs.length;
     document.getElementById('detailSubtitle').textContent =
       `${count} cabinet${count > 1 ? 's' : ''} intervien${count > 1 ? 'nent' : 't'} sur ce département`;
+    // Le detailPanel affiche ici un departement : on propose un retour a la liste.
+    if (detailBack && !isMobile()) detailBack.hidden = false;
 
     const body = document.getElementById('detailBody');
     body.innerHTML = cabs.map(cab => {
@@ -365,6 +370,16 @@
     e.stopPropagation();
     closeSelection();
   });
+
+  if (detailBack) {
+    detailBack.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      // Ferme le detailPanel departement et reactive le focus sur la sidebar.
+      closeSelection();
+      if (typeof openSidebar === 'function') openSidebar();
+    });
+  }
 
   sheetDetailClose.addEventListener('click', (e) => {
     e.preventDefault();

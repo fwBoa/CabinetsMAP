@@ -571,6 +571,33 @@ html, body {
 .detail-panel__close:hover { background: var(--color-primary-light); color: var(--color-text); }
 .detail-panel__close:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .detail-panel__close svg { pointer-events: none; }
+
+/* Bouton 'Retour a la liste' affiche quand le detailPanel montre un departement. */
+.detail-panel__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.detail-panel__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.detail-panel__back:hover { background: var(--color-primary-light); border-color: var(--color-primary); color: var(--color-primary-dark); }
+.detail-panel__back:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.detail-panel__back[hidden] { display: none; }
+.detail-panel__back svg { width: 16px; height: 16px; pointer-events: none; }
+.detail-panel__back span { line-height: 1; }
 .detail-panel__body {
   flex: 1;
   overflow-y: auto;
@@ -1020,14 +1047,22 @@ html, body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
+    gap: 6px;
     height: 44px;
+    padding: 0 14px 0 12px;
     border: none;
-    border-radius: 50%;
+    border-radius: 22px;
     background: var(--color-bg);
     color: var(--color-text);
     cursor: pointer;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    transition: background 0.15s, color 0.15s;
   }
+  .sheet-detail__close:hover { background: var(--color-primary-light); color: var(--color-primary-dark); }
+  .sheet-detail__close:focus-visible { outline: none; box-shadow: var(--focus-ring); }
   .sheet-detail__close svg { width: 18px; height: 18px; }
   .sheet-detail__body {
     overflow-y: auto;
