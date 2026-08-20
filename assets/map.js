@@ -59,6 +59,7 @@
     S.map.on('load', () => {
       S.mapLoaded = true;
       setupMapLayers();
+      setupCompassVisibility();
       bindMapEvents();
       // Laisser le loader visible quelques instants de plus pour que la carte
       // apparaisse complètement stabilisée avant de révéler l’interface.
@@ -892,8 +893,25 @@
         map.setLayoutProperty(layerId, 'visibility', visibility);
       }
     });
-    const floatChips = document.getElementById('omInsetChips');
-    if (floatChips) floatChips.hidden = isMobile; // desktop : chips dans l'inset flottant
+  }
+
+  // Affiche ou masque le bouton compass de MapLibre selon le bearing actuel.
+  // L'icone au repos (carré avec 4 fleches) est peu parlante ; on la cache
+  // tant que la carte est orientee au nord, et on la revele des qu'on tourne.
+  function updateCompassVisibility() {
+    if (!S.map) return;
+    const compass = S.map.getContainer().querySelector('.maplibregl-ctrl-compass');
+    if (!compass) return;
+    const hasRotation = Math.abs(S.map.getBearing()) > 0.5 || Math.abs(S.map.getPitch()) > 0.5;
+    compass.classList.toggle('maplibregl-ctrl-compass--visible', hasRotation);
+  }
+
+  function setupCompassVisibility() {
+    if (!S.map) return;
+    updateCompassVisibility();
+    S.map.on('rotate', updateCompassVisibility);
+    S.map.on('pitch', updateCompassVisibility);
+    S.map.on('moveend', updateCompassVisibility);
   }
 
   function setDeptHoverState(id, isHover) {

@@ -761,6 +761,11 @@ html, body {
 .maplibregl-ctrl-group button:focus-visible { outline: none; box-shadow: inset var(--focus-ring); }
 .maplibregl-ctrl-attrib-inner a { color: var(--color-text-muted); font-size: 10px; }
 
+/* Compass cache au repos : l'icone par defaut (carre + fleches) quand
+   bearing=0 est peu parlante. On la revele des que la carte est tournee. */
+.maplibregl-ctrl-compass { display: none !important; }
+.maplibregl-ctrl-compass.maplibregl-ctrl-compass--visible { display: block !important; }
+
 /* Scale control */
 .maplibregl-ctrl-scale {
   background: rgba(255, 255, 255, 0.85) !important;
@@ -1477,6 +1482,7 @@ html, body {
     S.map.on('load', () => {
       S.mapLoaded = true;
       setupMapLayers();
+      setupCompassVisibility();
       bindMapEvents();
       // Laisser le loader visible quelques instants de plus pour que la carte
       // apparaisse complètement stabilisée avant de révéler l’interface.
@@ -2310,8 +2316,25 @@ html, body {
         map.setLayoutProperty(layerId, 'visibility', visibility);
       }
     });
-    const floatChips = document.getElementById('omInsetChips');
-    if (floatChips) floatChips.hidden = isMobile; // desktop : chips dans l'inset flottant
+  }
+
+  // Affiche ou masque le bouton compass de MapLibre selon le bearing actuel.
+  // L'icone au repos (carré avec 4 fleches) est peu parlante ; on la cache
+  // tant que la carte est orientee au nord, et on la revele des qu'on tourne.
+  function updateCompassVisibility() {
+    if (!S.map) return;
+    const compass = S.map.getContainer().querySelector('.maplibregl-ctrl-compass');
+    if (!compass) return;
+    const hasRotation = Math.abs(S.map.getBearing()) > 0.5 || Math.abs(S.map.getPitch()) > 0.5;
+    compass.classList.toggle('maplibregl-ctrl-compass--visible', hasRotation);
+  }
+
+  function setupCompassVisibility() {
+    if (!S.map) return;
+    updateCompassVisibility();
+    S.map.on('rotate', updateCompassVisibility);
+    S.map.on('pitch', updateCompassVisibility);
+    S.map.on('moveend', updateCompassVisibility);
   }
 
   function setDeptHoverState(id, isHover) {

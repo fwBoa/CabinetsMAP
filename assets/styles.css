@@ -743,6 +743,11 @@ html, body {
 .maplibregl-ctrl-group button:focus-visible { outline: none; box-shadow: inset var(--focus-ring); }
 .maplibregl-ctrl-attrib-inner a { color: var(--color-text-muted); font-size: 10px; }
 
+/* Compass cache au repos : l'icone par defaut (carre + fleches) quand
+   bearing=0 est peu parlante. On la revele des que la carte est tournee. */
+.maplibregl-ctrl-compass { display: none !important; }
+.maplibregl-ctrl-compass.maplibregl-ctrl-compass--visible { display: block !important; }
+
 /* Scale control */
 .maplibregl-ctrl-scale {
   background: rgba(255, 255, 255, 0.85) !important;
