@@ -658,9 +658,13 @@
         inner.className = 'om-inset__label-marker__text';
         inner.textContent = dept ? dept.properties.nom : codeStr;
         el.appendChild(inner);
-        // Label sous l'inset (anchor='top' = haut de l'élément ancré à la coordonnée)
+        // Label sous l'inset (anchor='top' = haut de l'élément ancré à la coordonnée).
+        // Le Pacifique place ses îles secondaires (Marquises) au-dessus du centroïde :
+        // on décale davantage le label global pour éviter le chevauchement avec
+        // les labels internes (ex. TAHITI).
+        const labelLatOffset = group.labelLatOffset != null ? group.labelLatOffset : -0.75;
         const lng = group.target[0] + slot[0];
-        const lat = group.target[1] + slot[1] - 0.75;
+        const lat = group.target[1] + slot[1] + labelLatOffset;
         const marker = new maplibregl.Marker({ element: el, anchor: 'top' })
           .setLngLat([lng, lat])
           .addTo(S.map);

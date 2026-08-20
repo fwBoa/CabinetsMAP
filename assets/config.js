@@ -58,7 +58,10 @@
           codes: ['987', '988'],
           target: [-2, 36],
           slots: [[-3.0, -2.5], [5.0, -2.5]],
-          slotSizes: [4.5, 7.8]
+          slotSizes: [4.5, 7.8],
+          // Decalage supplementaire du label global sous l'encart pour eviter
+          // le chevauchement avec les labels internes (TAHITI / HIVA OA / NUKU HIVA).
+          labelLatOffset: -1.4
         }
       },
       OM_INSET_JUMP_THRESHOLD_DEG: 35,
