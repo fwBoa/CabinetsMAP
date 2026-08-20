@@ -57,6 +57,7 @@
 
     S.map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
     S.map.addControl(new maplibregl.FullscreenControl({ container: document.querySelector('body') }), 'bottom-right');
+    S.map.addControl(new maplibregl.ScaleControl({ maxWidth: 100, unit: 'metric' }), 'bottom-right');
 
     S.map.on('load', () => {
       S.mapLoaded = true;
@@ -312,6 +313,78 @@
     return makeSyntheticCircle(centroid, radiusDeg, 12);
   }
 
+  const POLYNESIA_ISLAND_LABELS = {
+    '41': 'Tahiti',
+    '51': 'Hiva Oa',
+    '54': 'Nuku Hiva'
+  };
+
+  function makeMainIslandsOnly(geometry, minPoints = 30) {
+    const polygons = geometry.type === 'MultiPolygon' ? geometry.coordinates
+      : geometry.type === 'Polygon' ? [geometry.coordinates]
+      : [];
+    if (!polygons.length) return { geometry, keptIndices: [] };
+    const keptIndices = [];
+    const kept = [];
+    polygons.forEach((poly, idx) => {
+      if (poly[0] && poly[0].length >= minPoints) {
+        kept.push(poly);
+        keptIndices.push(idx);
+      }
+    });
+    if (!kept.length) return { geometry, keptIndices: [] };
+    return { geometry: { type: 'MultiPolygon', coordinates: kept }, keptIndices };
+  }
+
+  // Disposition cible des îles principales de Polynésie (987), en coordonnées
+  // relatives avant le scaling global de l'inset. Chaque île est agrandie
+  // (scale) puis son centroïde est placé à la position cible, ce qui préserve
+  // les tailles relatives et la géographie (Marquises au NE, Tahiti au SO)
+  // sans chevauchement.
+  const POLYNESIA_ISLAND_LAYOUT = {
+    '41': { pos: [0, 0], scale: 4.0 },      // Tahiti (la plus grande)
+    '51': { pos: [2.2, 1.3], scale: 4.0 },  // Hiva Oa
+    '54': { pos: [2.6, 2.5], scale: 4.0 }   // Nuku Hiva
+  };
+
+  function layoutPolynesiaIslands(geometry, keptIndices) {
+    const polys = geometry.type === 'MultiPolygon' ? geometry.coordinates
+      : geometry.type === 'Polygon' ? [geometry.coordinates]
+      : [];
+    if (!polys.length) return geometry;
+    polys.forEach((poly, i) => {
+      const layout = POLYNESIA_ISLAND_LAYOUT[String(keptIndices[i])];
+      if (!layout) return;
+      const ring = poly[0];
+      if (!ring || !ring.length) return;
+      let cx = 0, cy = 0;
+      ring.forEach(p => { cx += p[0]; cy += p[1]; });
+      cx /= ring.length;
+      cy /= ring.length;
+      ring.forEach(p => {
+        p[0] = layout.pos[0] + (p[0] - cx) * layout.scale;
+        p[1] = layout.pos[1] + (p[1] - cy) * layout.scale;
+      });
+    });
+    return geometry;
+  }
+
+  function makeArchipelagoConstellation(geometry, radiusDeg) {
+    const polygons = geometry.type === 'MultiPolygon' ? geometry.coordinates
+      : geometry.type === 'Polygon' ? [geometry.coordinates]
+      : [];
+    if (!polygons.length) return geometry;
+    const circles = polygons.map(poly => {
+      const ring = poly[0];
+      let lon = 0, lat = 0;
+      ring.forEach(p => { lon += p[0]; lat += p[1]; });
+      const cx = lon / ring.length;
+      const cy = lat / ring.length;
+      return makeSyntheticMarker([cx, cy], radiusDeg);
+    });
+    return { type: 'MultiPolygon', coordinates: circles.map(f => f.coordinates) };
+  }
+
   function makeArchipelagoMarkers(geometry, radiusDeg, targetClusterCount) {
     const type = geometry.type;
     const polygons = type === 'Polygon' ? [geometry.coordinates]
@@ -367,6 +440,7 @@
     let geometry = JSON.parse(JSON.stringify(feature.geometry));
     const code = String(feature.properties.code);
     const bbox = getGeometryBBox(geometry);
+    const targetLon = target[0] + slot[0];
     const w = bbox.maxLon - bbox.minLon;
     const h = bbox.maxLat - bbox.minLat;
     const maxDim = Math.max(w || 0, h || 0, 0.0001);
@@ -374,9 +448,20 @@
     const tooMicro = maxDim < 0.3;
     const polyCount = geometry.type === 'MultiPolygon' ? geometry.coordinates.length
       : geometry.type === 'Polygon' ? 1 : 0;
-    const isArchipelago = oversize && polyCount >= 3;
-    if (isArchipelago) {
-      geometry = makeArchipelagoMarkers(feature.geometry, 0.4, 5);
+    const isMegaArchipelago = oversize && polyCount > 12;
+    const isArchipelago = oversize && polyCount >= 2 && polyCount <= 12;
+    const isMainIslandsOnly = code === '987' && polyCount > 12;
+    let keptIndices = null;
+    if (isMainIslandsOnly) {
+      const res = makeMainIslandsOnly(feature.geometry, 30);
+      geometry = res.geometry;
+      keptIndices = res.keptIndices;
+      layoutPolynesiaIslands(geometry, keptIndices);
+    } else if (isMegaArchipelago) {
+      geometry = makeArchipelagoConstellation(feature.geometry, 0.15);
+    } else if (isArchipelago) {
+      const targetClusterCount = Math.min(polyCount, 5);
+      geometry = makeArchipelagoMarkers(feature.geometry, 0.4, targetClusterCount);
     } else if (oversize) {
       geometry = makeBoundingBoxPolygon(bbox.minLon, bbox.minLat, bbox.maxLon, bbox.maxLat);
     } else if (tooMicro) {
@@ -396,12 +481,16 @@
     const minScaleByHeight = (nh || 0.0001) < minRenderDim ? minRenderDim / (nh || 0.0001) : 0;
     scale = Math.max(scale, minScaleByWidth, minScaleByHeight);
     const centroid = getGeometryCentroid(geometry);
-    const targetLon = target[0] + slot[0];
     const targetLat = target[1] + slot[1];
     eachCoord(geometry, (p) => {
       p[0] = (p[0] - centroid[0]) * scale + targetLon;
       p[1] = (p[1] - centroid[1]) * scale + targetLat;
     });
+    const islandLabels = isMainIslandsOnly ? collectIslandLabels(geometry, keptIndices) : null;
+    // Position de la note d'échelle : sous le bbox de la géométrie transformée.
+    const finalBbox = getGeometryBBox(geometry);
+    const noteLng = (finalBbox.minLon + finalBbox.maxLon) / 2;
+    const noteLat = finalBbox.minLat - 0.35;
     return {
       type: 'Feature',
       properties: {
@@ -411,10 +500,34 @@
         primaryCabinetId: feature.properties.primaryCabinetId,
         cabinetCount: feature.properties.cabinetCount,
         omInset: true,
-        isSynthetic: tooMicro || oversize || isArchipelago
+        isSynthetic: tooMicro || oversize || isArchipelago || isMegaArchipelago || isMainIslandsOnly,
+        islandLabels,
+        noteLng,
+        noteLat
       },
       geometry
     };
+  }
+
+  function collectIslandLabels(transformedGeometry, keptIndices) {
+    const polys = transformedGeometry.type === 'MultiPolygon' ? transformedGeometry.coordinates
+      : transformedGeometry.type === 'Polygon' ? [transformedGeometry.coordinates]
+      : [];
+    if (!polys.length) return [];
+    const labels = [];
+    polys.forEach((poly, i) => {
+      const ring = poly[0];
+      if (!ring || !ring.length) return;
+      const key = String(keptIndices[i]);
+      const name = POLYNESIA_ISLAND_LABELS[key];
+      if (!name) return;
+      let lon = 0, lat = -Infinity;
+      ring.forEach(p => { lon += p[0]; if (p[1] > lat) lat = p[1]; });
+      // Position du label : centroïde en longitude, point le plus au nord en
+      // latitude, pour ancrer le label juste au-dessus de l'île.
+      labels.push({ name, lng: lon / ring.length, lat });
+    });
+    return labels;
   }
 
   function createInsetBackdropGeometries() {
@@ -516,6 +629,7 @@
   function setupInsetLayers() {
     const map = S.map;
     if (!map) return;
+    const insetData = createInsetGeometries();
     map.addSource('om-insets-backdrop', {
       type: 'geojson',
       data: createInsetBackdropGeometries(),
@@ -523,7 +637,7 @@
     });
     map.addSource('om-insets', {
       type: 'geojson',
-      data: createInsetGeometries(),
+      data: insetData,
       promoteId: 'code',
       generateId: false
     });
@@ -541,7 +655,7 @@
       type: 'fill',
       source: 'om-insets-backdrop',
       paint: {
-        'fill-color': 'rgba(255, 255, 255, 0.55)',
+        'fill-color': 'rgba(255, 255, 255, 0.3)',
         'fill-outline-color': 'rgba(0, 0, 0, 0.06)'
       }
     }, 'om-insets-fill');
@@ -573,6 +687,7 @@
     });
     bindInsetEvents();
     createInsetLabels();
+    createPolynesiaLabels(insetData.features);
     updateInsetVisibility();
   }
 
@@ -634,7 +749,7 @@
     });
   }
 
-  const OM_CABINET_ANCHOR = [8, 41.5];
+  const OM_CABINET_ANCHOR = [2.5, 38];
 
   function createOmCabinetFeatures() {
     const outremer = S.cabinets.filter(f => f.properties && f.properties.outremer_only);
@@ -652,6 +767,64 @@
         };
       })
     };
+  }
+
+  let omCabinetLabelMarkers = [];
+  let polynesiaIslandLabelMarkers = [];
+
+  function createOmCabinetLabels(features) {
+    omCabinetLabelMarkers.forEach(m => m.remove());
+    omCabinetLabelMarkers = [];
+    features.forEach(feature => {
+      const p = feature.properties || {};
+      const address = p.display_name || p.adresse || '';
+      const city = address.split(',').slice(-2, -1)[0]?.trim() || address.split(',')[0]?.trim() || '';
+      if (!city) return;
+      const el = document.createElement('div');
+      el.className = 'om-cabinet-label';
+      const inner = document.createElement('span');
+      inner.className = 'om-cabinet-label__text';
+      inner.textContent = city;
+      el.appendChild(inner);
+      const coords = feature.geometry.coordinates;
+      const marker = new maplibregl.Marker({ element: el, anchor: 'left', offset: [10, 0] })
+        .setLngLat(coords)
+        .addTo(S.map);
+      omCabinetLabelMarkers.push(marker);
+    });
+  }
+
+  function createPolynesiaLabels(features) {
+    polynesiaIslandLabelMarkers.forEach(m => m.remove());
+    polynesiaIslandLabelMarkers = [];
+
+    const poly = features.find(f => String(f.properties.code) === '987');
+    if (!poly) return;
+    const labels = poly.properties.islandLabels || [];
+    labels.forEach(l => {
+      const el = document.createElement('div');
+      el.className = 'polynesia-island-label';
+      const inner = document.createElement('span');
+      inner.className = 'polynesia-island-label__text';
+      inner.textContent = l.name;
+      el.appendChild(inner);
+      const marker = new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, -4] })
+        .setLngLat([l.lng, l.lat])
+        .addTo(S.map);
+      polynesiaIslandLabelMarkers.push(marker);
+    });
+
+    // Note d'échelle : les proportions entre les îles ne sont pas respectées.
+    const noteEl = document.createElement('div');
+    noteEl.className = 'polynesia-scale-note';
+    const noteInner = document.createElement('span');
+    noteInner.className = 'polynesia-scale-note__text';
+    noteInner.textContent = 'Proportions non respectées';
+    noteEl.appendChild(noteInner);
+    const noteMarker = new maplibregl.Marker({ element: noteEl, anchor: 'top' })
+      .setLngLat([poly.properties.noteLng, poly.properties.noteLat])
+      .addTo(S.map);
+    polynesiaIslandLabelMarkers.push(noteMarker);
   }
 
   function setupOmCabinetLayers() {
@@ -682,7 +855,6 @@
     });
 
     map.addLayer({
-      id: 'om-cabinets-hover',
       id: 'om-cabinets-hover',
       type: 'circle',
       source: 'om-cabinets',
@@ -734,6 +906,8 @@
       const feature = e.features && e.features[0];
       if (feature) App.emit('map:cabinetDblClick', { feature });
     });
+
+    createOmCabinetLabels(data.features);
   }
 
   function updateOmCabinetSelection(cabinetId) {
@@ -741,7 +915,7 @@
     S.map.setFilter('om-cabinets-selected', ['==', ['get', 'id'], String(cabinetId || '')]);
   }
 
-  const OM_CODES = ['971', '972', '973', '974', '976', '986', '987', '988'];
+  const OM_CODES = ['971', '972', '973', '974', '976', '987', '988'];
 
   function isOmCode(code) {
     return OM_CODES.includes(String(code));
@@ -1007,7 +1181,7 @@
   }
 
   function createOmChipsHTML() {
-    const omCodes = ['971', '972', '973', '974', '976', '986', '987', '988'];
+    const omCodes = ['971', '972', '973', '974', '976', '987', '988'];
     return omCodes.map(code => {
       const entry = S.deptIndex.get(code);
       const color = entry ? entry.color : '#cccccc';
@@ -1051,8 +1225,9 @@
 
   function getMobileMapPadding() {
     if (window.innerWidth > C.mobileBreakpoint) {
-      // Padding s'adapte aux largeurs fluides des panneaux (max ~460px / ~420px).
-      return { top: 100, bottom: 60, left: 480, right: 440 };
+      // Padding modéré : laisse la zone zoomée centrée et lisible, sans écraser
+      // le zoom (un padding trop large rendait le zoom imperceptible).
+      return { top: 80, bottom: 60, left: 60, right: 60 };
     }
     const panelHeight = getMobilePanelHeight();
     const bottom = Math.max(110, Math.min(panelHeight + 24, window.innerHeight * 0.6));
@@ -1094,6 +1269,14 @@
       // on ne déplace pas la carte pour rester sur la vue France.
       return;
     }
+    // Zoom vers le siège du cabinet (point géocodé) pour un zoom fort et
+    // perceptible. Le territoire couvert reste visible via la surbrillance.
+    const coords = feature.geometry.coordinates;
+    if (coords && coords[0] != null && coords[1] != null) {
+      flyTo(coords.slice(), 8);
+      return;
+    }
+    // Fallback : fitBounds sur les départements couverts (siège non géocodé).
     const depts = (p.departements || []).map(code => S.departements.find(d => String(d.properties.code) === code)).filter(Boolean);
     if (depts.length) {
       const bounds = depts.reduce((acc, d) => {

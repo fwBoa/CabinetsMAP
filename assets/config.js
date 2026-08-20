@@ -58,10 +58,10 @@
         },
         pacifique: {
           title: 'Pacifique',
-          codes: ['986', '987', '988'],
+          codes: ['987', '988'],
           target: [-2, 36],
-          slots: [[-2.0, 0], [-3.0, -2.5], [5.0, -2.5]],
-          slotSizes: [1.3, 6.0, 7.8]
+          slots: [[-3.0, -2.5], [5.0, -2.5]],
+          slotSizes: [4.5, 7.8]
         }
       },
       OM_INSET_JUMP_THRESHOLD_DEG: 35,

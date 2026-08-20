@@ -45,8 +45,14 @@
   // Mobile territory card state
   const SHEET_SNAPS = ['closed', 'open'];
   let sheetSnap = 'closed';
+  let sheetMode = 'list'; // 'list' | 'detail'
 
   function isMobile() { return window.innerWidth <= C.mobileBreakpoint; }
+
+  function setSheetMode(mode) {
+    sheetMode = mode === 'detail' ? 'detail' : 'list';
+    sidebar.classList.toggle('bottom-sheet--detail', sheetMode === 'detail');
+  }
 
   function setSheetSnap(state, opts = {}) {
     if (!SHEET_SNAPS.includes(state)) state = 'closed';
@@ -73,7 +79,10 @@
 
   function toggleSheet() {
     if (sheetSnap === 'closed') {
-      if (S.selectedFeature) openSheet(); else return;
+      // Le handle ouvre la liste des cabinets (mode liste par défaut).
+      setSheetMode('list');
+      sheetDetailView.hidden = true;
+      openSheet();
     } else {
       closeSheet();
     }
@@ -165,7 +174,6 @@
 
   function clearActiveCard() {
     document.querySelectorAll('.cabinet-card').forEach(btn => btn.classList.remove('cabinet-card--active', 'cabinet-card--hover'));
-    document.querySelectorAll('.legend__item').forEach(item => item.classList.remove('legend__item--active'));
   }
 
   function renderDetailBody(p) {
@@ -260,6 +268,7 @@
     if (isMobile()) {
       document.getElementById('sheetDetailBody').innerHTML = renderMobileTerritoryNote(feature);
       sheetDetailView.hidden = false;
+      setSheetMode('detail');
       setSheetSnap('open', { recenter: false });
     } else {
       setSidebarSnap('peek', { recenter: false });
@@ -308,6 +317,7 @@
     if (isMobile()) {
       document.getElementById('sheetDetailBody').innerHTML = renderMobileTerritoryNote(feature, cabs);
       sheetDetailView.hidden = false;
+      setSheetMode('detail');
       setSheetSnap('open', { recenter: false });
     } else {
       setDetailSnap('peek', { recenter: false });
@@ -332,6 +342,7 @@
     closeBottomSheet();
     if (isMobile()) {
       sheetDetailView.hidden = true;
+      setSheetMode('list');
       setSheetSnap('closed', { recenter: false });
     } else {
       setSidebarSnap('peek', { recenter: false });
@@ -382,7 +393,6 @@
     document.getElementById('sidebarKpiCabinets').textContent = S.cabinets.length;
     document.getElementById('sidebarKpiDepts').textContent = S.deptIndex.size;
     renderList();
-    renderLegend();
   }
 
   function getFilteredCabinets() {
@@ -390,8 +400,15 @@
     if (!term) return S.cabinets;
     return S.cabinets.filter(c => {
       const p = c.properties;
-      const depts = (p.departements || []).map(code => App.getDeptName(code)).join(' ');
-      const fields = [p.nom, p.adresse, p.phone, depts].concat(p.emails || []).concat(p.cours_appel || []).join(' ');
+      const deptNames = (p.departements || []).map(code => App.getDeptName(code)).join(' ');
+      const deptCodes = (p.departements || []).join(' ');
+      // On retire les codes postaux (séquences de 5 chiffres) de l'adresse pour
+      // éviter qu'un code postal ne matche à tort un numéro de département.
+      const adresseSansCp = (p.adresse || '').replace(/\b\d{5}\b/g, ' ');
+      const fields = [p.nom, adresseSansCp, p.phone, deptNames, deptCodes]
+        .concat(p.emails || [])
+        .concat(p.cours_appel || [])
+        .join(' ');
       return U.normalize(fields).includes(term);
     });
   }
@@ -479,7 +496,7 @@
     const card = e.target.closest('.cabinet-card');
     if (!card) return;
     const feature = App.getCabinetById(card.dataset.id);
-    if (feature) highlightCabinet(feature);
+    if (feature) selectCabinet(feature);
   });
 
   document.getElementById('cabinetList').addEventListener('dblclick', (e) => {
@@ -506,28 +523,6 @@
     searchClear.hidden = true;
     renderList();
   });
-
-  function renderLegend() {
-    const legend = document.getElementById('cabinetLegend');
-    legend.innerHTML = '<p class="legend__title">Cabinets par couleur</p>';
-    const items = document.createElement('div');
-    items.className = 'legend__items';
-    S.cabinets.forEach(cab => {
-      const p = cab.properties;
-      const item = document.createElement('button');
-      item.className = 'legend__item';
-      item.type = 'button';
-      item.title = `Voir ${p.nom}`;
-      item.dataset.id = p.id;
-      item.innerHTML = `<span class="legend__swatch" style="background:${p.couleur}" aria-hidden="true"></span><span>${p.nom}</span>`;
-      item.addEventListener('click', () => {
-        selectCabinet(cab);
-        if (isMobile()) setSheetSnap('full', { recenter: false });
-      });
-      items.appendChild(item);
-    });
-    legend.appendChild(items);
-  }
 
   document.getElementById('resetFiltersBtn').addEventListener('click', resetAll);
   document.getElementById('resetViewBtn').addEventListener('click', () => {
@@ -569,7 +564,11 @@
     } else {
       detailPanel.classList.remove('detail-panel--mobile-hidden');
       sidebar.classList.remove('bottom-sheet', 'bottom-sheet--closed', 'bottom-sheet--open');
+      sidebar.classList.remove('bottom-sheet--detail');
       sidebar.style.height = '';
+      // Sur desktop, le bottom-sheet mobile n'est pas utilisé : on s'assure
+      // qu'aucun reliquat (mode detail, body rempli) ne fuit dans la sidebar.
+      sheetDetailView.hidden = true;
       setSidebarSnap(sidebarSnap === 'closed' ? 'closed' : 'peek', { recenter: false });
       if (S.selectedFeature) {
         setDetailSnap('peek', { recenter: false });
