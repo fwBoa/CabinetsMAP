@@ -287,7 +287,9 @@
     avatar.style.background = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim();
     avatar.textContent = code;
     document.getElementById('detailTitle').textContent = deptName;
-    document.getElementById('detailSubtitle').textContent = `${cabs.length} cabinets interviennent sur ce département`;
+    const count = cabs.length;
+    document.getElementById('detailSubtitle').textContent =
+      `${count} cabinet${count > 1 ? 's' : ''} intervien${count > 1 ? 'nent' : 't'} sur ce département`;
 
     const body = document.getElementById('detailBody');
     body.innerHTML = cabs.map(cab => {
