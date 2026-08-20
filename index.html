@@ -3291,7 +3291,11 @@ html, body {
       // Sur desktop, le bottom-sheet mobile n'est pas utilisé : on s'assure
       // qu'aucun reliquat (mode detail, body rempli) ne fuit dans la sidebar.
       sheetDetailView.hidden = true;
-      setSidebarSnap(sidebarSnap === 'closed' ? 'closed' : 'peek', { recenter: false });
+      // Préserver le snap en cours (closed/peek/half/full) au lieu de forcer
+      // 'peek' : permet de garder le choix utilisateur quand un futur mécanisme
+      // (resize handle, bouton, etc.) activera les snaps intermédiaires.
+      const desktopSnap = sidebarSnap === 'closed' ? 'closed' : sidebarSnap;
+      setSidebarSnap(desktopSnap, { recenter: false });
       if (S.selectedFeature) {
         setDetailSnap('peek', { recenter: false });
       } else {
