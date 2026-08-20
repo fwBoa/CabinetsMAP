@@ -954,14 +954,12 @@ html, body {
   /* Sheet fermé : seul le handle reste visible. */
   .bottom-sheet--closed .sidebar__header,
   .bottom-sheet--closed .sidebar__toolbar,
-  .bottom-sheet--closed .sidebar__list,
-  .bottom-sheet--closed .sidebar__om-chips { display: none !important; }
+  .bottom-sheet--closed .sidebar__list { display: none !important; }
 
   /* Mode fiche : la liste et la recherche laissent place à la fiche. */
   .bottom-sheet--detail .sidebar__header,
   .bottom-sheet--detail .sidebar__toolbar,
-  .bottom-sheet--detail .sidebar__list,
-  .bottom-sheet--detail .sidebar__om-chips { display: none !important; }
+  .bottom-sheet--detail .sidebar__list { display: none !important; }
 
   /* Mode liste : hauteur par défaut, la liste défile. */
   .bottom-sheet--open { height: 55vh; }
@@ -1079,10 +1077,6 @@ html, body {
 @media (min-width: 769px) {
   .sidebar__handle { display: none; }
   .detail-panel__handle { display: none; }
-  /* Sur desktop, le sheet mobile ne doit jamais être visible (le détail
-     utilise l'aside .detail-panel). On cache l'élément dans tous les cas,
-     même si l'attribut [hidden] était retiré par erreur lors d'un resize. */
-  .sheet-detail { display: none !important; }
 }
 
 /* Large screens — comfortable scaling without wasting space */
@@ -1115,123 +1109,10 @@ html, body {
   .sidebar, .maplibregl-ctrl-group, .detail-panel { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--color-surface); }
 }
 
-/* ---------- Sélecteur de zone OM (visible en vue outre-mer) ---------- */
-.om-zone-bar {
-  position: absolute;
-  top: calc(80px + var(--safe-top));
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 6;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 6px;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-full);
-  box-shadow: var(--shadow-sm);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  font-family: 'Lato', system-ui, sans-serif;
-}
-
-.om-zone-bar__btn {
-  appearance: none;
-  border: 0;
-  background: transparent;
-  padding: 8px 14px;
-  border-radius: var(--radius-full);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.2px;
-  color: var(--color-text);
-  cursor: pointer;
-  transition: background 0.18s var(--ease-out), color 0.18s var(--ease-out);
-  min-height: 36px;
-}
-
-.om-zone-bar__btn:hover {
-  background: var(--color-primary-light);
-  color: var(--color-primary);
-}
-
-.om-zone-bar__btn.is-active {
-  background: var(--color-primary);
-  color: #fff;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.15);
-}
-
-.om-zone-bar__btn:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
-
-/* ---------- Bouton retour France métropolitaine ---------- */
-.back-to-france-btn {
-  position: absolute;
-  top: calc(140px + var(--safe-top));
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 6;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: #ffffff;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-full);
-  font-family: 'Lato', system-ui, sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text);
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  transition: background 0.18s var(--ease-out), transform 0.18s var(--ease-out);
-}
-
-.back-to-france-btn:hover {
-  background: var(--color-primary-light);
-  color: var(--color-primary);
-  transform: translateX(-50%) translateY(-2px);
-}
-
-.back-to-france-btn:active { transform: translateX(-50%) translateY(0); }
-
-.back-to-france-btn svg {
-  width: 14px;
-  height: 14px;
-}
-
-@media (max-width: 768px) {
-  .om-zone-bar {
-    top: calc(72px + var(--safe-top));
-    gap: 2px;
-    padding: 4px;
-  }
-  .om-zone-bar__btn { padding: 7px 10px; font-size: 11px; min-height: 32px; }
-  .back-to-france-btn { top: calc(130px + var(--safe-top)); font-size: 12px; }
-}
-
-.map-disclaimer__icon {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  line-height: 14px;
-  text-align: center;
-  border-radius: 50%;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 9px;
-  vertical-align: 1px;
-  margin: 0 3px;
-}
+/* Classes .om-zone-bar, .back-to-france-btn, .map-disclaimer__icon supprimées :
+   éléments HTML jamais instanciés (vestiges d'une ancienne UI OM). */
 
 [hidden] { display: none !important; }
-.om-zone-bar[hidden],
-.back-to-france-btn[hidden] { display: none !important; }
-
-/* 4 onglets : wrap autorisé pour rester lisible en mobile */
-.om-zone-bar { flex-wrap: wrap; justify-content: center; max-width: calc(100vw - 32px); }
 
 .polynesia-island-label {
   pointer-events: none;
@@ -1251,23 +1132,8 @@ html, body {
   color: var(--color-text);
   white-space: nowrap;
 }
-.polynesia-scale-note {
-  pointer-events: none;
-  position: absolute;
-  left: 0;
-  top: 0;
-}
-.polynesia-scale-note__text {
-  display: inline-block;
-  background: rgba(255, 255, 255, 0.85);
-  border: 1px dashed var(--color-border);
-  border-radius: var(--radius-xs);
-  padding: 2px 6px;
-  font-size: 9px;
-  font-style: italic;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-}
+/* .polynesia-scale-note volontairement supprimée : voir POLYNESIA_PLAN.md
+   (les proportions restent non respectées, mais on n'affiche plus le disclaimer) */
 
 </style>
 </head>
@@ -1350,8 +1216,6 @@ html, body {
       <button class="sidebar__reset" id="resetFiltersBtn" type="button" hidden>Tout effacer</button>
     </div>
 
-    <div class="sidebar__om-chips" id="sidebarOmChips" hidden></div>
-
     <ul class="sidebar__list" id="cabinetList" role="list"></ul>
 
     <!-- Mobile-only territory card -->
@@ -1410,14 +1274,11 @@ html, body {
       activeCabinetId: null,
       searchTerm: '',
       hoveredDeptId: null,
-      hoverPopup: null,
-      isErrorState: false,
     },
 
     config: {
       IGN_STYLE: {
         version: 8,
-        glyphs: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
         sources: {},
         layers: [{
           id: 'background',
@@ -1432,8 +1293,6 @@ html, body {
         dimOpacity: 0.55,
       },
       mobileBreakpoint: 768,
-      OM_CENTER: [-60, 15],
-      OM_ZOOM: 4.5,
       FRANCE_CENTER: [2.5, 46.6],
       FRANCE_ZOOM: 5.2,
       OM_INSET_GROUPS: {
@@ -1567,10 +1426,8 @@ html, body {
   const loaderText = document.getElementById('loaderText');
   const loaderActions = document.getElementById('loaderActions');
   const retryBtn = document.getElementById('retryBtn');
-  const continueBtn = document.getElementById('continueBtn');
 
   function setLoaderError(message, canRetry = true) {
-    S.isErrorState = true;
     loader.classList.remove('hidden');
     loader.style.display = '';
     loaderText.textContent = message;
@@ -1583,7 +1440,6 @@ html, body {
   function hideLoader() {
     loader.classList.add('hidden');
     loaderActions.style.display = 'none';
-    S.isErrorState = false;
   }
 
   function initMap() {
@@ -1637,7 +1493,6 @@ html, body {
       console.warn('Erreur MapLibre (non bloquante) :', msg || e);
       if (isFatal) {
         setLoaderError('Problème technique avec la carte. Réessayez ou continuez avec la liste.', true);
-        App.emit('map:error', e);
       }
     });
   }
@@ -2044,10 +1899,6 @@ html, body {
       p[1] = (p[1] - centroid[1]) * scale + targetLat;
     });
     const islandLabels = isMainIslandsOnly ? collectIslandLabels(geometry, keptIndices) : null;
-    // Position de la note d'échelle : sous le bbox de la géométrie transformée.
-    const finalBbox = getGeometryBBox(geometry);
-    const noteLng = (finalBbox.minLon + finalBbox.maxLon) / 2;
-    const noteLat = finalBbox.minLat - 0.35;
     return {
       type: 'Feature',
       properties: {
@@ -2058,9 +1909,7 @@ html, body {
         cabinetCount: feature.properties.cabinetCount,
         omInset: true,
         isSynthetic: tooMicro || oversize || isArchipelago || isMegaArchipelago || isMainIslandsOnly,
-        islandLabels,
-        noteLng,
-        noteLat
+        islandLabels
       },
       geometry
     };
@@ -2136,48 +1985,6 @@ html, body {
           : defaultMaxSlot;
         const f = createInsetFeature(real, group.target, slot, slotSize, minScale);
         if (f) features.push(f);
-      });
-    });
-    return { type: 'FeatureCollection', features };
-  }
-
-  function createCircularInsetGeometries() {
-    const groups = C.OM_INSET_GROUPS;
-    const defaultMaxSlot = C.OM_INSET_MAX_SLOT_SIZE;
-    const minScale = C.OM_INSET_MIN_SCALE;
-    const features = [];
-    Object.keys(groups).forEach((key) => {
-      const group = groups[key];
-      group.codes.forEach((code, index) => {
-        const codeStr = String(code);
-        const real = S.departements.find(d => String(d.properties.code) === codeStr);
-        if (!real) return;
-        const slot = group.slots[index] || [0, 0];
-        const slotSize = (group.slotSizes && group.slotSizes[index] != null)
-          ? group.slotSizes[index]
-          : defaultMaxSlot;
-        const feature = createInsetFeature(real, group.target, slot, slotSize, minScale);
-        if (!feature) return;
-        if (!feature.properties.isSynthetic) return;
-        if (feature.geometry.type !== 'MultiPolygon') return;
-        feature.geometry.coordinates.forEach(polygon => {
-          const ring = polygon[0];
-          let lon = 0, lat = 0;
-          ring.forEach(p => { lon += p[0]; lat += p[1]; });
-          const cx = lon / ring.length;
-          const cy = lat / ring.length;
-          let maxD = 0;
-          ring.forEach(p => { const d = Math.hypot(p[0]-cx, p[1]-cy); if (d > maxD) maxD = d; });
-          features.push({
-            type: 'Feature',
-            properties: {
-              code: feature.properties.code,
-              fillColor: feature.properties.fillColor,
-              radiusDeg: maxD
-            },
-            geometry: { type: 'Point', coordinates: [cx, cy] }
-          });
-        });
       });
     });
     return { type: 'FeatureCollection', features };
@@ -2370,18 +2177,6 @@ html, body {
         .addTo(S.map);
       polynesiaIslandLabelMarkers.push(marker);
     });
-
-    // Note d'échelle : les proportions entre les îles ne sont pas respectées.
-    const noteEl = document.createElement('div');
-    noteEl.className = 'polynesia-scale-note';
-    const noteInner = document.createElement('span');
-    noteInner.className = 'polynesia-scale-note__text';
-    noteInner.textContent = 'Proportions non respectées';
-    noteEl.appendChild(noteInner);
-    const noteMarker = new maplibregl.Marker({ element: noteEl, anchor: 'top' })
-      .setLngLat([poly.properties.noteLng, poly.properties.noteLat])
-      .addTo(S.map);
-    polynesiaIslandLabelMarkers.push(noteMarker);
   }
 
   function setupOmCabinetLayers() {
@@ -2514,9 +2309,7 @@ html, body {
       }
     });
     const floatChips = document.getElementById('omInsetChips');
-    const sidebarChips = document.getElementById('sidebarOmChips');
     if (floatChips) floatChips.hidden = isMobile; // desktop : chips dans l'inset flottant
-    if (sidebarChips) sidebarChips.hidden = true; // mobile : plus de chips, insets visuels suffisants
   }
 
   function setDeptHoverState(id, isHover) {
@@ -2770,13 +2563,10 @@ html, body {
 
   function initOmInset() {
     const floatContainer = document.getElementById('omInsetChips');
-    const sidebarContainer = document.getElementById('sidebarOmChips');
-    if (!floatContainer || !sidebarContainer) return;
+    if (!floatContainer) return;
     const html = createOmChipsHTML();
     floatContainer.innerHTML = html;
-    sidebarContainer.innerHTML = html;
     bindOmChips(floatContainer);
-    bindOmChips(sidebarContainer);
     updateInsetVisibility();
   }
 
@@ -2911,14 +2701,11 @@ html, body {
     initMap,
     initOmInset,
     flyToCabinet,
-    flyTo,
     goToDept,
     resetView,
     recenterMapForMobilePanel,
     highlightCabinetTerritory,
     resetDeptOpacity,
-    getMobileMapPadding,
-    getMobilePanelHeight,
     setLoaderError,
     hideLoader,
   };
@@ -3492,7 +3279,11 @@ html, body {
     } else {
       detailPanel.classList.remove('detail-panel--mobile-hidden');
       sidebar.classList.remove('bottom-sheet', 'bottom-sheet--closed', 'bottom-sheet--open');
+      sidebar.classList.remove('bottom-sheet--detail');
       sidebar.style.height = '';
+      // Sur desktop, le bottom-sheet mobile n'est pas utilisé : on s'assure
+      // qu'aucun reliquat (mode detail, body rempli) ne fuit dans la sidebar.
+      sheetDetailView.hidden = true;
       setSidebarSnap(sidebarSnap === 'closed' ? 'closed' : 'peek', { recenter: false });
       if (S.selectedFeature) {
         setDetailSnap('peek', { recenter: false });

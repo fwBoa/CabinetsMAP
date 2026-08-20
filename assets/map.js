@@ -10,10 +10,8 @@
   const loaderText = document.getElementById('loaderText');
   const loaderActions = document.getElementById('loaderActions');
   const retryBtn = document.getElementById('retryBtn');
-  const continueBtn = document.getElementById('continueBtn');
 
   function setLoaderError(message, canRetry = true) {
-    S.isErrorState = true;
     loader.classList.remove('hidden');
     loader.style.display = '';
     loaderText.textContent = message;
@@ -26,7 +24,6 @@
   function hideLoader() {
     loader.classList.add('hidden');
     loaderActions.style.display = 'none';
-    S.isErrorState = false;
   }
 
   function initMap() {
@@ -80,7 +77,6 @@
       console.warn('Erreur MapLibre (non bloquante) :', msg || e);
       if (isFatal) {
         setLoaderError('Problème technique avec la carte. Réessayez ou continuez avec la liste.', true);
-        App.emit('map:error', e);
       }
     });
   }
@@ -487,10 +483,6 @@
       p[1] = (p[1] - centroid[1]) * scale + targetLat;
     });
     const islandLabels = isMainIslandsOnly ? collectIslandLabels(geometry, keptIndices) : null;
-    // Position de la note d'échelle : sous le bbox de la géométrie transformée.
-    const finalBbox = getGeometryBBox(geometry);
-    const noteLng = (finalBbox.minLon + finalBbox.maxLon) / 2;
-    const noteLat = finalBbox.minLat - 0.35;
     return {
       type: 'Feature',
       properties: {
@@ -501,9 +493,7 @@
         cabinetCount: feature.properties.cabinetCount,
         omInset: true,
         isSynthetic: tooMicro || oversize || isArchipelago || isMegaArchipelago || isMainIslandsOnly,
-        islandLabels,
-        noteLng,
-        noteLat
+        islandLabels
       },
       geometry
     };
@@ -579,48 +569,6 @@
           : defaultMaxSlot;
         const f = createInsetFeature(real, group.target, slot, slotSize, minScale);
         if (f) features.push(f);
-      });
-    });
-    return { type: 'FeatureCollection', features };
-  }
-
-  function createCircularInsetGeometries() {
-    const groups = C.OM_INSET_GROUPS;
-    const defaultMaxSlot = C.OM_INSET_MAX_SLOT_SIZE;
-    const minScale = C.OM_INSET_MIN_SCALE;
-    const features = [];
-    Object.keys(groups).forEach((key) => {
-      const group = groups[key];
-      group.codes.forEach((code, index) => {
-        const codeStr = String(code);
-        const real = S.departements.find(d => String(d.properties.code) === codeStr);
-        if (!real) return;
-        const slot = group.slots[index] || [0, 0];
-        const slotSize = (group.slotSizes && group.slotSizes[index] != null)
-          ? group.slotSizes[index]
-          : defaultMaxSlot;
-        const feature = createInsetFeature(real, group.target, slot, slotSize, minScale);
-        if (!feature) return;
-        if (!feature.properties.isSynthetic) return;
-        if (feature.geometry.type !== 'MultiPolygon') return;
-        feature.geometry.coordinates.forEach(polygon => {
-          const ring = polygon[0];
-          let lon = 0, lat = 0;
-          ring.forEach(p => { lon += p[0]; lat += p[1]; });
-          const cx = lon / ring.length;
-          const cy = lat / ring.length;
-          let maxD = 0;
-          ring.forEach(p => { const d = Math.hypot(p[0]-cx, p[1]-cy); if (d > maxD) maxD = d; });
-          features.push({
-            type: 'Feature',
-            properties: {
-              code: feature.properties.code,
-              fillColor: feature.properties.fillColor,
-              radiusDeg: maxD
-            },
-            geometry: { type: 'Point', coordinates: [cx, cy] }
-          });
-        });
       });
     });
     return { type: 'FeatureCollection', features };
@@ -813,18 +761,6 @@
         .addTo(S.map);
       polynesiaIslandLabelMarkers.push(marker);
     });
-
-    // Note d'échelle : les proportions entre les îles ne sont pas respectées.
-    const noteEl = document.createElement('div');
-    noteEl.className = 'polynesia-scale-note';
-    const noteInner = document.createElement('span');
-    noteInner.className = 'polynesia-scale-note__text';
-    noteInner.textContent = 'Proportions non respectées';
-    noteEl.appendChild(noteInner);
-    const noteMarker = new maplibregl.Marker({ element: noteEl, anchor: 'top' })
-      .setLngLat([poly.properties.noteLng, poly.properties.noteLat])
-      .addTo(S.map);
-    polynesiaIslandLabelMarkers.push(noteMarker);
   }
 
   function setupOmCabinetLayers() {
@@ -957,9 +893,7 @@
       }
     });
     const floatChips = document.getElementById('omInsetChips');
-    const sidebarChips = document.getElementById('sidebarOmChips');
     if (floatChips) floatChips.hidden = isMobile; // desktop : chips dans l'inset flottant
-    if (sidebarChips) sidebarChips.hidden = true; // mobile : plus de chips, insets visuels suffisants
   }
 
   function setDeptHoverState(id, isHover) {
@@ -1213,13 +1147,10 @@
 
   function initOmInset() {
     const floatContainer = document.getElementById('omInsetChips');
-    const sidebarContainer = document.getElementById('sidebarOmChips');
-    if (!floatContainer || !sidebarContainer) return;
+    if (!floatContainer) return;
     const html = createOmChipsHTML();
     floatContainer.innerHTML = html;
-    sidebarContainer.innerHTML = html;
     bindOmChips(floatContainer);
-    bindOmChips(sidebarContainer);
     updateInsetVisibility();
   }
 
@@ -1354,14 +1285,11 @@
     initMap,
     initOmInset,
     flyToCabinet,
-    flyTo,
     goToDept,
     resetView,
     recenterMapForMobilePanel,
     highlightCabinetTerritory,
     resetDeptOpacity,
-    getMobileMapPadding,
-    getMobilePanelHeight,
     setLoaderError,
     hideLoader,
   };

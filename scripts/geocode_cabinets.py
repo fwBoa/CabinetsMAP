@@ -70,7 +70,6 @@ def main():
         if result:
             feature['geometry']['coordinates'] = [float(result['lon']), float(result['lat'])]
             feature['properties']['display_name'] = result.get('display_name')
-            feature['properties']['place_id'] = result.get('place_id')
         else:
             failures.append((feature['properties']['nom'], address))
 

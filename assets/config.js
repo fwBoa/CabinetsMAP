@@ -16,14 +16,11 @@
       activeCabinetId: null,
       searchTerm: '',
       hoveredDeptId: null,
-      hoverPopup: null,
-      isErrorState: false,
     },
 
     config: {
       IGN_STYLE: {
         version: 8,
-        glyphs: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf',
         sources: {},
         layers: [{
           id: 'background',
@@ -38,8 +35,6 @@
         dimOpacity: 0.55,
       },
       mobileBreakpoint: 768,
-      OM_CENTER: [-60, 15],
-      OM_ZOOM: 4.5,
       FRANCE_CENTER: [2.5, 46.6],
       FRANCE_ZOOM: 5.2,
       OM_INSET_GROUPS: {

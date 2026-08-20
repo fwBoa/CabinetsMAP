@@ -147,7 +147,6 @@ for i, (name, c) in enumerate(sorted(cabinets.items(), key=lambda x: x[0])):
         'cours_appel': c['cours_appel'],
         'departements': c['departements'],
         'couleur': colors[i % len(colors)],
-        'badges': [],
         'outremer_only': c['nom'] in OUTREMER_ONLY
     }
     # Géométrie temporaire vide, sera remplie par le géocodeur
@@ -171,7 +170,6 @@ metadata = {
             'nom': f['properties']['nom'],
             'adresse': f['properties']['adresse'],
             'departements': f['properties']['departements'],
-            'tribunaux_count': len(f['properties']['tribunaux']),
             'couleur': f['properties']['couleur'],
             'outremer_only': f['properties']['outremer_only']
         }

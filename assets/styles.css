@@ -936,14 +936,12 @@ html, body {
   /* Sheet fermé : seul le handle reste visible. */
   .bottom-sheet--closed .sidebar__header,
   .bottom-sheet--closed .sidebar__toolbar,
-  .bottom-sheet--closed .sidebar__list,
-  .bottom-sheet--closed .sidebar__om-chips { display: none !important; }
+  .bottom-sheet--closed .sidebar__list { display: none !important; }
 
   /* Mode fiche : la liste et la recherche laissent place à la fiche. */
   .bottom-sheet--detail .sidebar__header,
   .bottom-sheet--detail .sidebar__toolbar,
-  .bottom-sheet--detail .sidebar__list,
-  .bottom-sheet--detail .sidebar__om-chips { display: none !important; }
+  .bottom-sheet--detail .sidebar__list { display: none !important; }
 
   /* Mode liste : hauteur par défaut, la liste défile. */
   .bottom-sheet--open { height: 55vh; }
@@ -1093,123 +1091,10 @@ html, body {
   .sidebar, .maplibregl-ctrl-group, .detail-panel { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--color-surface); }
 }
 
-/* ---------- Sélecteur de zone OM (visible en vue outre-mer) ---------- */
-.om-zone-bar {
-  position: absolute;
-  top: calc(80px + var(--safe-top));
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 6;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 6px;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-full);
-  box-shadow: var(--shadow-sm);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  font-family: 'Lato', system-ui, sans-serif;
-}
-
-.om-zone-bar__btn {
-  appearance: none;
-  border: 0;
-  background: transparent;
-  padding: 8px 14px;
-  border-radius: var(--radius-full);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.2px;
-  color: var(--color-text);
-  cursor: pointer;
-  transition: background 0.18s var(--ease-out), color 0.18s var(--ease-out);
-  min-height: 36px;
-}
-
-.om-zone-bar__btn:hover {
-  background: var(--color-primary-light);
-  color: var(--color-primary);
-}
-
-.om-zone-bar__btn.is-active {
-  background: var(--color-primary);
-  color: #fff;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.15);
-}
-
-.om-zone-bar__btn:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
-
-/* ---------- Bouton retour France métropolitaine ---------- */
-.back-to-france-btn {
-  position: absolute;
-  top: calc(140px + var(--safe-top));
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 6;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: #ffffff;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-full);
-  font-family: 'Lato', system-ui, sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text);
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  transition: background 0.18s var(--ease-out), transform 0.18s var(--ease-out);
-}
-
-.back-to-france-btn:hover {
-  background: var(--color-primary-light);
-  color: var(--color-primary);
-  transform: translateX(-50%) translateY(-2px);
-}
-
-.back-to-france-btn:active { transform: translateX(-50%) translateY(0); }
-
-.back-to-france-btn svg {
-  width: 14px;
-  height: 14px;
-}
-
-@media (max-width: 768px) {
-  .om-zone-bar {
-    top: calc(72px + var(--safe-top));
-    gap: 2px;
-    padding: 4px;
-  }
-  .om-zone-bar__btn { padding: 7px 10px; font-size: 11px; min-height: 32px; }
-  .back-to-france-btn { top: calc(130px + var(--safe-top)); font-size: 12px; }
-}
-
-.map-disclaimer__icon {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  line-height: 14px;
-  text-align: center;
-  border-radius: 50%;
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 9px;
-  vertical-align: 1px;
-  margin: 0 3px;
-}
+/* Classes .om-zone-bar, .back-to-france-btn, .map-disclaimer__icon supprimées :
+   éléments HTML jamais instanciés (vestiges d'une ancienne UI OM). */
 
 [hidden] { display: none !important; }
-.om-zone-bar[hidden],
-.back-to-france-btn[hidden] { display: none !important; }
-
-/* 4 onglets : wrap autorisé pour rester lisible en mobile */
-.om-zone-bar { flex-wrap: wrap; justify-content: center; max-width: calc(100vw - 32px); }
 
 .polynesia-island-label {
   pointer-events: none;
@@ -1229,20 +1114,5 @@ html, body {
   color: var(--color-text);
   white-space: nowrap;
 }
-.polynesia-scale-note {
-  pointer-events: none;
-  position: absolute;
-  left: 0;
-  top: 0;
-}
-.polynesia-scale-note__text {
-  display: inline-block;
-  background: rgba(255, 255, 255, 0.85);
-  border: 1px dashed var(--color-border);
-  border-radius: var(--radius-xs);
-  padding: 2px 6px;
-  font-size: 9px;
-  font-style: italic;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-}
+/* .polynesia-scale-note volontairement supprimée : voir POLYNESIA_PLAN.md
+   (les proportions restent non respectées, mais on n'affiche plus le disclaimer) */
