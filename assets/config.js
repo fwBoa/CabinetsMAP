@@ -37,6 +37,8 @@
       mobileBreakpoint: 768,
       FRANCE_CENTER: [2.5, 46.6],
       FRANCE_ZOOM: 5.2,
+      OM_OVERVIEW_CENTER: [5.5, 37],
+      OM_OVERVIEW_ZOOM: 4,
       OM_INSET_GROUPS: {
         antilles: {
           title: 'Antilles-Guyane',

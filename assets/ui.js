@@ -533,7 +533,10 @@
 
   document.getElementById('omTrigger').addEventListener('click', () => {
     if (!S.map) return;
-    S.map.jumpTo({ center: C.FRANCE_CENTER, zoom: C.FRANCE_ZOOM });
+    // Recentrage sur l'ensemble des outremers (Antilles, Réunion, Pacifique).
+    // Voir OM_INSET_GROUPS pour les coordonnées de chaque cluster.
+    S.map.jumpTo({ center: C.OM_OVERVIEW_CENTER, zoom: C.OM_OVERVIEW_ZOOM });
+    U.announce('Vue centrée sur les départements et régions d\'outre-mer.');
   });
 
   document.addEventListener('keydown', (e) => {
