@@ -2195,10 +2195,10 @@ html, body {
     inner.className = 'om-title-label__text';
     inner.textContent = 'DOM-TOM-COM';
     el.appendChild(inner);
-    // Centre horizontal entre Antilles (lng 6) et Ocean Indien (lng 13) :
-    // ~9.5. Latitude au-dessus des territoires : 40.
+    // Positionne au-dessus du groupe Pacifique (lng -2) pour rester visible
+    // a gauche quand on zoome sur les outremers.
     omTitleMarker = new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, -6] })
-      .setLngLat([9.5, 40])
+      .setLngLat([-2, 40])
       .addTo(S.map);
   }
 
