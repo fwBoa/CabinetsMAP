@@ -3391,6 +3391,7 @@ html, body {
       const fields = [p.nom, adresseSansCp, p.phone, deptNames, deptCodes]
         .concat(p.emails || [])
         .concat(p.cours_appel || [])
+        .concat(p.tribunaux || [])
         .join(' ');
       return U.normalize(fields).includes(term);
     });
