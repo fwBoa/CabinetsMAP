@@ -794,8 +794,8 @@ html, body {
   left: calc(14px + var(--safe-left));
   z-index: 10;
   width: auto;
-  min-width: 180px;
-  max-width: 260px;
+  min-width: 200px;
+  max-width: 280px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -831,7 +831,8 @@ html, body {
 .om-inset__label {
   position: absolute;
   top: 8px;
-  left: 12px;
+  left: 50%;
+  transform: translateX(-50%);
   display: inline-block;
   padding: 3px 8px;
   font-size: 9px;
