@@ -70,7 +70,7 @@
       OM_INSET_MIN_RENDER_DIM: 0.9,
       // Au-dela de ce zoom, l'ecart entre la metropole et les outremers
       // (representes en insets) devient trompeur : on affiche un disclaimer.
-      DISCLAIMER_MIN_ZOOM: 9,
+      DISCLAIMER_MIN_ZOOM: 7,
     },
 
     events: {},
@@ -114,6 +114,20 @@
 
       normalize(str) {
         return String(str || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+      },
+
+      escapeHtml(str) {
+        return String(str || '').replace(/[&<>"']/g, (ch) => {
+          const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+          return map[ch];
+        });
+      },
+
+      sanitizeColor(color, fallback = '#999999') {
+        const value = String(color || '').trim();
+        if (/^#([0-9a-fA-F]{3}){1,2}$/.test(value)) return value;
+        if (/^(rgb|hsl)a?\(/i.test(value)) return value;
+        return fallback;
       },
 
       initials(name) {
