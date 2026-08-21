@@ -207,6 +207,7 @@
   }
 
   let omInsetMarkers = [];
+  let omTitleMarker = null;
   let tooltipEl = null;
   let tooltipRaf = null;
   let hoverDeptId = null;
@@ -639,6 +640,7 @@
     bindInsetEvents();
     createInsetLabels();
     createPolynesiaLabels(insetData.features);
+    createOmTitleLabel();
     updateInsetVisibility();
   }
 
@@ -672,6 +674,26 @@
         omInsetMarkers.push(marker);
       });
     });
+  }
+
+  // Titre 'DOM-TOM-COM' rendu directement sur la carte, au-dessus de
+  // l'ensemble des territoires d'outre-mer. Visible a toutes les echelles,
+  // sert d'en-tete a la zone OM. Positionne a mi-chemin entre les
+  // groupes Antilles et Ocean Indien, legerement au-dessus (lat 40).
+  function createOmTitleLabel() {
+    if (!S.map) return;
+    if (omTitleMarker) { omTitleMarker.remove(); omTitleMarker = null; }
+    const el = document.createElement('div');
+    el.className = 'om-title-label';
+    const inner = document.createElement('span');
+    inner.className = 'om-title-label__text';
+    inner.textContent = 'DOM-TOM-COM';
+    el.appendChild(inner);
+    // Centre horizontal entre Antilles (lng 6) et Ocean Indien (lng 13) :
+    // ~9.5. Latitude au-dessus des territoires : 40.
+    omTitleMarker = new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, -6] })
+      .setLngLat([9.5, 40])
+      .addTo(S.map);
   }
 
   function bindInsetEvents() {

@@ -787,21 +787,10 @@ html, body {
   color: var(--color-text-secondary) !important;
 }
 
-/* DOM-TOM-COM insets */
+/* DOM-TOM-COM insets : encart flottant desactive, le titre est rendu
+   directement sur la carte (voir .om-title-label dans map.js). */
 .om-inset {
-  position: absolute;
-  bottom: calc(16px + var(--safe-bottom));
-  left: calc(14px + var(--safe-left));
-  z-index: 10;
-  width: auto;
-  min-width: 200px;
-  max-width: 280px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  padding: 30px 12px 12px;
-  transition: transform 0.3s var(--ease-out), opacity 0.25s var(--ease-out);
+  display: none !important;
 }
 
 .map-disclaimer {
@@ -881,6 +870,29 @@ html, body {
 .om-inset__label-marker {
   position: absolute;
   pointer-events: none;
+}
+
+/* Titre 'DOM-TOM-COM' rendu sur la carte au-dessus des outremers. */
+.om-title-label {
+  pointer-events: none;
+  position: absolute;
+}
+.om-title-label__text {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 2px;
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm);
 }
 .om-inset__label-marker__text {
   position: absolute;
