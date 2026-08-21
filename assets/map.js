@@ -220,10 +220,11 @@
     return tooltipEl;
   }
 
-  function showTooltip(html, x, y) {
+  function showTooltip(content, x, y) {
     const el = getTooltip();
     if (!el) return;
-    el.innerHTML = html;
+    el.replaceChildren();
+    if (content) el.appendChild(content);
     el.classList.add('map-tooltip--visible');
     el.setAttribute('aria-hidden', 'false');
     positionTooltip(el, x, y);
@@ -1116,58 +1117,74 @@
     });
   }
 
+  function buildTooltipFragment() {
+    const root = document.createElement('div');
+    root.className = 'map-tooltip__header';
+    const avatar = document.createElement('span');
+    avatar.className = 'map-tooltip__avatar';
+    avatar.setAttribute('aria-hidden', 'true');
+    const meta = document.createElement('div');
+    meta.className = 'map-tooltip__meta';
+    const title = document.createElement('div');
+    title.className = 'map-tooltip__title';
+    const text = document.createElement('div');
+    text.className = 'map-tooltip__text';
+    meta.append(title, text);
+    root.append(avatar, meta);
+    return { root, avatar, title, text };
+  }
+
   function deptTooltipHtml(feature, cabs) {
     const code = String(feature.properties.code);
     const deptName = App.getDeptName(code);
     const main = cabs[0].properties;
+    const color = U.sanitizeColor(main.couleur);
+    const { root, avatar, title, text } = buildTooltipFragment();
+    root.style.setProperty('--tt-accent', color);
+    avatar.style.background = color;
+    avatar.textContent = U.initials(main.nom);
     if (cabs.length > 1) {
-      const others = cabs.slice(1);
-      return `
-        <div class="map-tooltip__header" style="--tt-accent:${main.couleur}">
-          <span class="map-tooltip__avatar" style="background:${main.couleur}" aria-hidden="true">${U.initials(main.nom)}</span>
-          <div class="map-tooltip__meta">
-            <div class="map-tooltip__title">${deptName}</div>
-            <div class="map-tooltip__text">${cabs.length} cabinets : ${cabs.map(c => c.properties.nom).join(', ')}</div>
-          </div>
-        </div>
-      `;
+      const list = cabs.map(c => c.properties.nom).join(', ');
+      title.textContent = deptName;
+      text.textContent = `${cabs.length} cabinets : ${list}`;
+    } else {
+      title.textContent = main.nom;
+      text.textContent = `Couvre ${deptName}`;
     }
-    return `
-      <div class="map-tooltip__header" style="--tt-accent:${main.couleur}">
-        <span class="map-tooltip__avatar" style="background:${main.couleur}" aria-hidden="true">${U.initials(main.nom)}</span>
-        <div class="map-tooltip__meta">
-          <div class="map-tooltip__title">${main.nom}</div>
-          <div class="map-tooltip__text">Couvre ${deptName}</div>
-        </div>
-      </div>
-    `;
+    return root;
   }
 
   function cabinetTooltipHtml(feature) {
     const p = feature.properties;
-    return `
-      <div class="map-tooltip__header" style="--tt-accent:${p.couleur}">
-        <span class="map-tooltip__avatar" style="background:${p.couleur}" aria-hidden="true">${U.initials(p.nom)}</span>
-        <div class="map-tooltip__meta">
-          <div class="map-tooltip__title">${p.nom}</div>
-          <div class="map-tooltip__text">${p.adresse || ''}</div>
-        </div>
-      </div>
-    `;
+    const color = U.sanitizeColor(p.couleur);
+    const { root, avatar, title, text } = buildTooltipFragment();
+    root.style.setProperty('--tt-accent', color);
+    avatar.style.background = color;
+    avatar.textContent = U.initials(p.nom);
+    title.textContent = p.nom;
+    text.textContent = p.adresse || '';
+    return root;
   }
 
   function createOmChipsHTML() {
     const omCodes = ['971', '972', '973', '974', '976', '987', '988'];
-    return omCodes.map(code => {
+    const container = document.createDocumentFragment();
+    omCodes.forEach(code => {
       const entry = S.deptIndex.get(code);
-      const color = entry ? entry.color : '#cccccc';
-      return `
-        <button class="om-inset__chip" type="button" data-code="${code}" aria-label="Département ${code}">
-          <span class="om-inset__chip-dot" style="background:${color}"></span>
-          ${code}
-        </button>
-      `;
-    }).join('');
+      const color = U.sanitizeColor(entry ? entry.color : '');
+      const btn = document.createElement('button');
+      btn.className = 'om-inset__chip';
+      btn.type = 'button';
+      btn.dataset.code = code;
+      btn.setAttribute('aria-label', `Département ${code}`);
+      const dot = document.createElement('span');
+      dot.className = 'om-inset__chip-dot';
+      dot.style.background = color;
+      const codeText = document.createTextNode(code);
+      btn.append(dot, codeText);
+      container.appendChild(btn);
+    });
+    return container;
   }
 
   function bindOmChips(container) {
@@ -1190,8 +1207,8 @@
   function initOmInset() {
     const floatContainer = document.getElementById('omInsetChips');
     if (!floatContainer) return;
-    const html = createOmChipsHTML();
-    floatContainer.innerHTML = html;
+    const fragment = createOmChipsHTML();
+    floatContainer.replaceChildren(fragment);
     bindOmChips(floatContainer);
     updateInsetVisibility();
   }
