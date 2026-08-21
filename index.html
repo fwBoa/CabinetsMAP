@@ -478,6 +478,14 @@ html, body {
 }
 .cabinet-card:hover .cabinet-card__dot,
 .cabinet-card--active .cabinet-card__dot { transform: scale(1.25); }
+/* Surlignage des termes recherches dans les cartes cabinet. */
+.search-hit {
+  background: rgba(255, 213, 79, 0.55);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+  font-weight: 700;
+}
 .cabinet-card__name {
   flex: 1;
   font-size: 14px;
@@ -3379,8 +3387,14 @@ html, body {
   }
 
   function getFilteredCabinets() {
-    const term = U.normalize(S.searchTerm);
-    if (!term) return S.cabinets;
+    const rawTerm = (S.searchTerm || '').trim();
+    if (!rawTerm) return S.cabinets;
+    // Tokenisation : on splitte sur les espaces, chaque token doit matcher
+    // au moins un champ (AND logique). 'BORDEAUX 33' devient ['bordeaux','33'].
+    // Les tokens de moins de 2 caracteres (ex: 'a', '0') sont ignores pour
+    // eviter les faux positifs (un 'd' matche presque tout).
+    const tokens = U.normalize(rawTerm).split(/\s+/).filter(t => t.length >= 2);
+    if (!tokens.length) return S.cabinets;
     return S.cabinets.filter(c => {
       const p = c.properties;
       const deptNames = (p.departements || []).map(code => App.getDeptName(code)).join(' ');
@@ -3393,7 +3407,8 @@ html, body {
         .concat(p.cours_appel || [])
         .concat(p.tribunaux || [])
         .join(' ');
-      return U.normalize(fields).includes(term);
+      const normalizedFields = U.normalize(fields);
+      return tokens.every(t => normalizedFields.includes(t));
     });
   }
 
@@ -3454,13 +3469,24 @@ html, body {
 
       const name = document.createElement('span');
       name.className = 'cabinet-card__name';
-      name.textContent = p.nom;
+      name.appendChild(highlightMatch(p.nom, getSearchTokens()));
 
       row.append(dot, name);
 
       const meta = document.createElement('span');
       meta.className = 'cabinet-card__meta';
-      meta.textContent = `${p.adresse || 'Adresse non renseignée'} · ${deptCount} ${deptLabel}`;
+      // Si la recherche matche un tribunal, on l'affiche dans la meta (limite 3)
+      // pour que le hit soit visible meme si le nom/adresse ne le contiennent pas.
+      const tokens = getSearchTokens();
+      const matchedTribunaux = (p.tribunaux || []).filter(t =>
+        tokens.some(tok => U.normalize(t).includes(tok))
+      ).slice(0, 3);
+      const tribunauxSuffix = matchedTribunaux.length
+        ? ` · ${matchedTribunaux.join(' · ')}`
+        : '';
+      meta.appendChild(
+        highlightMatch(`${p.adresse || 'Adresse non renseignée'} · ${deptCount} ${deptLabel}${tribunauxSuffix}`, tokens)
+      );
 
       btn.append(row, meta);
       li.appendChild(btn);
@@ -3476,6 +3502,59 @@ html, body {
     const plural = count > 1 ? 's' : '';
     document.getElementById('resultCount').textContent = `${count} cabinet${plural}`;
     document.getElementById('resetFiltersBtn').hidden = !S.searchTerm;
+  }
+
+  // Met en evidence les occurrences des tokens de recherche dans un texte.
+  // Retourne un DocumentFragment avec des <mark> autour des matches.
+  // Si pas de token ou aucun match, retourne un textNode simple.
+  function highlightMatch(text, tokens) {
+    if (!text || !tokens || !tokens.length) {
+      return document.createTextNode(text || '');
+    }
+    const normalizedText = U.normalize(text);
+    // On cherche les positions de chaque token dans le texte normalise,
+    // puis on reporte ces positions sur le texte original.
+    const ranges = [];
+    tokens.forEach(token => {
+      let from = 0;
+      while (true) {
+        const idx = normalizedText.indexOf(token, from);
+        if (idx === -1) break;
+        ranges.push([idx, idx + token.length]);
+        from = idx + token.length;
+      }
+    });
+    if (!ranges.length) return document.createTextNode(text);
+    // Fusionner les ranges qui se chevauchent pour eviter les <mark> imbriques
+    ranges.sort((a, b) => a[0] - b[0]);
+    const merged = [ranges[0].slice()];
+    for (let i = 1; i < ranges.length; i++) {
+      const last = merged[merged.length - 1];
+      if (ranges[i][0] <= last[1]) {
+        last[1] = Math.max(last[1], ranges[i][1]);
+      } else {
+        merged.push(ranges[i].slice());
+      }
+    }
+    const fragment = document.createDocumentFragment();
+    let cursor = 0;
+    merged.forEach(([start, end]) => {
+      if (start > cursor) fragment.appendChild(document.createTextNode(text.slice(cursor, start)));
+      const mark = document.createElement('mark');
+      mark.className = 'search-hit';
+      mark.textContent = text.slice(start, end);
+      fragment.appendChild(mark);
+      cursor = end;
+    });
+    if (cursor < text.length) fragment.appendChild(document.createTextNode(text.slice(cursor)));
+    return fragment;
+  }
+
+  // Renvoie les tokens normalises de la recherche courante (>= 2 chars).
+  function getSearchTokens() {
+    const raw = (S.searchTerm || '').trim();
+    if (!raw) return [];
+    return U.normalize(raw).split(/\s+/).filter(t => t.length >= 2);
   }
 
   function bindCardHoverSync() {

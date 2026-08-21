@@ -460,6 +460,14 @@ html, body {
 }
 .cabinet-card:hover .cabinet-card__dot,
 .cabinet-card--active .cabinet-card__dot { transform: scale(1.25); }
+/* Surlignage des termes recherches dans les cartes cabinet. */
+.search-hit {
+  background: rgba(255, 213, 79, 0.55);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+  font-weight: 700;
+}
 .cabinet-card__name {
   flex: 1;
   font-size: 14px;
