@@ -689,10 +689,10 @@
     inner.className = 'om-title-label__text';
     inner.textContent = 'DOM-TOM-COM';
     el.appendChild(inner);
-    // Positionne au-dessus du groupe Pacifique (lng -2) pour rester visible
-    // a gauche quand on zoome sur les outremers.
+    // Positionne au-dessus du groupe Pacifique, legerement decale vers
+    // la droite (lng 0) pour eviter d'etre colle au bord gauche.
     omTitleMarker = new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, -6] })
-      .setLngLat([-2, 40])
+      .setLngLat([0, 40])
       .addTo(S.map);
   }
 
