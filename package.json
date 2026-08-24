@@ -1,0 +1,18 @@
+{
+  "name": "cabinetsmap",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Carte interactive du reseau avocat CEGC - site statique + Vercel Functions pour l'edition admin.",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod",
+    "build": "echo 'Site statique, pas de build step'",
+    "lint": "echo 'Pas de linter configure - a ajouter si besoin'"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "vercel": "^32.0.0"
+  }
+}

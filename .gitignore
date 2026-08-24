@@ -1,32 +1,25 @@
-# Captures d'écran et images temporaires
-*.png
-*.jpg
-*.jpeg
-*.gif
+# Vercel
+.vercel
+.env
+.env.local
+.env.*.local
 
-# Fichiers système / caches
-.DS_Store
+# Logs
+server.log
 *.log
-geocode_cache.json
 
-# Environnements et éditeurs
+# IDE / AI tools
+.qwen/
 .vscode/
-.idea/
-*.swp
 
-# Fichiers source bureautique (données brutes)
-*.xlsx
-*.csv
+# OS
+.DS_Store
 
-# Données AdminExpress source non simplifiées
-departements-adminexpress.geojson
+# Build artifacts
+node_modules/
+*.min.js
+*.min.css
 
-# Dossiers spécifiques
-.github/
-
-# Données Natural Earth (raw download, non versionné)
-ne_10m_admin_0_countries/
-ne_10m_admin_0_countries.zip
-
-# Script de build placeholder (vide pour l'instant)
-scripts/build_departements.py
+# Test artifacts
+test-results/
+playwright-report/
