@@ -8,7 +8,10 @@
     "dev": "vercel dev",
     "deploy": "vercel --prod",
     "build": "echo 'Site statique, pas de build step'",
-    "lint": "echo 'Pas de linter configure - a ajouter si besoin'"
+    "lint": "echo 'Pas de linter configure - a ajouter si besoin'",
+    "test": "node scripts/test-admin-e2e.mjs",
+    "test:read-only": "SKIP_MUTATIONS=1 node scripts/test-admin-e2e.mjs",
+    "test:local": "BASE_URL=http://localhost:3000 node scripts/test-admin-e2e.mjs"
   },
   "engines": {
     "node": ">=18"

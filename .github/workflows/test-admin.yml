@@ -1,0 +1,45 @@
+# .github/workflows/test-admin.yml
+# Lance les tests E2E admin (lecture seule) a chaque PR/push.
+# En lecture seule : aucune mutation GitHub, aucune PR creee.
+
+name: Tests E2E admin
+
+on:
+  push:
+    branches: [main, security/**]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-admin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --omit=dev || npm install --no-audit --no-fund
+
+      - name: Run E2E tests (read-only)
+        env:
+          BASE_URL: https://cabinetsmap.vercel.app
+          ADMIN_CODE: ${{ secrets.ADMIN_CODE }}
+        run: npm run test:read-only
+
+      # Sur push direct sur main (pas PR), on peut aussi tester les mutations
+      # pour valider le flow complet add/edit/delete. Necessite le code admin
+      # en secret GitHub.
+      - name: Run E2E tests (with mutations) - main branch only
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          BASE_URL: https://cabinetsmap.vercel.app
+          ADMIN_CODE: ${{ secrets.ADMIN_CODE }}
+        run: npm test
+        continue-on-error: false
