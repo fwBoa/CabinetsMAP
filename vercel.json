@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "buildCommand": null,
+  "buildCommand": "node scripts/bust-cache.mjs",
   "outputDirectory": ".",
   "framework": null,
   "cleanUrls": false,
