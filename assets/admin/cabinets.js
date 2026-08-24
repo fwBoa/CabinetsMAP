@@ -34,6 +34,12 @@
     els.sheetSubmit = document.getElementById('sheetSubmit');
     els.sheetDelete = document.getElementById('sheetDelete');
 
+    // Widget multi-departements (remplace l'ancien champ texte fDepartements)
+    els.fDepartements = document.getElementById('fDepartements');
+    els.fDepartementsTags = document.getElementById('fDepartementsTags');
+    els.fDepartementsSearch = document.getElementById('fDepartementsSearch');
+    els.fDepartementsResults = document.getElementById('fDepartementsResults');
+
     els.fNom = document.getElementById('fNom');
     els.fAdresse = document.getElementById('fAdresse');
     els.fPhone = document.getElementById('fPhone');
@@ -43,6 +49,16 @@
     els.fCoursAppel = document.getElementById('fCoursAppel');
     els.fCouleur = document.getElementById('fCouleur');
     els.formError = document.getElementById('formError');
+
+    // Init picker depts (apres que App.DEPARTEMENTS soit dispo)
+    if (window.App && typeof window.App.adminDeptPicker === 'object') {
+      els.deptPicker = window.App.adminDeptPicker.init({
+        hiddenId: 'fDepartements',
+        tagsId: 'fDepartementsTags',
+        searchId: 'fDepartementsSearch',
+        resultsId: 'fDepartementsResults',
+      });
+    }
 
     els.confirmModal = document.getElementById('confirmModal');
     els.confirmMsg = document.getElementById('confirmMsg');
@@ -193,7 +209,13 @@
     els.fAdresse.value = p.adresse || '';
     els.fPhone.value = p.phone || '';
     els.fEmails.value = (p.emails || []).join(', ');
-    els.fDepartements.value = (p.departements || []).join(', ');
+    // Le picker multi-depts met a jour fDepartements (hidden) via setValues
+    if (els.deptPicker) {
+      els.deptPicker.setValues(p.departements || []);
+    } else if (els.fDepartements) {
+      // Fallback si le picker n'est pas init (degrade gracieux)
+      els.fDepartements.value = (p.departements || []).join(', ');
+    }
     els.fTribunaux.value = (p.tribunaux || []).join(', ');
     els.fCoursAppel.value = (p.cours_appel || []).join(', ');
     els.fCouleur.value = p.couleur || '#1e3a5f';
