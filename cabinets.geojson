@@ -692,6 +692,38 @@
           43.5557428
         ]
       }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "nom": "Cabinet test E2E 282984",
+        "adresse": "42 Rue de Test - 75000 PARIS",
+        "phone": "01.23.45.67.89",
+        "emails": [
+          "test@e2e.fr"
+        ],
+        "tribunaux": [
+          "PARIS"
+        ],
+        "cours_appel": [
+          "PARIS"
+        ],
+        "departements": [
+          "75"
+        ],
+        "couleur": "#1e3a5f",
+        "badges": [],
+        "display_name": "",
+        "place_id": null,
+        "id": "cabinet-283246-lxep"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          2.2137,
+          46.2276
+        ]
+      }
     }
   ]
 }
