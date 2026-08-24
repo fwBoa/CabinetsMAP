@@ -35,9 +35,9 @@
   <main id="main" class="admin-main" data-view="login">
     <section class="admin-login" id="loginView">
       <div class="admin-login__card">
-        <h1 class="admin-login__title">Accès admin</h1>
+        <h1 class="admin-login__title">Espace administrateur</h1>
         <p class="admin-login__intro">
-          Entre ton code d'accès pour gérer les cabinets partenaires.
+          Connectez-vous pour gérer la liste des cabinets affichés sur la carte.
         </p>
         <form id="loginForm" class="admin-login__form" novalidate>
           <label for="codeInput" class="admin-login__label">Code d'accès</label>
@@ -90,8 +90,9 @@
 
       <p class="admin-list__footer">
         <small>
-          Les modifications ouvrent une Pull Request sur GitHub.
-          Tu dois merger la PR pour que le changement soit visible publiquement.
+          Les modifications sont envoyées pour validation automatique, puis publiées sur la carte.
+          En cas de refus (données incohérentes, test échoué), la modification reste en attente
+          et un lien vers le dossier technique est fourni.
         </small>
       </p>
     </section>
@@ -140,25 +141,26 @@
           <input id="fCoursAppel" name="cours_appel" type="text" placeholder="PARIS, BORDEAUX" />
         </div>
         <div class="admin-field admin-field--color">
-          <label for="fCouleur">Couleur</label>
+          <label for="fCouleur">Couleur <span class="admin-field__hint">(utilisée pour identifier le cabinet sur la carte)</span></label>
           <input id="fCouleur" name="couleur" type="color" value="#1e3a5f" />
         </div>
         <p id="formError" class="admin-form__error" role="alert" aria-live="polite"></p>
 
-        <!-- Preview -->
-        <section id="sheetPreview" class="admin-preview" hidden>
+        <!-- Récapitulatif des changements (preview lisible, avant validation) -->
+        <section id="sheetPreview" class="admin-preview" hidden aria-live="polite">
           <header class="admin-preview__header">
-            <h3>Aperçu des modifications</h3>
+            <h3>Récapitulatif des changements</h3>
+            <p class="admin-preview__intro" id="previewIntro"></p>
             <button id="previewClose" type="button" class="admin-btn admin-btn--ghost admin-btn--sm">Fermer</button>
           </header>
-          <pre id="previewContent" class="admin-preview__content"></pre>
+          <div id="previewContent" class="admin-preview__content"></div>
         </section>
 
         <div class="admin-sheet__footer">
           <button id="sheetDelete" type="button" class="admin-btn admin-btn--danger" hidden>Supprimer</button>
           <div class="admin-sheet__footer-right">
             <button type="button" class="admin-btn admin-btn--ghost" data-close>Annuler</button>
-            <button id="sheetPreviewBtn" type="button" class="admin-btn admin-btn--ghost">Prévisualiser</button>
+            <button id="sheetPreviewBtn" type="button" class="admin-btn admin-btn--ghost">Voir les changements</button>
             <button id="sheetSubmit" type="submit" class="admin-btn admin-btn--primary">Enregistrer</button>
           </div>
         </div>

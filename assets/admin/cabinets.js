@@ -85,24 +85,24 @@
   }
 
   // Toast specialise pour le resultat d'une mutation.
-  // Distingue merge auto-OK, merge en attente manuelle, ou check rouge.
+  // 3 cas : succes (deploye), en attente de validation manuelle, echec.
   // result = { merged: bool, prNumber, prUrl, mergeReason }
   function showMutationToast(result, verb) {
-    const prLink = result.prUrl ? { href: result.prUrl, label: 'Voir la PR' } : null;
+    const link = result.prUrl ? { href: result.prUrl, label: 'Voir le détail technique' } : null;
     if (result.merged) {
       toast({
-        message: `Cabinet ${verb} et déployé ! 🚀`,
+        message: `Cabinet ${verb}. La carte sera mise à jour dans quelques secondes.`,
         variant: 'success',
-        action: prLink,
+        action: link,
       });
     } else {
       const reason = result.mergeReason
-        ? ` (${result.mergeReason.toLowerCase().slice(0, 80)})`
+        ? ` Raison : ${result.mergeReason.toLowerCase().replace(/^./, c => c.toUpperCase())}.`
         : '';
       toast({
-        message: `Cabinet ${verb} — PR #${result.prNumber} à merger${reason}`,
+        message: `Modification prise en compte mais validation automatique refusée.${reason} Un administrateur doit intervenir.`,
         variant: 'warning',
-        action: prLink,
+        action: link,
       });
     }
   }
@@ -306,7 +306,7 @@
       const payload = collectPayload();
       const action = state.editingId ? 'edit' : 'add';
       const result = await AppAdmin.api.mutateCabinet(action, payload);
-      const verb = action === 'add' ? 'ajouté' : 'modifié';
+      const verb = action === 'add' ? 'créé' : 'mis à jour';
       showMutationToast(result, verb);
       closeSheet();
       await loadCabinets();
@@ -325,11 +325,11 @@
 
   function confirmDelete(cabinet) {
     const name = cabinet.properties?.nom || 'ce cabinet';
-    openConfirm(`Supprimer définitivement "${name}" ? Cette action ouvre une PR de suppression.`, async () => {
+    openConfirm(`Supprimer définitivement « ${name} » de la carte ?`, async () => {
       setBusy(els.sheetDelete, true);
       try {
         const result = await AppAdmin.api.mutateCabinet('delete', { id: cabinet.properties.id });
-        showMutationToast(result, 'suppression envoyée');
+        showMutationToast(result, 'supprimé');
         closeSheet();
         await loadCabinets();
       } catch (err) {
@@ -367,43 +367,233 @@
     });
   }
 
-  // === Preview diff ===
+  // === Récapitulatif des changements (preview lisible, cote utilisateur) ===
+  // Retourne { intro, items } ou { intro, empty: true }.
+  // Chaque item est un objet decrivant un changement de facon humaine :
+  //   { label, kind: 'unchanged'|'added'|'removed'|'changed', before, after, additions, removals }
+  // Les "kind" sont ensuite rendus en HTML (avant/apres, ajouts, retraits).
   function buildDiffPreview() {
-    if (!state.editingId) {
-      // ADD : on affiche ce qui sera envoye
-      const payload = collectPayload().properties;
-      return `Nouvelle feature qui sera ajoutee a cabinets.geojson :
+    const fieldLabels = {
+      nom: 'Nom',
+      adresse: 'Adresse',
+      phone: 'Téléphone',
+      emails: 'Emails',
+      tribunaux: 'Tribunaux',
+      cours_appel: "Cours d'appel",
+      departements: 'Départements',
+      couleur: 'Couleur',
+      display_name: 'Nom affiché',
+      place_id: 'Identifiant Google',
+      badges: 'Badges',
+    };
 
-{
-  "type": "Feature",
-  "properties": ${JSON.stringify(payload, null, 2)},
-  ...
-}`;
+    const deptsMap = (window.App && window.App.DEPARTEMENTS) || [];
+    const deptLabel = code => {
+      const d = deptsMap.find(x => x.code === code);
+      return d ? `${code} (${d.nom})` : code;
+    };
+
+    // Formate une valeur pour affichage (jamais de JSON brut).
+    const fmt = (key, value) => {
+      if (value === undefined || value === null || value === '') return '—';
+      if (Array.isArray(value)) {
+        if (value.length === 0) return '—';
+        if (key === 'departements') return value.map(deptLabel).join(', ');
+        return value.join(', ');
+      }
+      if (key === 'couleur') {
+        // Affiche le code hex + un petit carre de couleur
+        return value;
+      }
+      return String(value);
+    };
+
+    if (!state.editingId) {
+      // ADD : tous les champs sont nouveaux.
+      // On masque les champs vides / valeur par defaut pour ne pas polluer le récap.
+      const payload = collectPayload().properties;
+      const items = [];
+      const isEmpty = (key, value) => {
+        if (value === undefined || value === null || value === '') return true;
+        if (Array.isArray(value) && value.length === 0) return true;
+        // Couleur par defaut : on n'affiche que si l'utilisateur l'a changee
+        if (key === 'couleur' && value === '#1e3a5f') return true;
+        return false;
+      };
+      Object.keys(payload).forEach(k => {
+        if (['badges', 'display_name', 'place_id'].includes(k)) return;
+        if (!fieldLabels[k]) return;
+        if (isEmpty(k, payload[k])) return;
+        items.push({
+          label: fieldLabels[k],
+          kind: 'added',
+          after: fmt(k, payload[k]),
+        });
+      });
+      if (items.length === 0) {
+        return {
+          intro: 'Ce cabinet sera créé sur la carte après validation automatique.',
+          items: [],
+          empty: true,
+        };
+      }
+      return {
+        intro: 'Ce cabinet sera créé sur la carte après validation automatique.',
+        items,
+        empty: false,
+      };
     }
-    // EDIT : on compare avant/apres
+
+    // EDIT : comparaison avant/apres
     const existing = state.cabinets.find(c => c.properties?.id === state.editingId);
-    if (!existing) return '(cabinet introuvable)';
+    if (!existing) {
+      return {
+        intro: 'Cabinet introuvable dans la liste actuelle.',
+        items: [],
+        empty: true,
+      };
+    }
     const payload = collectPayload().properties;
     const before = existing.properties || {};
-    const after = { ...before, ...payload, id: before.id };
-    const lines = [];
-    lines.push(`Cabinet : ${before.nom} (${before.id})`);
-    lines.push('');
-    const fields = Object.keys(after);
-    for (const f of fields) {
-      const b = JSON.stringify(before[f]);
-      const a = JSON.stringify(after[f]);
-      if (b === a) continue;
-      if (!(f in before)) {
-        lines.push(`+ ${f}: ${a}`);
-      } else if (!(f in payload)) {
-        lines.push(`  ${f}: (conserve)`);
+    const items = [];
+    Object.keys(fieldLabels).forEach(k => {
+      if (!(k in payload) && !(k in before)) return;
+      // Champs techniques caches si pas remplis
+      if (['badges', 'display_name', 'place_id'].includes(k)) return;
+
+      const b = before[k];
+      const a = payload[k] !== undefined ? payload[k] : b;
+      const bStr = JSON.stringify(b ?? null);
+      const aStr = JSON.stringify(a ?? null);
+      if (bStr === aStr) return;
+
+      const item = { label: fieldLabels[k] };
+
+      // Pour les listes (emails, tribunaux, cours_appel, departements) on
+      // decompose en ajouts/retraits pour plus de clarte.
+      if (Array.isArray(a) && Array.isArray(b)) {
+        const aSet = new Set(a.map(String));
+        const bSet = new Set(b.map(String));
+        const additions = a.filter(x => !bSet.has(String(x)));
+        const removals = b.filter(x => !aSet.has(String(x)));
+        item.kind = (additions.length && removals.length) ? 'changed'
+                  : (additions.length ? 'added' : 'removed');
+        item.additions = additions.map(v => fmt(k, [v]).replace(/,$/, '').trim());
+        item.removals = removals.map(v => fmt(k, [v]).replace(/,$/, '').trim());
+        if (additions.length === 0 && removals.length === 0) return;
       } else {
-        lines.push(`- ${f}: ${b}`);
-        lines.push(`+ ${f}: ${a}`);
+        item.kind = 'changed';
+        item.before = fmt(k, b);
+        item.after = fmt(k, a);
       }
+      items.push(item);
+    });
+
+    if (items.length === 0) {
+      return {
+        intro: 'Aucun changement détecté par rapport à la version actuelle.',
+        items: [],
+        empty: true,
+      };
     }
-    return lines.join('\n');
+
+    return {
+      intro: `Modifications du cabinet « ${before.nom || ''} ».`,
+      items,
+      empty: false,
+    };
+  }
+
+  // Rend le récap en HTML dans #previewContent.
+  function renderPreviewContent(diff) {
+    const root = els.previewContent;
+    if (!root) return;
+    root.innerHTML = '';
+
+    if (diff.empty) {
+      const p = document.createElement('p');
+      p.className = 'admin-preview__empty';
+      p.textContent = diff.empty === true ? 'Aucune modification à afficher.' : diff.intro;
+      root.appendChild(p);
+      return;
+    }
+
+    const ul = document.createElement('ul');
+    ul.className = 'admin-preview__list';
+
+    diff.items.forEach(item => {
+      const li = document.createElement('li');
+      li.className = 'admin-preview__item admin-preview__item--' + item.kind;
+
+      const label = document.createElement('span');
+      label.className = 'admin-preview__label';
+      label.textContent = item.label;
+
+      const value = document.createElement('div');
+      value.className = 'admin-preview__value';
+
+      if (item.kind === 'changed' && (item.before || item.after)) {
+        if (item.before && item.before !== '—') {
+          const before = document.createElement('span');
+          before.className = 'admin-preview__before';
+          before.textContent = item.before;
+          value.appendChild(before);
+          const arrow = document.createElement('span');
+          arrow.className = 'admin-preview__arrow';
+          arrow.textContent = '→';
+          arrow.setAttribute('aria-hidden', 'true');
+          value.appendChild(arrow);
+        }
+        const after = document.createElement('span');
+        after.className = 'admin-preview__after';
+        after.textContent = item.after;
+        value.appendChild(after);
+      } else if (item.kind === 'added') {
+        if (item.additions && item.additions.length) {
+          item.additions.forEach(v => {
+            const tag = document.createElement('span');
+            tag.className = 'admin-preview__tag admin-preview__tag--add';
+            tag.textContent = '+ ' + v;
+            value.appendChild(tag);
+          });
+        } else if (item.after) {
+          const tag = document.createElement('span');
+          tag.className = 'admin-preview__tag admin-preview__tag--add';
+          tag.textContent = '+ ' + item.after;
+          value.appendChild(tag);
+        }
+        if (item.removals && item.removals.length) {
+          item.removals.forEach(v => {
+            const tag = document.createElement('span');
+            tag.className = 'admin-preview__tag admin-preview__tag--remove';
+            tag.textContent = '− ' + v;
+            value.appendChild(tag);
+          });
+        }
+      } else if (item.kind === 'removed') {
+        if (item.removals && item.removals.length) {
+          item.removals.forEach(v => {
+            const tag = document.createElement('span');
+            tag.className = 'admin-preview__tag admin-preview__tag--remove';
+            tag.textContent = '− ' + v;
+            value.appendChild(tag);
+          });
+        }
+        if (item.additions && item.additions.length) {
+          item.additions.forEach(v => {
+            const tag = document.createElement('span');
+            tag.className = 'admin-preview__tag admin-preview__tag--add';
+            tag.textContent = '+ ' + v;
+            value.appendChild(tag);
+          });
+        }
+      }
+
+      li.append(label, value);
+      ul.appendChild(li);
+    });
+
+    root.appendChild(ul);
   }
 
   function togglePreview() {
@@ -415,12 +605,15 @@
         return;
       }
       els.formError.textContent = '';
-      els.previewContent.textContent = buildDiffPreview();
+      const diff = buildDiffPreview();
+      const introEl = document.getElementById('previewIntro');
+      if (introEl) introEl.textContent = diff.intro || '';
+      renderPreviewContent(diff);
       els.sheetPreview.hidden = false;
-      els.sheetPreviewBtn.textContent = 'Masquer';
+      els.sheetPreviewBtn.textContent = 'Masquer le récapitulatif';
     } else {
       els.sheetPreview.hidden = true;
-      els.sheetPreviewBtn.textContent = 'Prévisualiser';
+      els.sheetPreviewBtn.textContent = 'Voir les changements';
     }
   }
 
