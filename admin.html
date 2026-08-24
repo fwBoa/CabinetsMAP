@@ -63,20 +63,107 @@
       </div>
     </section>
 
-    <!-- ========== LISTE (placeholder pour phase 2) ========== -->
+    <!-- ========== LISTE ========== -->
     <section class="admin-list" id="listView" hidden>
-      <div class="admin-list__empty">
-        <h2>Bienvenue 👋</h2>
-        <p>
-          Tu es authentifié. L'éditeur de cabinets arrive dans la prochaine phase.
-        </p>
-        <p class="admin-list__hint">
-          Pour l'instant, tu peux vérifier que ta session fonctionne.
-          Les opérations CRUD seront ajoutées en phase 2 et 3.
-        </p>
+      <header class="admin-list__header">
+        <div class="admin-list__title-block">
+          <h1 class="admin-list__title">Cabinets</h1>
+          <p class="admin-list__count"><strong id="listCount">0</strong> cabinet(s)</p>
+        </div>
+        <div class="admin-list__actions">
+          <button id="refreshBtn" type="button" class="admin-btn admin-btn--ghost">
+            ↻ Rafraîchir
+          </button>
+          <button id="addBtn" type="button" class="admin-btn admin-btn--primary">
+            + Ajouter
+          </button>
+        </div>
+      </header>
+
+      <div id="listLoading" class="admin-list__loading" hidden>
+        <span class="admin-spinner" aria-hidden="true"></span>
+        <span>Chargement des cabinets…</span>
       </div>
+
+      <p id="listEmpty" class="admin-list__empty" hidden>
+        Aucun cabinet pour l'instant. Cliquez sur « + Ajouter » pour commencer.
+      </p>
+
+      <ul id="cabinetList" class="admin-list__items" hidden></ul>
+
+      <p class="admin-list__footer">
+        <small>
+          Les modifications ouvrent une Pull Request sur GitHub.
+          Tu dois merger la PR pour que le changement soit visible publiquement.
+        </small>
+      </p>
     </section>
   </main>
+
+  <!-- ========== SHEET EDITION ========== -->
+  <aside id="cabinetSheet" class="admin-sheet" aria-hidden="true" hidden>
+    <div class="admin-sheet__backdrop" data-close></div>
+    <div class="admin-sheet__panel" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+      <header class="admin-sheet__header">
+        <h2 id="sheetTitle" class="admin-sheet__title">Modifier le cabinet</h2>
+        <button id="sheetClose" type="button" class="admin-sheet__close" aria-label="Fermer">×</button>
+      </header>
+      <form id="sheetForm" class="admin-sheet__form" novalidate>
+        <div class="admin-field">
+          <label for="fNom">Nom <span class="admin-field__req">*</span></label>
+          <input id="fNom" name="nom" type="text" required maxlength="200" placeholder="Ex: SELARL DUPONT" />
+        </div>
+        <div class="admin-field">
+          <label for="fAdresse">Adresse</label>
+          <textarea id="fAdresse" name="adresse" rows="2" placeholder="Numéro, rue, code postal, ville"></textarea>
+        </div>
+        <div class="admin-field">
+          <label for="fPhone">Téléphone</label>
+          <input id="fPhone" name="phone" type="tel" placeholder="01.23.45.67.89" />
+        </div>
+        <div class="admin-field">
+          <label for="fEmails">Emails <span class="admin-field__hint">(séparés par virgule)</span></label>
+          <input id="fEmails" name="emails" type="text" placeholder="contact@cabinet.fr, j.dupont@cabinet.fr" />
+        </div>
+        <div class="admin-field">
+          <label for="fDepartements">Départements <span class="admin-field__hint">(codes, ex: 75, 33, 13)</span></label>
+          <input id="fDepartements" name="departements" type="text" placeholder="75, 33, 13" />
+        </div>
+        <div class="admin-field">
+          <label for="fTribunaux">Tribunaux <span class="admin-field__hint">(séparés par virgule)</span></label>
+          <input id="fTribunaux" name="tribunaux" type="text" placeholder="PARIS, VERSAILLES" />
+        </div>
+        <div class="admin-field">
+          <label for="fCoursAppel">Cours d'appel <span class="admin-field__hint">(séparés par virgule)</span></label>
+          <input id="fCoursAppel" name="cours_appel" type="text" placeholder="PARIS, BORDEAUX" />
+        </div>
+        <div class="admin-field admin-field--color">
+          <label for="fCouleur">Couleur</label>
+          <input id="fCouleur" name="couleur" type="color" value="#1e3a5f" />
+        </div>
+        <p id="formError" class="admin-form__error" role="alert" aria-live="polite"></p>
+        <div class="admin-sheet__footer">
+          <button id="sheetDelete" type="button" class="admin-btn admin-btn--danger" hidden>Supprimer</button>
+          <div class="admin-sheet__footer-right">
+            <button type="button" class="admin-btn admin-btn--ghost" data-close>Annuler</button>
+            <button id="sheetSubmit" type="submit" class="admin-btn admin-btn--primary">Enregistrer</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </aside>
+
+  <!-- ========== MODAL CONFIRMATION ========== -->
+  <div id="confirmModal" class="admin-modal" hidden>
+    <div class="admin-modal__backdrop" data-close></div>
+    <div class="admin-modal__panel" role="alertdialog" aria-modal="true" aria-labelledby="confirmMsg">
+      <p id="confirmMsg" class="admin-modal__msg"></p>
+      <div class="admin-modal__actions">
+        <button id="confirmCancel" type="button" class="admin-btn admin-btn--ghost">Annuler</button>
+        <button id="confirmOk" type="button" class="admin-btn admin-btn--danger">Confirmer</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ========== TOAST ========== -->
   <div id="toast" class="admin-toast" role="status" aria-live="polite" hidden></div>
@@ -84,5 +171,6 @@
   <!-- ========== JS ========== -->
   <script src="assets/admin/api.js" defer></script>
   <script src="assets/admin/auth.js" defer></script>
+  <script src="assets/admin/cabinets.js" defer></script>
 </body>
 </html>

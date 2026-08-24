@@ -54,5 +54,12 @@
     authLogout() {
       return request('DELETE', '/admin-auth');
     },
+    // === Cabinets ===
+    listCabinets() {
+      return request('GET', '/cabinets');
+    },
+    mutateCabinet(action, payload) {
+      return request('POST', '/cabinets', { action, payload });
+    },
   };
 })();

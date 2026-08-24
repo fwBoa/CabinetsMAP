@@ -33,6 +33,9 @@
     }, 3500);
   }
 
+  // Expose toast pour les autres modules (cabinets.js, ...)
+  AppAdmin.toast = showToast;
+
   function setError(msg) {
     els.error.textContent = msg || '';
   }
