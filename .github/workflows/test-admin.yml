@@ -25,7 +25,14 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci --omit=dev || npm install --no-audit --no-fund
+        # npm ci exige un lockfile. Si absent ou corrompu, fallback sur npm install.
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --no-audit --no-fund
+          else
+            echo "⚠ package-lock.json absent, fallback sur npm install"
+            npm install --no-audit --no-fund
+          fi
 
       - name: Run E2E tests (read-only)
         env:
