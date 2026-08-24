@@ -61,6 +61,17 @@
   AppAdmin.toast = showToast;
   AppAdmin.setView = setView;
 
+  // Callbacks executes apres confirmation de session (status check OK ou login reussi)
+  const authCallbacks = [];
+  AppAdmin.onAuthenticated = function (fn) {
+    if (typeof fn === 'function') authCallbacks.push(fn);
+  };
+  function fireAuthenticated() {
+    while (authCallbacks.length) {
+      try { authCallbacks.shift()(); } catch (e) { console.error('onAuthenticated callback failed', e); }
+    }
+  }
+
   function setError(msg) {
     els.error.textContent = msg || '';
   }
@@ -101,6 +112,7 @@
       els.input.value = ''; // clear le code en memoire
       showToast('Connecté', 'success');
       setView('list');
+      fireAuthenticated();
     } catch (err) {
       setError(err.message === 'Code invalide'
         ? 'Code incorrect.'
@@ -114,6 +126,8 @@
     try {
       await AppAdmin.api.authLogout();
       showToast('Déconnecté');
+      // Vider l'etat local pour qu'un futur login reparte d'une liste vide
+      if (AppAdmin.cabinets?.reset) AppAdmin.cabinets.reset();
       setView('login');
     } catch (err) {
       showToast('Erreur lors de la déconnexion', 'error');
@@ -126,6 +140,7 @@
       const status = await AppAdmin.api.authStatus();
       if (status.authenticated) {
         setView('list');
+        fireAuthenticated();
         return;
       }
     } catch {

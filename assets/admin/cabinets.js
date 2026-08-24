@@ -56,13 +56,15 @@
   }
 
   // === Helpers UI ===
-  // Wrapper : accepte (opts) ou (message, variant) pour retrocompat
+  // Wrapper : accepte (message-string, variant-string) ou ({message, variant, action})
+  // On delegue a AppAdmin.toast (= auth.js showToast) avec les 2 args qu'il attend.
   function toast(arg1, arg2) {
     if (!AppAdmin.toast) return;
     if (typeof arg1 === 'string') {
       AppAdmin.toast(arg1, arg2);
     } else if (arg1 && typeof arg1 === 'object') {
-      AppAdmin.toast(arg1);
+      // showToast(message, opts) : on passe le texte comme message et l'objet comme opts
+      AppAdmin.toast(arg1.message || '', arg1);
     }
   }
 
@@ -385,11 +387,29 @@
     }
   }
 
+  function reset() {
+    state.cabinets = [];
+    state.sha = null;
+    state.editingId = null;
+    state.loading = false;
+    if (els.list) {
+      els.list.replaceChildren();
+      els.list.hidden = true;
+    }
+    if (els.listEmpty) els.listEmpty.hidden = true;
+    if (els.listLoading) els.listLoading.hidden = true;
+    if (els.listCount) els.listCount.textContent = '0';
+  }
+
   // === Init ===
   function init() {
     cacheDom();
     bind();
-    loadCabinets();
+    // Charge les cabinets uniquement apres confirmation de session par auth.js
+    // (sinon on declenche un 401+toast 'Session expiree' au premier load)
+    if (typeof AppAdmin.onAuthenticated === 'function') {
+      AppAdmin.onAuthenticated(loadCabinets);
+    }
   }
 
   if (document.readyState === 'loading') {
@@ -398,5 +418,5 @@
     init();
   }
 
-  AppAdmin.cabinets = { state, loadCabinets, openSheet, closeSheet };
+  AppAdmin.cabinets = { state, loadCabinets, openSheet, closeSheet, reset };
 })();
