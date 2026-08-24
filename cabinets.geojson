@@ -635,63 +635,6 @@
           50.6541913
         ]
       }
-    },
-    {
-      "type": "Feature",
-      "properties": {
-        "id": "cabinet-13",
-        "nom": "WLA CONSEILS et ASSOCIES",
-        "adresse": "06400 CANNES",
-        "phone": "6",
-        "emails": [
-          "contact@wla-recouvrement.fr"
-        ],
-        "tribunaux": [
-          "ALBI - CASTRES",
-          "ALENCON",
-          "ARGENTAN",
-          "CAEN",
-          "CASTRES",
-          "CHARTRES",
-          "CHERBOURG-OCTEVILLE",
-          "COUTANCES",
-          "FOIX",
-          "LISIEUX",
-          "MONTAUBAN",
-          "PONTOISE",
-          "ST GAUDENS",
-          "TOULOUSE",
-          "VERSAILLES"
-        ],
-        "cours_appel": [
-          "CAEN",
-          "TOULOUSE",
-          "VERSAILLES"
-        ],
-        "departements": [
-          "09",
-          "14",
-          "28",
-          "31",
-          "50",
-          "61",
-          "78",
-          "81",
-          "82",
-          "95"
-        ],
-        "couleur": "#3b7d87",
-        "badges": [],
-        "display_name": "123 Conseil, 18, Boulevard Carnot, Cannes Passy, Hautes Vallergues, Cannes, Grasse, Alpes-Maritimes, Provence-Alpes-Côte d'Azur, France métropolitaine, 06400, France",
-        "place_id": 422619214
-      },
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          7.0171301,
-          43.5557428
-        ]
-      }
     }
   ]
 }
