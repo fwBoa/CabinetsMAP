@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "Carte interactive du reseau avocat CEGC - site statique + Vercel Functions pour l'edition admin.",
+  "type": "module",
   "scripts": {
     "dev": "vercel dev",
     "deploy": "vercel --prod",
