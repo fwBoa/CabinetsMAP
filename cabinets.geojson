@@ -6,37 +6,20 @@
       "properties": {
         "id": "cabinet-01",
         "nom": "AARPI PLATON MAGNE TURNER",
-        "adresse": "6 Rue Molière - 83000 TOULON",
-        "phone": "04.94.93.64.64",
-        "emails": [
-          "contact@pmt-avocats.fr"
-        ],
-        "tribunaux": [
-          "AIX EN PROVENCE",
-          "BLOIS",
-          "DIGNE LES BAINS",
-          "MONTARGIS",
-          "ORLEANS",
-          "TARASCON",
-          "TOULON",
-          "TOURS"
-        ],
-        "cours_appel": [
-          "AIX-EN-PROVENCE",
-          "ORLEANS"
-        ],
+        "adresse": "",
+        "phone": "",
+        "emails": [],
+        "tribunaux": [],
+        "cours_appel": [],
         "departements": [
           "04",
           "13",
-          "37",
-          "41",
-          "45",
           "83"
         ],
         "couleur": "#1e3a5f",
         "badges": [],
-        "display_name": "6, Rue Molière, Basse Ville, Toulon, Var, Provence-Alpes-Côte d'Azur, France métropolitaine, 83000, France",
-        "place_id": 83727876
+        "display_name": "",
+        "place_id": null
       },
       "geometry": {
         "type": "Point",
