@@ -692,6 +692,32 @@
           43.5557428
         ]
       }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "nom": "CABINET TEST DELETE 2",
+        "adresse": "3 rue de test",
+        "phone": "03.00.00.00.00",
+        "emails": [],
+        "tribunaux": [],
+        "cours_appel": [],
+        "departements": [
+          "75"
+        ],
+        "couleur": "#0000ff",
+        "badges": [],
+        "display_name": "",
+        "place_id": null,
+        "id": "cabinet-422998-ggfb"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          2.2137,
+          46.2276
+        ]
+      }
     }
   ]
 }
