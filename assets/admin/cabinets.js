@@ -412,10 +412,18 @@
     }
   }
 
+  // Eviter la double-init : avec defer, readyState peut etre 'interactive' au moment
+  // ou l'IIFE s'execute, ET DOMContentLoaded peut fire ensuite. On utilise un flag.
+  let initialized = false;
+  function initOnce() {
+    if (initialized) return;
+    initialized = true;
+    return init();
+  }
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', initOnce);
   } else {
-    init();
+    initOnce();
   }
 
   AppAdmin.cabinets = { state, loadCabinets, openSheet, closeSheet, reset };

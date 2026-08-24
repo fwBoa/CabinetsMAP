@@ -153,6 +153,15 @@
   // === Bind ===
   if (els.form) els.form.addEventListener('submit', handleLogin);
   if (els.logout) els.logout.addEventListener('click', handleLogout);
-  document.addEventListener('DOMContentLoaded', init);
-  if (document.readyState !== 'loading') init();
+
+  // Eviter la double-init : avec defer, readyState peut etre 'interactive' au moment
+  // ou l'IIFE s'execute, ET DOMContentLoaded peut fire ensuite. On utilise un flag.
+  let initialized = false;
+  function initOnce() {
+    if (initialized) return;
+    initialized = true;
+    return init();
+  }
+  document.addEventListener('DOMContentLoaded', initOnce);
+  if (document.readyState !== 'loading') initOnce();
 })();
