@@ -34,6 +34,14 @@ jobs:
             npm install --no-audit --no-fund
           fi
 
+      - name: Validate cabinets.geojson structure
+        # Bloque les PR qui corrompraient le GeoJSON (codes dept inconnus,
+        # couleurs invalides, doublons d'id, coords hors France...).
+        # Tourne uniquement sur PR (et push main) pour ne pas casser le
+        # build sur des commits sans modification de donnees.
+        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+        run: node scripts/validate-cabinets.mjs
+
       - name: Run E2E tests (read-only)
         env:
           BASE_URL: https://cabinetsmap.vercel.app

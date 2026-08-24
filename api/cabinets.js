@@ -13,6 +13,7 @@ import {
   createBranch,
   commitFile,
   createPullRequest,
+  mergePullRequestIfChecksPass,
   normalizeCabinet,
   applyMutation,
   branchNameFor,
@@ -149,6 +150,26 @@ export default async function handler(req, res) {
       base: process.env.GITHUB_DEFAULT_BRANCH,
     }, ghToken);
 
+    // 6. Auto-merge : attend que les checks GitHub Actions passent.
+    // Si les checks sont verts, on merge automatiquement (squash).
+    // Sinon on laisse la PR ouverte pour merge manuel.
+    // Opt-out possible via AUTO_MERGE=false si jamais on veut debrayer.
+    let mergeResult = null;
+    if (process.env.AUTO_MERGE === 'false') {
+      mergeResult = { merged: false, reason: 'AUTO_MERGE desactive par env var' };
+    } else {
+      try {
+        mergeResult = await mergePullRequestIfChecksPass(
+          { prNumber: pr.number, headSha: pr.head.sha },
+          ghToken,
+          { maxWaitMs: 60_000, pollMs: 2_000, mergeMethod: 'squash' }
+        );
+      } catch (e) {
+        // Ne pas faire echouer toute l'operation si le polling plante
+        mergeResult = { merged: false, reason: `Polling checks erreur : ${e.message.slice(0, 150)}` };
+      }
+    }
+
     return json(res, 200, {
       ok: true,
       action,
@@ -157,6 +178,8 @@ export default async function handler(req, res) {
       prUrl: pr.html_url,
       prNumber: pr.number,
       branch: branchName,
+      merged: mergeResult.merged,
+      mergeReason: mergeResult.reason || null,
     });
   } catch (err) {
     if (err.status === 422 && /Reference already exists/i.test(err.message || '')) {

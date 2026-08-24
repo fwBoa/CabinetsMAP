@@ -84,6 +84,29 @@
     }
   }
 
+  // Toast specialise pour le resultat d'une mutation.
+  // Distingue merge auto-OK, merge en attente manuelle, ou check rouge.
+  // result = { merged: bool, prNumber, prUrl, mergeReason }
+  function showMutationToast(result, verb) {
+    const prLink = result.prUrl ? { href: result.prUrl, label: 'Voir la PR' } : null;
+    if (result.merged) {
+      toast({
+        message: `Cabinet ${verb} et déployé ! 🚀`,
+        variant: 'success',
+        action: prLink,
+      });
+    } else {
+      const reason = result.mergeReason
+        ? ` (${result.mergeReason.toLowerCase().slice(0, 80)})`
+        : '';
+      toast({
+        message: `Cabinet ${verb} — PR #${result.prNumber} à merger${reason}`,
+        variant: 'warning',
+        action: prLink,
+      });
+    }
+  }
+
   function setBusy(button, busy) {
     if (!button) return;
     button.disabled = busy;
@@ -284,11 +307,7 @@
       const action = state.editingId ? 'edit' : 'add';
       const result = await AppAdmin.api.mutateCabinet(action, payload);
       const verb = action === 'add' ? 'ajouté' : 'modifié';
-      toast({
-        message: `Cabinet ${verb} — PR #${result.prNumber}`,
-        variant: 'success',
-        action: result.prUrl ? { href: result.prUrl, label: 'Voir la PR' } : null,
-      });
+      showMutationToast(result, verb);
       closeSheet();
       await loadCabinets();
     } catch (err) {
@@ -310,11 +329,7 @@
       setBusy(els.sheetDelete, true);
       try {
         const result = await AppAdmin.api.mutateCabinet('delete', { id: cabinet.properties.id });
-        toast({
-          message: `Suppression envoyée — PR #${result.prNumber}`,
-          variant: 'success',
-          action: result.prUrl ? { href: result.prUrl, label: 'Voir la PR' } : null,
-        });
+        showMutationToast(result, 'suppression envoyée');
         closeSheet();
         await loadCabinets();
       } catch (err) {

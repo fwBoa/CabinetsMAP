@@ -96,6 +96,126 @@ export async function createPullRequest({ title, body, head, base }, token) {
   );
 }
 
+// === Auto-merge : attend que les checks GitHub Actions passent puis merge.
+// Retourne { merged: true, pr } | { merged: false, reason }.
+//
+// Strategie :
+// 1. Recupere la SHA du commit head de la PR
+// 2. Poll les status checks toutes les 2s, max 60s (30 iterations)
+// 3. Si required checks + status contextes sont en 'success' -> PUT merge
+// 4. Sinon -> return { merged: false } + laisse l'humain decider
+//
+// Note : GH Actions reporte les checks via l'API "check-runs" (nouveau)
+// et "statuses" (ancien). On verifie les deux pour compatibilite.
+export async function mergePullRequestIfChecksPass({ prNumber, headSha }, token, opts = {}) {
+  const maxWaitMs = opts.maxWaitMs ?? 60_000;
+  const pollMs = opts.pollMs ?? 2_000;
+  const mergeMethod = opts.mergeMethod ?? 'squash';
+
+  const owner = process.env.GITHUB_REPO_OWNER;
+  const repo = process.env.GITHUB_REPO_NAME;
+
+  // Helper : un check est-il "vert" ?
+  const isSuccess = (s) => s === 'success' || s === 'neutral' || s === 'skipped';
+
+  // 1. Polling des checks
+  const deadline = Date.now() + maxWaitMs;
+  let attempts = 0;
+  let lastSnapshot = null;
+
+  while (Date.now() < deadline) {
+    attempts++;
+
+    // a) statuses (commit status API, l'ancien systeme)
+    const statuses = await ghFetch(
+      `/repos/${owner}/${repo}/commits/${headSha}/statuses`,
+      {},
+      token
+    );
+    // b) check-runs (le systeme moderne, utilise par GitHub Actions)
+    const checks = await ghFetch(
+      `/repos/${owner}/${repo}/check-runs/${headSha}`,
+      {},
+      token
+    );
+
+    const statusList = Array.isArray(statuses) ? statuses : [];
+    const checkList = Array.isArray(checks.check_runs) ? checks.check_runs : [];
+
+    lastSnapshot = {
+      statuses: statusList.map(s => ({ context: s.context, state: s.state })),
+      checks: checkList.map(c => ({ name: c.name, status: c.status, conclusion: c.conclusion })),
+    };
+
+    // S'il n'y a aucun check defini pour ce repo (workflow pas encore lance, ou pas
+    // de workflow), on considere qu'il n'y a rien a attendre et on peut merger.
+    if (statusList.length === 0 && checkList.length === 0) {
+      // On attend UN cycle supplementaire pour voir si Actions demarre,
+      // puis on merge si toujours vide.
+      if (attempts >= 2) break;
+      await new Promise(r => setTimeout(r, pollMs));
+      continue;
+    }
+
+    // Y a-t-il des checks en echec ?
+    const failedStatus = statusList.find(s => s.state === 'failure' || s.state === 'error');
+    const failedCheck = checkList.find(c => c.conclusion === 'failure' || c.conclusion === 'cancelled' || c.conclusion === 'timed_out');
+    if (failedStatus || failedCheck) {
+      const failed = failedStatus || failedCheck;
+      return {
+        merged: false,
+        reason: `Check en echec : ${failedStatus?.context || failedCheck?.name}`,
+        snapshot: lastSnapshot,
+      };
+    }
+
+    // Y a-t-il des checks encore en cours ?
+    const pendingStatus = statusList.find(s => s.state === 'pending');
+    const pendingCheck = checkList.find(c => c.status !== 'completed');
+    if (pendingStatus || pendingCheck) {
+      await new Promise(r => setTimeout(r, pollMs));
+      continue;
+    }
+
+    // Tous les checks sont termines et en succes : on merge
+    break;
+  }
+
+  // Si on est encore dans la boucle sans break, le timeout est atteint.
+  // A ce stade soit on a casse (tout vert), soit on attend toujours.
+  if (lastSnapshot) {
+    const stillPending =
+      lastSnapshot.statuses.some(s => s.state === 'pending') ||
+      lastSnapshot.checks.some(c => c.status !== 'completed');
+    if (stillPending) {
+      return {
+        merged: false,
+        reason: `Timeout (${maxWaitMs}ms) en attendant les checks`,
+        snapshot: lastSnapshot,
+      };
+    }
+  }
+
+  // 2. Merge
+  try {
+    const merge = await ghFetch(
+      `/repos/${owner}/${repo}/pulls/${prNumber}/merge`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({
+          merge_method: mergeMethod, // 'squash' | 'merge' | 'rebase'
+          sha: headSha,
+        }),
+      },
+      token
+    );
+    return { merged: true, pr: merge };
+  } catch (e) {
+    // 405 = PR pas mergeable (conflit, branche protegee, checks requis manquants...)
+    return { merged: false, reason: `Merge refuse : ${e.message.slice(0, 200)}`, snapshot: lastSnapshot };
+  }
+}
+
 // === Validation du cabinet ===
 // Normalise et valide les champs d'un cabinet avant commit.
 export function normalizeCabinet(input) {
