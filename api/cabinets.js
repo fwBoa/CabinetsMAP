@@ -100,7 +100,12 @@ export default async function handler(req, res) {
       const existing = action === 'edit'
         ? geojson.features.find(f => f.properties?.id === payload.id)
         : null;
-      const normalized = normalizeCabinet(payload.properties || payload);
+      // Pour edit : partial=true -> on ne garde QUE les champs envoyes
+      // (sinon les anciens champs sont ecrases par les valeurs par defaut).
+      // Pour add : partial=false -> tous les champs avec valeurs par defaut.
+      const normalized = normalizeCabinet(payload.properties || payload, {
+        partial: action === 'edit',
+      });
       if (action === 'edit') {
         if (!payload.id) return json(res, 400, { error: 'id requis pour edit' });
         if (!existing) return json(res, 400, { error: `Cabinet ${payload.id} introuvable` });

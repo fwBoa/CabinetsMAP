@@ -225,7 +225,13 @@ export async function mergePullRequestIfChecksPass({ prNumber, headSha }, token,
 
 // === Validation du cabinet ===
 // Normalise et valide les champs d'un cabinet avant commit.
-export function normalizeCabinet(input) {
+// Si `partial=true`, ne retourne QUE les cles presentes dans l'input
+// (pour permettre une mise a jour partielle sans ecraser les champs
+// non envoyes). Si `partial=false`, retourne toujours tous les champs
+// avec des valeurs par defaut pour les champs manquants (utile pour
+// un ajout complet).
+export function normalizeCabinet(input, opts = {}) {
+  const partial = opts.partial === true;
   if (!input || typeof input !== 'object') {
     throw new Error('Cabinet invalide');
   }
@@ -233,19 +239,26 @@ export function normalizeCabinet(input) {
   if (!nom) throw new Error('Le nom du cabinet est obligatoire');
   if (nom.length > 200) throw new Error('Le nom dépasse 200 caractères');
 
-  return {
-    nom,
-    adresse: String(input.adresse || '').trim(),
-    phone: String(input.phone || '').trim(),
-    emails: Array.isArray(input.emails) ? input.emails.map(String).filter(Boolean) : [],
-    tribunaux: Array.isArray(input.tribunaux) ? input.tribunaux.map(String).filter(Boolean) : [],
-    cours_appel: Array.isArray(input.cours_appel) ? input.cours_appel.map(String).filter(Boolean) : [],
-    departements: Array.isArray(input.departements) ? input.departements.map(String).filter(Boolean) : [],
-    couleur: /^#[0-9a-fA-F]{6}$/.test(input.couleur) ? input.couleur : '#1e3a5f',
-    badges: Array.isArray(input.badges) ? input.badges : [],
-    display_name: String(input.display_name || '').trim(),
-    place_id: Number.isInteger(input.place_id) ? input.place_id : null,
+  // Helper : ajoute une cle seulement si elle est dans l'input (en mode partial)
+  // ou toujours (en mode complet).
+  const out = { nom };
+  const set = (key, value) => {
+    if (partial && !(key in input)) return;
+    out[key] = value;
   };
+
+  set('adresse', String(input.adresse || '').trim());
+  set('phone', String(input.phone || '').trim());
+  set('emails', Array.isArray(input.emails) ? input.emails.map(String).filter(Boolean) : []);
+  set('tribunaux', Array.isArray(input.tribunaux) ? input.tribunaux.map(String).filter(Boolean) : []);
+  set('cours_appel', Array.isArray(input.cours_appel) ? input.cours_appel.map(String).filter(Boolean) : []);
+  set('departements', Array.isArray(input.departements) ? input.departements.map(String).filter(Boolean) : []);
+  set('couleur', /^#[0-9a-fA-F]{6}$/.test(input.couleur) ? input.couleur : '#1e3a5f');
+  set('badges', Array.isArray(input.badges) ? input.badges : []);
+  set('display_name', String(input.display_name || '').trim());
+  set('place_id', Number.isInteger(input.place_id) ? input.place_id : null);
+
+  return out;
 }
 
 // === Mutation du FeatureCollection ===
