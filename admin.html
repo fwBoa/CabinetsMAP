@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Espace admin CabinetsMAP - edition des cabinets partenaires." />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="googlebot" content="noindex, nofollow" />
+  <meta name="referrer" content="no-referrer" />
+  <title>Admin CabinetsMAP</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231e3a8a'/%3E%3Ctext x='50' y='64' text-anchor='middle' font-family='Georgia' font-size='40' font-weight='700' fill='%23fff'%3ECEGC%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/admin/styles.css" />
+</head>
+<body>
+  <a href="#main" class="skip-link">Aller au contenu principal</a>
+
+  <!-- ========== HEADER ========== -->
+  <header class="admin-header" id="adminHeader">
+    <div class="admin-header__brand">
+      <strong>CabinetsMAP</strong>
+      <span class="admin-header__tag">Admin</span>
+    </div>
+    <nav class="admin-header__nav" id="adminNav" hidden>
+      <a href="/" class="admin-header__link">Voir le site public</a>
+      <button id="logoutBtn" class="admin-header__logout" type="button">
+        Se déconnecter
+      </button>
+    </nav>
+  </header>
+
+  <!-- ========== LOGIN ========== -->
+  <main id="main" class="admin-main" data-view="login">
+    <section class="admin-login" id="loginView">
+      <div class="admin-login__card">
+        <h1 class="admin-login__title">Accès admin</h1>
+        <p class="admin-login__intro">
+          Entre ton code d'accès pour gérer les cabinets partenaires.
+        </p>
+        <form id="loginForm" class="admin-login__form" novalidate>
+          <label for="codeInput" class="admin-login__label">Code d'accès</label>
+          <input
+            id="codeInput"
+            name="code"
+            type="password"
+            autocomplete="current-password"
+            required
+            minlength="8"
+            class="admin-login__input"
+            placeholder="••••••••••"
+            aria-describedby="loginError"
+          />
+          <button type="submit" id="loginSubmit" class="admin-login__submit">
+            Se connecter
+          </button>
+          <p id="loginError" class="admin-login__error" role="alert" aria-live="polite"></p>
+        </form>
+        <p class="admin-login__footer">
+          <small>Session valide 8h · Cookie HttpOnly · Pas de tracking</small>
+        </p>
+      </div>
+    </section>
+
+    <!-- ========== LISTE (placeholder pour phase 2) ========== -->
+    <section class="admin-list" id="listView" hidden>
+      <div class="admin-list__empty">
+        <h2>Bienvenue 👋</h2>
+        <p>
+          Tu es authentifié. L'éditeur de cabinets arrive dans la prochaine phase.
+        </p>
+        <p class="admin-list__hint">
+          Pour l'instant, tu peux vérifier que ta session fonctionne.
+          Les opérations CRUD seront ajoutées en phase 2 et 3.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <!-- ========== TOAST ========== -->
+  <div id="toast" class="admin-toast" role="status" aria-live="polite" hidden></div>
+
+  <!-- ========== JS ========== -->
+  <script src="assets/admin/api.js" defer></script>
+  <script src="assets/admin/auth.js" defer></script>
+</body>
+</html>
