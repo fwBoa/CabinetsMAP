@@ -270,7 +270,8 @@
   }
 
   function collectPayload() {
-    const properties = {
+    // Lecture brute des champs du form
+    const raw = {
       nom: els.fNom.value.trim(),
       adresse: els.fAdresse.value.trim(),
       phone: els.fPhone.value.trim(),
@@ -279,21 +280,50 @@
       cours_appel: parseList(els.fCoursAppel.value),
       departements: parseList(els.fDepartements.value),
       couleur: els.fCouleur.value.trim() || '#1e3a5f',
-      badges: [],
-      display_name: '',
-      place_id: null,
     };
+
     if (state.editingId) {
+      // MODE EDIT : on n'envoie QUE les champs reellement modifies par
+      // rapport a l'existant. Sans ca, les champs vides du form ecrase
+      // les anciennes valeurs cote serveur (et detruisent les donnees).
       const existing = state.cabinets.find(c => c.properties?.id === state.editingId);
-      if (existing) {
-        properties.display_name = existing.properties?.display_name || '';
-        properties.place_id = existing.properties?.place_id || null;
-        properties.badges = existing.properties?.badges || [];
-        return { id: state.editingId, properties, geometry: existing.geometry };
+      if (!existing) {
+        // Pas d'existant en memoire : on envoie tout (defensif)
+        return {
+          id: state.editingId,
+          properties: {
+            ...raw,
+            badges: [],
+            display_name: '',
+            place_id: null,
+          },
+        };
       }
-      return { id: state.editingId, properties };
+      const before = existing.properties || {};
+      const properties = { id: state.editingId };
+      Object.keys(raw).forEach(k => {
+        const a = raw[k];
+        const b = before[k];
+        const aStr = JSON.stringify(a ?? null);
+        const bStr = JSON.stringify(b ?? null);
+        if (aStr !== bStr) properties[k] = a;
+      });
+      // Champs techniques : on preserve toujours
+      properties.display_name = before.display_name || '';
+      properties.place_id = Number.isInteger(before.place_id) ? before.place_id : null;
+      properties.badges = Array.isArray(before.badges) ? before.badges : [];
+      return { id: state.editingId, properties, geometry: existing.geometry };
     }
-    return { properties };
+
+    // MODE ADD : on envoie tout
+    return {
+      properties: {
+        ...raw,
+        badges: [],
+        display_name: '',
+        place_id: null,
+      },
+    };
   }
 
   async function handleSubmit(e) {
