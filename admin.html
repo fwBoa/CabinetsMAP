@@ -142,10 +142,21 @@
           <input id="fCouleur" name="couleur" type="color" value="#1e3a5f" />
         </div>
         <p id="formError" class="admin-form__error" role="alert" aria-live="polite"></p>
+
+        <!-- Preview -->
+        <section id="sheetPreview" class="admin-preview" hidden>
+          <header class="admin-preview__header">
+            <h3>Aperçu des modifications</h3>
+            <button id="previewClose" type="button" class="admin-btn admin-btn--ghost admin-btn--sm">Fermer</button>
+          </header>
+          <pre id="previewContent" class="admin-preview__content"></pre>
+        </section>
+
         <div class="admin-sheet__footer">
           <button id="sheetDelete" type="button" class="admin-btn admin-btn--danger" hidden>Supprimer</button>
           <div class="admin-sheet__footer-right">
             <button type="button" class="admin-btn admin-btn--ghost" data-close>Annuler</button>
+            <button id="sheetPreviewBtn" type="button" class="admin-btn admin-btn--ghost">Prévisualiser</button>
             <button id="sheetSubmit" type="submit" class="admin-btn admin-btn--primary">Enregistrer</button>
           </div>
         </div>

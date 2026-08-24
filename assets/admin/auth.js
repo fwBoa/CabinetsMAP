@@ -22,19 +22,44 @@
   };
 
   // === Helpers UI ===
-  function showToast(message, variant) {
+  function showToast(message, opts) {
     if (!els.toast) return;
-    els.toast.textContent = message;
+    // Retrocompat : showToast('msg', 'success') ou showToast('msg', { ... })
+    let variant = null, action = null;
+    if (typeof opts === 'string') {
+      variant = opts;
+    } else if (opts && typeof opts === 'object') {
+      variant = opts.variant || null;
+      action = opts.action || null;
+    }
+    const text = typeof message === 'string' ? message : (message?.message || '');
+    els.toast.replaceChildren();
+    const span = document.createElement('span');
+    span.className = 'admin-toast__text';
+    span.textContent = text;
+    els.toast.appendChild(span);
+    if (action && action.href && action.label) {
+      const link = document.createElement('a');
+      link.href = action.href;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.className = 'admin-toast__action';
+      link.textContent = action.label;
+      els.toast.appendChild(link);
+    }
     els.toast.className = 'admin-toast' + (variant ? ' admin-toast--' + variant : '');
     els.toast.hidden = false;
     clearTimeout(showToast._t);
+    // Auto-dismiss apres 8s si action, sinon 3.5s
+    const ttl = action ? 8000 : 3500;
     showToast._t = setTimeout(() => {
       els.toast.hidden = true;
-    }, 3500);
+    }, ttl);
   }
 
-  // Expose toast pour les autres modules (cabinets.js, ...)
+  // Expose toast + setView pour les autres modules (cabinets.js, ...)
   AppAdmin.toast = showToast;
+  AppAdmin.setView = setView;
 
   function setError(msg) {
     els.error.textContent = msg || '';

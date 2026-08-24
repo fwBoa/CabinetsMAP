@@ -48,11 +48,22 @@
     els.confirmMsg = document.getElementById('confirmMsg');
     els.confirmOk = document.getElementById('confirmOk');
     els.confirmCancel = document.getElementById('confirmCancel');
+
+    els.sheetPreviewBtn = document.getElementById('sheetPreviewBtn');
+    els.sheetPreview = document.getElementById('sheetPreview');
+    els.previewContent = document.getElementById('previewContent');
+    els.previewClose = document.getElementById('previewClose');
   }
 
   // === Helpers UI ===
-  function toast(msg, variant) {
-    if (AppAdmin.toast) AppAdmin.toast(msg, variant);
+  // Wrapper : accepte (opts) ou (message, variant) pour retrocompat
+  function toast(arg1, arg2) {
+    if (!AppAdmin.toast) return;
+    if (typeof arg1 === 'string') {
+      AppAdmin.toast(arg1, arg2);
+    } else if (arg1 && typeof arg1 === 'object') {
+      AppAdmin.toast(arg1);
+    }
   }
 
   function setBusy(button, busy) {
@@ -94,7 +105,13 @@
       state.sha = data.sha;
       renderList();
     } catch (err) {
-      toast('Erreur de chargement : ' + err.message, 'error');
+      if (err.status === 401) {
+        // Session expiree -> retour au login
+        if (AppAdmin.setView) AppAdmin.setView('login');
+        toast('Session expirée, reconnectez-vous.', 'error');
+      } else {
+        toast('Erreur de chargement : ' + (err.message || 'inconnue'), 'error');
+      }
     } finally {
       state.loading = false;
       els.listLoading.hidden = true;
@@ -242,13 +259,22 @@
       const payload = collectPayload();
       const action = state.editingId ? 'edit' : 'add';
       const result = await AppAdmin.api.mutateCabinet(action, payload);
-      if (result.prUrl) {
-        toast(`PR #${result.prNumber} créée — ${result.prUrl}`, 'success');
-      }
+      const verb = action === 'add' ? 'ajouté' : 'modifié';
+      toast({
+        message: `Cabinet ${verb} — PR #${result.prNumber}`,
+        variant: 'success',
+        action: result.prUrl ? { href: result.prUrl, label: 'Voir la PR' } : null,
+      });
       closeSheet();
       await loadCabinets();
     } catch (err) {
-      els.formError.textContent = err.message || 'Erreur';
+      if (err.status === 401) {
+        toast('Session expirée, reconnectez-vous.', 'error');
+      } else if (err.status === 409) {
+        toast(err.message || 'Une modification similaire existe déjà.', 'error');
+      } else {
+        els.formError.textContent = err.message || 'Erreur';
+      }
     } finally {
       setBusy(els.sheetSubmit, false);
     }
@@ -260,11 +286,19 @@
       setBusy(els.sheetDelete, true);
       try {
         const result = await AppAdmin.api.mutateCabinet('delete', { id: cabinet.properties.id });
-        toast(`PR #${result.prNumber} créée pour la suppression`, 'success');
+        toast({
+          message: `Suppression envoyée — PR #${result.prNumber}`,
+          variant: 'success',
+          action: result.prUrl ? { href: result.prUrl, label: 'Voir la PR' } : null,
+        });
         closeSheet();
         await loadCabinets();
       } catch (err) {
-        toast('Erreur : ' + err.message, 'error');
+        if (err.status === 401) {
+          toast('Session expirée, reconnectez-vous.', 'error');
+        } else {
+          toast('Erreur : ' + (err.message || 'inconnue'), 'error');
+        }
       } finally {
         setBusy(els.sheetDelete, false);
       }
@@ -281,6 +315,10 @@
       const cab = state.cabinets.find(c => c.properties?.id === state.editingId);
       if (cab) confirmDelete(cab);
     });
+    if (els.sheetPreviewBtn) els.sheetPreviewBtn.addEventListener('click', togglePreview);
+    if (els.previewClose) els.previewClose.addEventListener('click', () => {
+      els.sheetPreview.hidden = true;
+    });
     // Escape ferme sheet
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
@@ -288,6 +326,63 @@
         else if (state.sheetOpen) closeSheet();
       }
     });
+  }
+
+  // === Preview diff ===
+  function buildDiffPreview() {
+    if (!state.editingId) {
+      // ADD : on affiche ce qui sera envoye
+      const payload = collectPayload().properties;
+      return `Nouvelle feature qui sera ajoutee a cabinets.geojson :
+
+{
+  "type": "Feature",
+  "properties": ${JSON.stringify(payload, null, 2)},
+  ...
+}`;
+    }
+    // EDIT : on compare avant/apres
+    const existing = state.cabinets.find(c => c.properties?.id === state.editingId);
+    if (!existing) return '(cabinet introuvable)';
+    const payload = collectPayload().properties;
+    const before = existing.properties || {};
+    const after = { ...before, ...payload, id: before.id };
+    const lines = [];
+    lines.push(`Cabinet : ${before.nom} (${before.id})`);
+    lines.push('');
+    const fields = Object.keys(after);
+    for (const f of fields) {
+      const b = JSON.stringify(before[f]);
+      const a = JSON.stringify(after[f]);
+      if (b === a) continue;
+      if (!(f in before)) {
+        lines.push(`+ ${f}: ${a}`);
+      } else if (!(f in payload)) {
+        lines.push(`  ${f}: (conserve)`);
+      } else {
+        lines.push(`- ${f}: ${b}`);
+        lines.push(`+ ${f}: ${a}`);
+      }
+    }
+    return lines.join('\n');
+  }
+
+  function togglePreview() {
+    if (!els.sheetPreview) return;
+    if (els.sheetPreview.hidden) {
+      const err = validateForm();
+      if (err) {
+        els.formError.textContent = err;
+        return;
+      }
+      els.formError.textContent = '';
+      els.previewContent.textContent = buildDiffPreview();
+      els.sheetPreview.hidden = false;
+      els.sheetPreviewBtn.textContent = 'Masquer';
+    } else {
+      els.sheetPreview.hidden = true;
+      els.sheetPreviewBtn.textContent = 'Prévisualiser';
+    }
   }
 
   // === Init ===
