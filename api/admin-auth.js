@@ -12,20 +12,11 @@ import {
   buildClearCookie,
   SESSION_COOKIE_NAME,
 } from './_lib/session.js';
+import { readCookie } from './_lib/_util.js';
 
 function json(res, status, payload) {
   res.status(status).setHeader('Content-Type', 'application/json; charset=utf-8');
   res.end(JSON.stringify(payload));
-}
-
-function readCookie(req, name) {
-  const raw = req.headers.cookie || '';
-  const parts = raw.split(/;\s*/);
-  for (const part of parts) {
-    const [k, ...v] = part.split('=');
-    if (k === name) return v.join('=');
-  }
-  return null;
 }
 
 function ttlSeconds() {
