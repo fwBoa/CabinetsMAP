@@ -692,6 +692,34 @@
           43.5557428
         ]
       }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "nom": "Selarl Sahnoun Castinetti",
+        "adresse": "",
+        "phone": "",
+        "emails": [],
+        "tribunaux": [
+          "DRAGUIGNAN"
+        ],
+        "cours_appel": [
+          "PAU"
+        ],
+        "departements": [],
+        "couleur": "#f50a0a",
+        "badges": [],
+        "display_name": "",
+        "place_id": null,
+        "id": "cabinet-978206-ii41"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          2.2137,
+          46.2276
+        ]
+      }
     }
   ]
 }
