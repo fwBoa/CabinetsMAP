@@ -692,6 +692,38 @@
           43.5557428
         ]
       }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "nom": "CABINET TEST TEMPORAIRE",
+        "adresse": "1 rue de test",
+        "phone": "01.00.00.00.00",
+        "emails": [
+          "test@temp.fr"
+        ],
+        "tribunaux": [
+          "PARIS"
+        ],
+        "cours_appel": [
+          "PARIS"
+        ],
+        "departements": [
+          "75"
+        ],
+        "couleur": "#ff0000",
+        "badges": [],
+        "display_name": "",
+        "place_id": null,
+        "id": "cabinet-315664-6yad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          2.2137,
+          46.2276
+        ]
+      }
     }
   ]
 }
