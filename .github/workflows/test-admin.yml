@@ -40,13 +40,14 @@ jobs:
           ADMIN_CODE: ${{ secrets.ADMIN_CODE }}
         run: npm run test:read-only
 
-      # Sur push direct sur main (pas PR), on peut aussi tester les mutations
-      # pour valider le flow complet add/edit/delete. Necessite le code admin
-      # en secret GitHub.
-      - name: Run E2E tests (with mutations) - main branch only
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        env:
-          BASE_URL: https://cabinetsmap.vercel.app
-          ADMIN_CODE: ${{ secrets.ADMIN_CODE }}
-        run: npm test
-        continue-on-error: false
+      # NOTE : les tests avec mutations (edit/add/delete) ne tournent PAS en CI.
+      # Raison : ils creent de vraies PRs sur GitHub et le cleanup necessite
+      # un gh CLI authentifie (GH_TOKEN). A activer manuellement en local
+      # pour valider un changement avant de merger, ou apres avoir ajoute
+      # GITHUB_TOKEN aux secrets du runner.
+      #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      #   env:
+      #     BASE_URL: https://cabinetsmap.vercel.app
+      #     ADMIN_CODE: ${{ secrets.ADMIN_CODE }}
+      #   run: npm test
+      #   continue-on-error: false
