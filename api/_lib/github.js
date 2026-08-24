@@ -123,24 +123,31 @@ export async function mergePullRequestIfChecksPass({ prNumber, headSha }, token,
   let attempts = 0;
   let lastSnapshot = null;
 
+  // ghFetchSafe : comme ghFetch mais retourne { ok, data } pour les endpoints
+  // qui peuvent renvoyer 404 (pas de checks encore crees, etc.) sans planter
+  // le polling. Toutes les autres erreurs remontent normalement.
+  async function ghFetchSafe(path, opts) {
+    try {
+      const data = await ghFetch(path, opts, token);
+      return { ok: true, data };
+    } catch (e) {
+      if (e && e.status === 404) return { ok: false, status: 404 };
+      throw e;
+    }
+  }
+
   while (Date.now() < deadline) {
     attempts++;
 
     // a) statuses (commit status API, l'ancien systeme)
-    const statuses = await ghFetch(
-      `/repos/${owner}/${repo}/commits/${headSha}/statuses`,
-      {},
-      token
-    );
+    //    404 = aucun status context publie pour ce commit (normal en debut de run)
+    const statusesRes = await ghFetchSafe(`/repos/${owner}/${repo}/commits/${headSha}/statuses`, {});
     // b) check-runs (le systeme moderne, utilise par GitHub Actions)
-    const checks = await ghFetch(
-      `/repos/${owner}/${repo}/check-runs/${headSha}`,
-      {},
-      token
-    );
+    //    404 = aucun check-run cree pour ce commit (Actions pas encore demarre)
+    const checksRes = await ghFetchSafe(`/repos/${owner}/${repo}/check-runs/${headSha}`, {});
 
-    const statusList = Array.isArray(statuses) ? statuses : [];
-    const checkList = Array.isArray(checks.check_runs) ? checks.check_runs : [];
+    const statusList = statusesRes.ok && Array.isArray(statusesRes.data) ? statusesRes.data : [];
+    const checkList = checksRes.ok && Array.isArray(checksRes.data.check_runs) ? checksRes.data.check_runs : [];
 
     lastSnapshot = {
       statuses: statusList.map(s => ({ context: s.context, state: s.state })),
