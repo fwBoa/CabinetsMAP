@@ -178,62 +178,117 @@
   }
 
   function renderDetailBody(p) {
-    const deptsHtml = (p.departements || []).map(code => `<span class="detail-panel__dept">${code}</span>`).join('');
+    const fragment = document.createDocumentFragment();
 
-    const contactButtons = [];
+    const addressSection = document.createElement('div');
+    addressSection.className = 'detail-panel__section';
+    const addressTitle = document.createElement('p');
+    addressTitle.className = 'detail-panel__section-title';
+    addressTitle.textContent = 'Adresse';
+    const addressText = document.createElement('p');
+    addressText.className = 'detail-panel__text';
+    addressText.textContent = p.adresse || 'Adresse non renseignée';
+    addressSection.append(addressTitle, addressText);
+    fragment.appendChild(addressSection);
+
+    const deptsSection = document.createElement('div');
+    deptsSection.className = 'detail-panel__section';
+    const deptsTitle = document.createElement('p');
+    deptsTitle.className = 'detail-panel__section-title';
+    deptsTitle.textContent = 'Départements couverts';
+    const deptsWrap = document.createElement('div');
+    deptsWrap.className = 'detail-panel__departments';
+    if (p.departements && p.departements.length) {
+      p.departements.forEach(code => {
+        const span = document.createElement('span');
+        span.className = 'detail-panel__dept';
+        span.textContent = code;
+        deptsWrap.appendChild(span);
+      });
+    } else {
+      const none = document.createElement('span');
+      none.className = 'detail-panel__text';
+      none.textContent = 'Non renseigné';
+      deptsWrap.appendChild(none);
+    }
+    deptsSection.append(deptsTitle, deptsWrap);
+    fragment.appendChild(deptsSection);
+
+    if (Array.isArray(p.tribunaux) && p.tribunaux.length) {
+      const tribSection = document.createElement('div');
+      tribSection.className = 'detail-panel__section';
+      const tribTitle = document.createElement('p');
+      tribTitle.className = 'detail-panel__section-title';
+      tribTitle.textContent = 'Tribunaux de rattachement';
+      const tribText = document.createElement('p');
+      tribText.className = 'detail-panel__text';
+      tribText.textContent = p.tribunaux.join(' · ');
+      tribSection.append(tribTitle, tribText);
+      fragment.appendChild(tribSection);
+    }
+
+    const actionsSection = document.createElement('div');
+    actionsSection.className = 'detail-panel__section';
+    const actionsWrap = document.createElement('div');
+    actionsWrap.className = 'detail-panel__actions';
+
+    if (p.adresse) {
+      const itineraire = document.createElement('a');
+      itineraire.className = 'detail-panel__btn';
+      itineraire.href = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.adresse)}`;
+      itineraire.target = '_blank';
+      itineraire.rel = 'noopener noreferrer';
+      itineraire.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg><span>Itinéraire</span>';
+      actionsWrap.appendChild(itineraire);
+    }
+
     if (p.phone) {
-      contactButtons.push(`<a class="detail-panel__btn" href="tel:${p.phone.replace(/[^\d+]/g, '')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${p.phone}</a>`);
+      const phone = document.createElement('a');
+      phone.className = 'detail-panel__btn';
+      phone.href = `tel:${p.phone.replace(/[^\d+]/g, '')}`;
+      phone.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg><span>${U.escapeHtml(p.phone)}</span>`;
+      actionsWrap.appendChild(phone);
     }
+
     if (p.emails && p.emails.length) {
-      contactButtons.push(`<a class="detail-panel__btn" href="mailto:${p.emails[0]}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>${p.emails[0]}</a>`);
+      const email = document.createElement('a');
+      email.className = 'detail-panel__btn';
+      email.href = `mailto:${p.emails[0]}`;
+      email.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg><span>${U.escapeHtml(p.emails[0])}</span>`;
+      actionsWrap.appendChild(email);
     }
 
-    const tribunauxNote = (Array.isArray(p.tribunaux) && p.tribunaux.length)
-      ? `<div class="detail-panel__section">
-           <p class="detail-panel__section-title">Tribunaux de rattachement</p>
-           <p class="detail-panel__text">${p.tribunaux.join(' · ')}</p>
-         </div>`
-      : '';
+    if (actionsWrap.children.length) {
+      actionsSection.appendChild(actionsWrap);
+      fragment.appendChild(actionsSection);
+    }
 
-    return `
-      <div class="detail-panel__section">
-        <p class="detail-panel__section-title">Adresse</p>
-        <p class="detail-panel__text">${p.adresse || 'Adresse non renseignée'}</p>
-      </div>
-      <div class="detail-panel__section">
-        <p class="detail-panel__section-title">Départements couverts</p>
-        <div class="detail-panel__departments">${deptsHtml || '<span class="detail-panel__text">Non renseigné</span>'}</div>
-      </div>
-      ${tribunauxNote}
-      <div class="detail-panel__section">
-        <div class="detail-panel__actions">
-          ${p.adresse ? `<a class="detail-panel__btn" href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.adresse)}" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>Itinéraire</a>` : ''}
-          ${contactButtons.join('')}
-        </div>
-      </div>
-    `;
+    return fragment;
   }
 
   function renderMobileTerritoryNote(feature, cabs) {
-    if (!feature || !feature.properties) return '';
+    const fragment = document.createDocumentFragment();
+    if (!feature || !feature.properties) return fragment;
     const p = feature.properties;
 
+    const title = document.createElement('h3');
+    title.className = 'sheet-detail__title';
+    const subtitle = document.createElement('p');
+    subtitle.className = 'sheet-detail__subtitle';
+
     if (p.nom) {
-      // Cabinet
-      return `
-        <h3 class="sheet-detail__title">${p.nom}</h3>
-        <p class="sheet-detail__subtitle">${(p.departements || []).length} départements couverts · Siège : ${p.adresse || 'non renseigné'}</p>
-      `;
+      title.textContent = p.nom;
+      subtitle.textContent = `${(p.departements || []).length} départements couverts · Siège : ${p.adresse || 'non renseigné'}`;
+    } else {
+      const code = String(p.code);
+      const deptName = App.getDeptName(code);
+      const count = cabs ? cabs.length : 0;
+      title.textContent = deptName;
+      subtitle.textContent = `${count} cabinet${count > 1 ? 's' : ''} intervient${count > 1 ? 'ent' : ''} sur ce département`;
     }
 
-    // Department
-    const code = String(p.code);
-    const deptName = App.getDeptName(code);
-    const count = cabs ? cabs.length : 0;
-    return `
-      <h3 class="sheet-detail__title">${deptName}</h3>
-      <p class="sheet-detail__subtitle">${count} cabinet${count > 1 ? 's' : ''} intervient${count > 1 ? 'ent' : ''} sur ce département</p>
-    `;
+    fragment.append(title, subtitle);
+    return fragment;
   }
 
   function highlightCabinet(feature) {
@@ -260,16 +315,21 @@
 
     // Desktop detail panel
     const avatar = document.getElementById('detailAvatar');
-    avatar.style.background = p.couleur;
+    avatar.style.background = U.sanitizeColor(p.couleur);
     avatar.textContent = U.initials(p.nom);
     document.getElementById('detailTitle').textContent = p.nom;
     document.getElementById('detailSubtitle').textContent = `${(p.departements || []).length} départements couverts · Siège : ${p.adresse || 'non renseigné'}`;
-    document.getElementById('detailBody').innerHTML = renderDetailBody(p);
+
+    const detailBody = document.getElementById('detailBody');
+    detailBody.innerHTML = '';
+    detailBody.appendChild(renderDetailBody(p));
     // Un cabinet reste dans le detailPanel : pas de bouton 'retour à la liste'.
     if (detailBack) detailBack.hidden = true;
 
     if (isMobile()) {
-      document.getElementById('sheetDetailBody').innerHTML = renderMobileTerritoryNote(feature);
+      const sheetDetailBody = document.getElementById('sheetDetailBody');
+      sheetDetailBody.innerHTML = '';
+      sheetDetailBody.appendChild(renderMobileTerritoryNote(feature));
       sheetDetailView.hidden = false;
       setSheetMode('detail');
       setSheetSnap('open', { recenter: false });
@@ -287,7 +347,7 @@
     clearActiveCard();
 
     const avatar = document.getElementById('detailAvatar');
-    avatar.style.background = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim();
+    avatar.style.background = U.sanitizeColor(getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim());
     avatar.textContent = code;
     document.getElementById('detailTitle').textContent = deptName;
     const count = cabs.length;
@@ -297,32 +357,52 @@
     if (detailBack && !isMobile()) detailBack.hidden = false;
 
     const body = document.getElementById('detailBody');
-    body.innerHTML = cabs.map(cab => {
+    body.innerHTML = '';
+    cabs.forEach(cab => {
       const p = cab.properties;
-      return `
-        <div class="cabinet-card" data-id="${p.id}" role="button" tabindex="0" style="margin-bottom:8px;">
-          <div class="cabinet-card__row">
-            <span class="cabinet-card__dot" style="background:${p.couleur}" aria-hidden="true"></span>
-            <span class="cabinet-card__name">${p.nom}</span>
-          </div>
-          <span class="cabinet-card__meta">${p.adresse || ''}</span>
-        </div>
-      `;
-    }).join('');
+      const card = document.createElement('div');
+      card.className = 'cabinet-card';
+      card.dataset.id = p.id;
+      card.setAttribute('role', 'button');
+      card.setAttribute('tabindex', '0');
+      card.style.marginBottom = '8px';
 
-    body.querySelectorAll('.cabinet-card').forEach(card => {
+      const row = document.createElement('div');
+      row.className = 'cabinet-card__row';
+
+      const dot = document.createElement('span');
+      dot.className = 'cabinet-card__dot';
+      dot.style.background = U.sanitizeColor(p.couleur);
+      dot.setAttribute('aria-hidden', 'true');
+
+      const name = document.createElement('span');
+      name.className = 'cabinet-card__name';
+      name.textContent = p.nom;
+
+      row.append(dot, name);
+
+      const meta = document.createElement('span');
+      meta.className = 'cabinet-card__meta';
+      meta.textContent = p.adresse || '';
+
+      card.append(row, meta);
+
       const activateCard = () => {
-        const cab = App.getCabinetById(card.dataset.id);
-        if (cab) selectCabinet(cab);
+        const selected = App.getCabinetById(card.dataset.id);
+        if (selected) selectCabinet(selected);
       };
       card.addEventListener('click', activateCard);
       card.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activateCard(); }
       });
+
+      body.appendChild(card);
     });
 
     if (isMobile()) {
-      document.getElementById('sheetDetailBody').innerHTML = renderMobileTerritoryNote(feature, cabs);
+      const sheetDetailBody = document.getElementById('sheetDetailBody');
+      sheetDetailBody.innerHTML = '';
+      sheetDetailBody.appendChild(renderMobileTerritoryNote(feature, cabs));
       sheetDetailView.hidden = false;
       setSheetMode('detail');
       setSheetSnap('open', { recenter: false });
@@ -413,8 +493,14 @@
   }
 
   function getFilteredCabinets() {
-    const term = U.normalize(S.searchTerm);
-    if (!term) return S.cabinets;
+    const rawTerm = (S.searchTerm || '').trim();
+    if (!rawTerm) return S.cabinets;
+    // Tokenisation : on splitte sur les espaces, chaque token doit matcher
+    // au moins un champ (AND logique). 'BORDEAUX 33' devient ['bordeaux','33'].
+    // Les tokens de moins de 2 caracteres (ex: 'a', '0') sont ignores pour
+    // eviter les faux positifs (un 'd' matche presque tout).
+    const tokens = U.normalize(rawTerm).split(/\s+/).filter(t => t.length >= 2);
+    if (!tokens.length) return S.cabinets;
     return S.cabinets.filter(c => {
       const p = c.properties;
       const deptNames = (p.departements || []).map(code => App.getDeptName(code)).join(' ');
@@ -425,8 +511,10 @@
       const fields = [p.nom, adresseSansCp, p.phone, deptNames, deptCodes]
         .concat(p.emails || [])
         .concat(p.cours_appel || [])
+        .concat(p.tribunaux || [])
         .join(' ');
-      return U.normalize(fields).includes(term);
+      const normalizedFields = U.normalize(fields);
+      return tokens.every(t => normalizedFields.includes(t));
     });
   }
 
@@ -440,13 +528,24 @@
       const li = document.createElement('li');
       li.className = 'sidebar__empty';
       li.setAttribute('role', 'status');
-      li.innerHTML = `
-        <p class="sidebar__empty-title">Aucun cabinet trouvé</p>
-        <p class="sidebar__empty-text">Essayez une autre recherche.</p>
-        <button class="btn btn--primary" id="emptyResetBtn" type="button">Tout afficher</button>
-      `;
+
+      const title = document.createElement('p');
+      title.className = 'sidebar__empty-title';
+      title.textContent = 'Aucun cabinet trouvé';
+
+      const text = document.createElement('p');
+      text.className = 'sidebar__empty-text';
+      text.textContent = 'Essayez une autre recherche.';
+
+      const resetBtn = document.createElement('button');
+      resetBtn.className = 'btn btn--primary';
+      resetBtn.id = 'emptyResetBtn';
+      resetBtn.type = 'button';
+      resetBtn.textContent = 'Tout afficher';
+
+      li.append(title, text, resetBtn);
       list.appendChild(li);
-      li.querySelector('#emptyResetBtn').addEventListener('click', resetAll);
+      resetBtn.addEventListener('click', resetAll);
       U.announce('Aucun cabinet ne correspond à la recherche.');
       return;
     }
@@ -465,13 +564,37 @@
       btn.setAttribute('aria-label', label);
       const deptCount = (p.departements || []).length;
       const deptLabel = deptCount > 1 ? 'départements' : 'département';
-      btn.innerHTML = `
-        <div class="cabinet-card__row">
-          <span class="cabinet-card__dot" style="background:${p.couleur}" aria-hidden="true"></span>
-          <span class="cabinet-card__name">${p.nom}</span>
-        </div>
-        <span class="cabinet-card__meta">${p.adresse || 'Adresse non renseignée'} · ${deptCount} ${deptLabel}</span>
-      `;
+
+      const row = document.createElement('div');
+      row.className = 'cabinet-card__row';
+
+      const dot = document.createElement('span');
+      dot.className = 'cabinet-card__dot';
+      dot.style.background = U.sanitizeColor(p.couleur);
+      dot.setAttribute('aria-hidden', 'true');
+
+      const name = document.createElement('span');
+      name.className = 'cabinet-card__name';
+      name.appendChild(highlightMatch(p.nom, getSearchTokens()));
+
+      row.append(dot, name);
+
+      const meta = document.createElement('span');
+      meta.className = 'cabinet-card__meta';
+      // Si la recherche matche un tribunal, on l'affiche dans la meta (limite 3)
+      // pour que le hit soit visible meme si le nom/adresse ne le contiennent pas.
+      const tokens = getSearchTokens();
+      const matchedTribunaux = (p.tribunaux || []).filter(t =>
+        tokens.some(tok => U.normalize(t).includes(tok))
+      ).slice(0, 3);
+      const tribunauxSuffix = matchedTribunaux.length
+        ? ` · ${matchedTribunaux.join(' · ')}`
+        : '';
+      meta.appendChild(
+        highlightMatch(`${p.adresse || 'Adresse non renseignée'} · ${deptCount} ${deptLabel}${tribunauxSuffix}`, tokens)
+      );
+
+      btn.append(row, meta);
       li.appendChild(btn);
       fragment.appendChild(li);
     });
@@ -485,6 +608,59 @@
     const plural = count > 1 ? 's' : '';
     document.getElementById('resultCount').textContent = `${count} cabinet${plural}`;
     document.getElementById('resetFiltersBtn').hidden = !S.searchTerm;
+  }
+
+  // Met en evidence les occurrences des tokens de recherche dans un texte.
+  // Retourne un DocumentFragment avec des <mark> autour des matches.
+  // Si pas de token ou aucun match, retourne un textNode simple.
+  function highlightMatch(text, tokens) {
+    if (!text || !tokens || !tokens.length) {
+      return document.createTextNode(text || '');
+    }
+    const normalizedText = U.normalize(text);
+    // On cherche les positions de chaque token dans le texte normalise,
+    // puis on reporte ces positions sur le texte original.
+    const ranges = [];
+    tokens.forEach(token => {
+      let from = 0;
+      while (true) {
+        const idx = normalizedText.indexOf(token, from);
+        if (idx === -1) break;
+        ranges.push([idx, idx + token.length]);
+        from = idx + token.length;
+      }
+    });
+    if (!ranges.length) return document.createTextNode(text);
+    // Fusionner les ranges qui se chevauchent pour eviter les <mark> imbriques
+    ranges.sort((a, b) => a[0] - b[0]);
+    const merged = [ranges[0].slice()];
+    for (let i = 1; i < ranges.length; i++) {
+      const last = merged[merged.length - 1];
+      if (ranges[i][0] <= last[1]) {
+        last[1] = Math.max(last[1], ranges[i][1]);
+      } else {
+        merged.push(ranges[i].slice());
+      }
+    }
+    const fragment = document.createDocumentFragment();
+    let cursor = 0;
+    merged.forEach(([start, end]) => {
+      if (start > cursor) fragment.appendChild(document.createTextNode(text.slice(cursor, start)));
+      const mark = document.createElement('mark');
+      mark.className = 'search-hit';
+      mark.textContent = text.slice(start, end);
+      fragment.appendChild(mark);
+      cursor = end;
+    });
+    if (cursor < text.length) fragment.appendChild(document.createTextNode(text.slice(cursor)));
+    return fragment;
+  }
+
+  // Renvoie les tokens normalises de la recherche courante (>= 2 chars).
+  function getSearchTokens() {
+    const raw = (S.searchTerm || '').trim();
+    if (!raw) return [];
+    return U.normalize(raw).split(/\s+/).filter(t => t.length >= 2);
   }
 
   function bindCardHoverSync() {
