@@ -1,0 +1,76 @@
+sequenceDiagram
+    autonumber
+    actor Admin
+    participant Browser as Navigateur
+    participant AdminUI as admin.html
+    participant AuthEP as /api/admin-auth
+    participant CabinetsEP as /api/cabinets
+    participant Session as session.js
+    participant GH as github.js
+    participant GitHub as GitHub API
+    participant Repo as fwBoa/CabinetsMAP
+
+    rect rgba(220, 252, 231, 0.5)
+        Note over Admin,Repo: Phase 1 - Authentification
+        Admin->>Browser: Ouvre /admin.html
+        Browser->>AdminUI: Charge la page
+        AdminUI->>Browser: Affiche champ "Code d'accès"
+        Admin->>Browser: Tape le code + Valide
+        Browser->>AuthEP: POST { code: "..." }
+        AuthEP->>AuthEP: hash(code) vs ADMIN_CODE_HASH
+        alt Code invalide
+            AuthEP-->>Browser: 401 Unauthorized
+            Browser->>AdminUI: Affiche "Code incorrect"
+        else Code valide
+            AuthEP->>Session: sign({ user: "admin", exp })
+            Session->>AuthEP: signedCookie
+            AuthEP-->>Browser: 200 + Set-Cookie session=...
+            Browser->>AdminUI: Passe a la liste
+        end
+    end
+
+    rect rgba(219, 234, 254, 0.5)
+        Note over Admin,Repo: Phase 2 - Chargement de la liste
+        Browser->>CabinetsEP: GET /api/cabinets<br/>Cookie: session=...
+        CabinetsEP->>Session: verify(cookie)
+        Session-->>CabinetsEP: ok
+        CabinetsEP->>GH: listCabinets()
+        GH->>GitHub: GET /repos/{owner}/{repo}/contents/cabinets.geojson
+        GitHub-->>GH: { content: base64, sha, ... }
+        GH-->>CabinetsEP: { features: [...], sha }
+        CabinetsEP-->>Browser: 200 { cabinets, sha }
+        Browser->>AdminUI: Render liste des 13 cabinets
+    end
+
+    rect rgba(254, 243, 199, 0.5)
+        Note over Admin,Repo: Phase 3 - Edition d'un cabinet
+        Admin->>Browser: Click "Modifier" sur cabinet X
+        Browser->>AdminUI: Ouvre sheet formulaire<br/>pre-rempli avec X
+        Admin->>Browser: Modifie telephone + Click "Enregistrer"
+        Browser->>Browser: Validation cote client<br/>(nom non vide, email format)
+        Browser->>CabinetsEP: POST { action: "edit",<br/>cabinet: {...}, sha }
+        CabinetsEP->>Session: verify(cookie)
+        CabinetsEP->>GH: editCabinet(action, cabinet, sha)
+        GH->>GitHub: GET /repos/{owner}/{repo}/git/ref/heads/main
+        GitHub-->>GH: { object: { sha: mainSha } }
+        GH->>GitHub: POST /repos/{owner}/{repo}/git/refs<br/>{ ref: "refs/heads/edit/cabinet-X-ts", sha: mainSha }
+        GitHub-->>GH: 201 (branche creee)
+        GH->>GitHub: PUT /repos/{owner}/{repo}/contents/cabinets.geojson<br/>{ branch, sha, content: base64(newGeoJSON),<br/>message: "feat(cabinets): edit X - tel mis a jour" }
+        GitHub-->>GH: 200 (commit cree)
+        GH->>GitHub: POST /repos/{owner}/{repo}/pulls<br/>{ head: "edit/...", base: "main",<br/>title: "feat(cabinets): edit X", body: "..." }
+        GitHub-->>GH: 201 { html_url: "https://github.com/fwBoa/.../pull/42" }
+        GH-->>CabinetsEP: { prUrl, prNumber }
+        CabinetsEP-->>Browser: 200 { prUrl: "..." }
+        Browser->>AdminUI: Toast "PR creee"<br/>Lien cliquable vers GitHub
+    end
+
+    rect rgba(252, 165, 165, 0.3)
+        Note over Admin,Repo: Phase 4 - Validation manuelle (hors-ligne du flux)
+        Admin->>GitHub: Ouvre la PR, verifie le diff, clique "Merge"
+        GitHub->>Repo: Merge feat/edit into main
+        GitHub->>Vercel: Webhook push
+        Vercel->>Vercel: Rebuild + redeploy
+        Vercel-->>Repo: main mis a jour
+    end
+
+    Note over Browser,GitHub: Le visiteur public n'est jamais impacte pendant l'edition.<br/>Il voit la carte en lecture seule sur la version main pre-modification.

@@ -1,0 +1,81 @@
+flowchart TB
+    %% ========== ACTEURS ==========
+    PUB([Visiteur public])
+    ADM([Admin])
+
+    %% ========== FRONTEND ==========
+    subgraph FRONTEND [Frontend - Vercel CDN]
+        IDX[index.html<br/>carte publique]
+        ADM_HTML[admin.html<br/>espace admin]
+        subgraph ASSETS_ADMIN [assets/admin]
+            AUTH_UI[auth.js<br/>formulaire code]
+            UI_LIST[cabinets.js<br/>liste + sheet]
+            API_CLIENT[api.js<br/>fetch wrappers]
+        end
+    end
+
+    %% ========== BACKEND VERCEL ==========
+    subgraph BACKEND [Backend - Vercel Functions]
+        EP_AUTH[/api/admin-auth<br/>verif code + cookie/]
+        EP_CAB[/api/cabinets<br/>CRUD via GitHub/]
+        subgraph LIB [api/_lib]
+            GH_LIB[github.js<br/>API Contents + PR]
+            SESS[session.js<br/>sign cookie]
+        end
+    end
+
+    %% ========== SECRETS ==========
+    subgraph SECRETS [Variables d'environnement Vercel]
+        ENV_CODE[ADMIN_CODE_HASH<br/>SHA-256]
+        ENV_SESS[SESSION_SECRET<br/>32 chars]
+        ENV_GH[GITHUB_TOKEN<br/>PAT]
+        ENV_REPO[REPO meta]
+    end
+
+    %% ========== EXTERNE ==========
+    subgraph EXTERNE [Externe]
+        GH_API[GitHub API<br/>Contents + PR]
+        GH_REPO[(fwBoa/CabinetsMAP<br/>cabinets.geojson)]
+        RAW[raw.githubusercontent.com<br/>geojson statique]
+    end
+
+    %% ========== FLUX PUBLIC ==========
+    PUB -->|charge| IDX
+    IDX -->|fetch| RAW
+
+    %% ========== FLUX ADMIN ==========
+    ADM -->|ouvre| ADM_HTML
+    ADM_HTML --> AUTH_UI
+    AUTH_UI -->|POST code| EP_AUTH
+    EP_AUTH -->|compare hash| ENV_CODE
+    EP_AUTH -->|signe cookie| SESS
+    EP_AUTH -->|secret| ENV_SESS
+    EP_AUTH -->|Set-Cookie| AUTH_UI
+
+    AUTH_UI -->|GET liste| EP_CAB
+    UI_LIST -->|GET liste| EP_CAB
+    UI_LIST -->|POST action edit/add/del| EP_CAB
+    API_CLIENT -->|fetch| EP_AUTH
+    API_CLIENT -->|fetch + cookie| EP_CAB
+
+    %% ========== BACKEND INTERNE ==========
+    EP_AUTH -.verif cookie.-> SESS
+    EP_CAB -.verif cookie.-> SESS
+    EP_CAB -->|lit / commit / PR| GH_LIB
+    GH_LIB -->|auth Basic| ENV_GH
+    GH_LIB -->|repo meta| ENV_REPO
+    GH_LIB -->|GET/PUT/POST| GH_API
+    GH_API -->|read/write| GH_REPO
+
+    %% ========== STYLES ==========
+    classDef actor fill:#1f2937,color:#fff,stroke:#1f2937
+    classDef frontend fill:#dbeafe,stroke:#1e40af,color:#1e3a8a
+    classDef backend fill:#fef3c7,stroke:#a16207,color:#713f12
+    classDef secret fill:#fee2e2,stroke:#b91c1c,color:#7f1d1d
+    classDef externe fill:#dcfce7,stroke:#15803d,color:#14532d
+
+    class PUB,ADM actor
+    class IDX,ADM_HTML,AUTH_UI,UI_LIST,API_CLIENT frontend
+    class EP_AUTH,EP_CAB,GH_LIB,SESS backend
+    class ENV_CODE,ENV_SESS,ENV_GH,ENV_REPO secret
+    class GH_API,GH_REPO,RAW externe
