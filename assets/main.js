@@ -15,10 +15,8 @@
   }
 
   // Source de verite = Neon (Postgres), via /api/geojson/cabinets.
-// Le try/catch historique capturait la ReferenceError sur __CABINETS_GEOJSON__
-// (placeholder jamais injecte dans assets/main.js) pour basculer sur le
-// fichier local. Maintenant on essaie d'abord Neon (avec timeout court),
-// puis fallback fichiers statiques si offline.
+  // Les departements (geometrie, code, nom, region) ne changent pas souvent,
+  // donc ils restent un fichier statique departements.geojson.
   let CABINETS_GEOJSON = null;
   let DEPARTEMENTS_GEOJSON = null;
   try {
@@ -32,10 +30,21 @@
     }
   } catch (_) { /* Neon injoignable, on tente le fallback */ }
 
+  // Charge les departements (statique) dans tous les cas.
+  try {
+    DEPARTEMENTS_GEOJSON = await loadGeoJSON('departements.geojson');
+  } catch (e) {
+    // Si Neon et le fichier local de departements echouent, c'est mort.
+    if (!CABINETS_GEOJSON) {
+      App.map.setLoaderError('Impossible de charger les données du réseau.', true);
+      return false;
+    }
+  }
+
+  // Fallback cabinets : fichier local uniquement si Neon KO.
   if (!CABINETS_GEOJSON) {
     try {
       CABINETS_GEOJSON = await loadGeoJSON('cabinets.geojson');
-      DEPARTEMENTS_GEOJSON = await loadGeoJSON('departements.geojson');
     } catch (err) {
       App.map.setLoaderError('Impossible de charger les données du réseau.', true);
       return false;

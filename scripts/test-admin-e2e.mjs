@@ -550,6 +550,21 @@ async function testNeonAsSourceOfTruth(sessionCookie) {
     const hasNeonFirst = /fetch\(.*\/api\/geojson\/cabinets/.test(js);
     assert('assets/main.js tente Neon en premier',
       hasNeonFirst, 'aucun fetch /api/geojson/cabinets detecte');
+
+    // Anti-regression : departements.geojson doit aussi etre charge
+    // avant loadData(), sinon S.departements reste null et loadData() crash
+    // avec "Cannot read properties of null (reading 'features')"
+    const depsLoadOrder = (
+      js.indexOf("loadGeoJSON('departements.geojson')") <
+      js.indexOf('function loadData()')
+    );
+    assert('departements.geojson charge AVANT loadData()',
+      depsLoadOrder, 'loadGeoJSON(departements) absent ou apres loadData()');
+
+    // Anti-regression : loadData lit DEPARTEMENTS_GEOJSON.features
+    // (ce qui plantait si DEPARTEMENTS_GEOJSON etait null)
+    assert('loadData accede a DEPARTEMENTS_GEOJSON.features',
+      /S\.departements\s*=\s*DEPARTEMENTS_GEOJSON\.features/.test(js));
   }
 }
 
