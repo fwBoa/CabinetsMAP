@@ -250,6 +250,9 @@ html, body {
   padding: 2rem;
   justify-content: center;
 }
+.admin-list__loading[hidden] { display: none; }
+.admin-list__empty[hidden] { display: none; }
+.admin-list__items[hidden] { display: none; }
 .admin-spinner {
   width: 18px;
   height: 18px;
