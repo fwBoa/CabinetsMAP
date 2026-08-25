@@ -58,6 +58,19 @@
 
     S.map.on('load', () => {
       S.mapLoaded = true;
+      // Charger le pattern SVG de co-couverture (hachures diagonales)
+      // AVANT setupMapLayers qui s'en sert comme fill-pattern.
+      const hatchImg = new Image(8, 8);
+      hatchImg.crossOrigin = 'anonymous';
+      hatchImg.onload = () => {
+        if (!S.map.hasImage('coverage-hatch')) {
+          S.map.addImage('coverage-hatch', hatchImg, { pixelRatio: 2 });
+        }
+      };
+      hatchImg.onerror = () => {
+        console.warn('Impossible de charger le pattern de co-couverture');
+      };
+      hatchImg.src = 'assets/patterns/coverage-hatch.svg';
       setupMapLayers();
       setupCompassVisibility();
       setupDisclaimerVisibility();
@@ -117,6 +130,20 @@
           ['boolean', ['feature-state', 'hover'], false], 0.95,
           0.85
         ]
+      }
+    });
+
+    // Indicateur de co-couverture : motif diagonal blanc pour les depts
+    // couverts par > 1 cabinet. Le tooltip affiche deja la liste, ce motif
+    // est juste un signal visuel pour reperer d'un coup d'oeil.
+    map.addLayer({
+      id: 'depts-co-covered',
+      type: 'fill',
+      source: 'departements',
+      filter: ['>', ['coalesce', ['get', 'cabinetCount'], 0], 1],
+      paint: {
+        'fill-pattern': 'coverage-hatch',
+        'fill-opacity': 0.85
       }
     });
 
