@@ -72,7 +72,8 @@ function rowToFeature(row) {
 }
 
 // === Validation stricte (defense en profondeur contre payloads abuses) ===
-const RE_CABINET_ID = /^cabinet-[0-9]+$/;
+// Cabinet ID accepte maintenant : cabinet-<alphanum> + -/_ (autorise les tests E2E)
+const RE_CABINET_ID = /^cabinet-[a-zA-Z0-9_-]{1,32}$/;
 const RE_DEPT_CODE = /^(0[1-9]|[1-8][0-9]|9[0-5]|97[1-6])$/; // 01..95 + 971..976
 const RE_EMAIL = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
 const RE_HEX_COLOR = /^#[0-9a-fA-F]{6}$/;

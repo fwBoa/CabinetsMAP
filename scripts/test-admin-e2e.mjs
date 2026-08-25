@@ -240,7 +240,9 @@ async function testAddAndDelete(sessionCookie) {
   }
 
   suite('Mutation add + delete (cycle complet)');
-  const TEST_ID = `cabinet-${Date.now().toString().slice(-6)}`; // ID numerique pour check constraint
+  // ID numerique avec Date.now() complet (13 chiffres) pour eviter les collisions
+  // aux runs rapproches. Suffixe ajoute pour traçabilite.
+  const TEST_ID = `cabinet-${Date.now()}-t`;
 
   // 1. ADD
   let r = await checkStatus(`${BASE_URL}/api/cabinets`, {
@@ -289,6 +291,32 @@ async function testAddAndDelete(sessionCookie) {
   });
   log(`  ℹ delete cabinet inexistant → status=${r.status}`);
   assert('delete inexistant → pas de 500', r.status !== 500);
+}
+
+// Regresion : apres tous les tests, on doit avoir EXACTEMENT 13 cabinets
+// canoniques en base (pas de pollution par les tests add/delete).
+async function testNoTestPollution(sessionCookie) {
+  suite('Regresion — pas de pollution par les tests');
+
+  const r = await checkStatus(`${BASE_URL}/api/cabinets`, {
+    headers: { Cookie: sessionCookie },
+  });
+  assert('GET → 200', r.status === 200);
+
+  const cabinets = r.body?.cabinets || [];
+  const idPattern = /^cabinet-\d{2}$/; // EXACTEMENT cabinet-NN avec 2 chiffres
+  const polluted = cabinets.filter(c => !idPattern.test(c.properties.id));
+
+  assert(
+    `Exactement 13 cabinets canoniques (vu ${cabinets.length})`,
+    cabinets.length === 13,
+    cabinets.map(c => c.properties.id).join(',')
+  );
+  assert(
+    `Aucun cabinet pollue par les tests (vu ${polluted.length})`,
+    polluted.length === 0,
+    polluted.map(c => c.properties.id).join(',')
+  );
 }
 
 async function testHtmlSanity() {
@@ -536,6 +564,7 @@ async function main() {
     await testRestore(sessionCookie, editResult);
     await testAddAndDelete(sessionCookie);
     await testAuditLogSchema(sessionCookie);
+    await testNoTestPollution(sessionCookie);
   } catch (err) {
     log(`\n\x1b[31m✗ Erreur fatale : ${err.message}\x1b[0m`);
     log(err.stack);

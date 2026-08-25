@@ -26,7 +26,7 @@ create table if not exists cabinets (
 -- Contraintes basiques
 alter table cabinets drop constraint if exists chk_cabinets_id_prefix;
 
-alter table cabinets add constraint chk_cabinets_id_prefix check (id ~ '^cabinet-[0-9]+$');
+alter table cabinets add constraint chk_cabinets_id_prefix check (id ~ '^cabinet-[a-zA-Z0-9_-]+$');
 
 create index if not exists idx_cabinets_departements on cabinets using gin(departements);
 
