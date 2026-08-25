@@ -1362,6 +1362,13 @@
     resetDeptOpacity();
   });
 
+  function refreshCabinets() {
+    if (!S.map) return;
+    const src = S.map.getSource('cabinets');
+    if (!src) return;
+    src.setData({ type: 'FeatureCollection', features: S.cabinets });
+  }
+
   App.map = {
     initMap,
     initOmInset,
@@ -1371,6 +1378,7 @@
     recenterMapForMobilePanel,
     highlightCabinetTerritory,
     resetDeptOpacity,
+    refreshCabinets,
     setLoaderError,
     hideLoader,
   };

@@ -23,6 +23,35 @@
     DEPARTEMENTS_GEOJSON = await loadGeoJSON('departements.geojson');
   }
 
+  // Synchronisation live avec la base Neon (Vercel Function).
+  // On garde les GeoJSON inline comme source initiale (rapide, offline-safe),
+  // puis on fetch /api/geojson/cabinets en background pour recuperer les
+  // dernieres modifications admin. Si l'API repond, on remplace les
+  // features sans recharger la page.
+  async function refreshFromApi() {
+    try {
+      const res = await fetch('/api/geojson/cabinets?_t=' + Date.now(), {
+        cache: 'no-store',
+      });
+      if (!res.ok) return;
+      const fresh = await res.json();
+      if (!Array.isArray(fresh.features) || !fresh.features.length) return;
+
+      CABINETS_GEOJSON = fresh;
+      if (typeof loadData === 'function') {
+        loadData();
+        if (S.map && typeof App.map.refreshCabinets === 'function') {
+          App.map.refreshCabinets();
+        } else if (S.map && typeof App.map.initMap === 'function') {
+          // Pas de refresh expose : on repeint la couche markers si dispo
+          App.map.refreshMarkers?.();
+        }
+      }
+    } catch (err) {
+      // silencieux : on garde l'inline en cas d'erreur reseau
+    }
+  }
+
   const mapMain = document.querySelector('.map-main');
   const retryBtn = document.getElementById('retryBtn');
   const continueBtn = document.getElementById('continueBtn');
@@ -92,6 +121,10 @@
     mapMain.classList.add('map-main--visible');
     if (loadData()) {
       App.map.initMap();
+      // Sync live avec Neon : on tente un refresh apres l'affichage initial
+      // et periodiquement (toutes les 2 min) pour recuperer les editions admin.
+      refreshFromApi();
+      setInterval(refreshFromApi, 120000);
     }
   }
 
