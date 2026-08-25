@@ -1,5 +1,10 @@
+# Carte publique : indexable
 User-agent: *
-Disallow: /
+Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /admin.html
+Disallow: /api/
 
 # Bots IA : bloqués explicitement (ne respectent pas tous robots.txt generaliste)
 User-agent: GPTBot
