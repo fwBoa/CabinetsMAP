@@ -24,3 +24,10 @@ node_modules/
 test-results/
 playwright-report/
 .env*
+
+# Data tierce (Natural Earth, ~10 MB, régénérable via scripts/build_geojson.py)
+ne_10m_admin_0_countries/
+ne_10m_admin_0_countries.zip
+
+# Données sources locales non versionnables (chemins absolus)
+CABINETS - LISTE CABINET.csv

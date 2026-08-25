@@ -1364,9 +1364,18 @@
 
   function refreshCabinets() {
     if (!S.map) return;
-    const src = S.map.getSource('cabinets');
-    if (!src) return;
-    src.setData({ type: 'FeatureCollection', features: S.cabinets });
+    const cabSrc = S.map.getSource('cabinets');
+    if (cabSrc) {
+      cabSrc.setData({ type: 'FeatureCollection', features: S.cabinets });
+    }
+    // Repeindre aussi la couche departements : buildDeptIndex() (dans main.js)
+    // met a jour S.departements[*].properties.fillColor selon la couleur du
+    // cabinet qui couvre chaque dept. Il faut donc rebalancer la source
+    // 'departements' pour que les polygones changent de couleur.
+    const deptSrc = S.map.getSource('departements');
+    if (deptSrc) {
+      deptSrc.setData({ type: 'FeatureCollection', features: S.departements });
+    }
   }
 
   App.map = {

@@ -21,8 +21,9 @@ def read_asset(name: str) -> str:
 
 
 def inline_assets(template: str) -> str:
-    """Replace external asset links/scripts by inline <style>/<script> blocks."""
-    # CSS
+    """Inline the CSS (perf + offline). Scripts are kept external so that
+    updates to assets/*.js take effect without rebuilding the HTML."""
+    # CSS — inline
     css = read_asset('styles.css')
     template = re.sub(
         r'<link[^>]*href=["\']assets/styles\.css["\'][^>]*>',
@@ -31,13 +32,16 @@ def inline_assets(template: str) -> str:
         count=1
     )
 
-    # Scripts — inject in the requested order
+    # Scripts — add ?v=<hash> cache-busting query so the browser
+    # re-downloads them when their content changes (Vercel caches them for 1h).
+    import hashlib
     script_order = ['config.js', 'map.js', 'ui.js', 'main.js']
     for script_name in script_order:
-        js = read_asset(script_name)
+        js_content = read_asset(script_name)
+        js_hash = hashlib.md5(js_content.encode('utf-8')).hexdigest()[:8]
         template = re.sub(
-            rf'<script[^>]*src=["\']assets/{re.escape(script_name)}["\'][^>]*></script>',
-            lambda m, js=js: f'<script>\n{js}\n</script>',
+            rf'<script[^>]*src=["\']assets/{re.escape(script_name)}(?:\?v=[^"\']+)?["\'][^>]*></script>',
+            lambda m, js=script_name, h=js_hash: f'<script src="assets/{js}?v={h}"></script>',
             template,
             count=1
         )

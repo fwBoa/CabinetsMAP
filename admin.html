@@ -40,10 +40,10 @@
           Connectez-vous pour gérer la liste des cabinets affichés sur la carte.
         </p>
         <form id="loginForm" class="admin-login__form" novalidate>
-          <label for="codeInput" class="admin-login__label">Code d'accès</label>
+          <label for="codeInput" class="admin-login__label">Mot de passe</label>
           <input
             id="codeInput"
-            name="code"
+            name="password"
             type="password"
             autocomplete="current-password"
             required
@@ -90,9 +90,8 @@
 
       <p class="admin-list__footer">
         <small>
-          Les modifications sont envoyées pour validation automatique, puis publiées sur la carte.
-          En cas de refus (données incohérentes, test échoué), la modification reste en attente
-          et un lien vers le dossier technique est fourni.
+          Les modifications sont enregistrées directement en base de données et publiées
+          immédiatement sur la carte. Pensez à vérifier vos changements avant validation.
         </small>
       </p>
     </section>

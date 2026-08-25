@@ -4,12 +4,12 @@
 // Cible : les Vercel Functions en production (ou local via vercel dev).
 //
 // Couvre :
-//   - Authentification (POST code, GET status, DELETE logout)
-//   - Liste cabinets (GET)
-//   - Mutation edit (POST action=edit) avec cleanup auto de la PR
-//   - Mutation add (POST action=add) avec cleanup auto
-//   - Mutation delete (POST action=delete) sur un cabinet jetable
-//   - Sanity check HTML (admin.html charge les 4 JS sans 404)
+//   - Authentification (POST password, GET status, DELETE logout)
+//   - Liste cabinets (GET /api/cabinets)
+//   - Mutation edit (POST action=edit) puis restauration
+//   - Mutation add (POST action=add) puis delete (cleanup immediat en DB)
+//   - GeoJSON public (/api/geojson/cabinets)
+//   - Sanity check HTML (admin.html charge les assets sans 404)
 //
 // Usage :
 //   node scripts/test-admin-e2e.mjs                                  # prod
@@ -18,13 +18,11 @@
 //
 // Variables d'env :
 //   BASE_URL          : URL de base (defaut: https://cabinetsmap.vercel.app)
-//   ADMIN_CODE        : code d'accès (defaut: CGC-EDIT-2026)
+//   ADMIN_PASSWORD    : mot de passe admin (defaut: CGC-EDIT-2026)
 //   SKIP_MUTATIONS    : si "1", n'exécute pas les tests destructifs
 
-import { execSync } from 'node:child_process';
-
 const BASE_URL = process.env.BASE_URL || 'https://cabinetsmap.vercel.app';
-const ADMIN_CODE = process.env.ADMIN_CODE || 'CGC-EDIT-2026';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'CGC-EDIT-2026';
 const SKIP_MUTATIONS = process.env.SKIP_MUTATIONS === '1';
 
 // === Mini-framework de tests (zero dependances) ===
@@ -77,37 +75,36 @@ async function testAuth() {
   // 1. GET status sans cookie
   let r = await checkStatus(`${BASE_URL}/api/admin-auth`);
   assert('GET status sans cookie', r.status === 200 && r.body?.authenticated === false);
-  log(`     → status=${r.status}, body=${JSON.stringify(r.body)}`);
 
-  // 2. POST code invalide
+  // 2. POST password invalide
   r = await checkStatus(`${BASE_URL}/api/admin-auth`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code: 'WRONG-CODE-12345' }),
+    body: JSON.stringify({ password: 'WRONG-PASSWORD-12345' }),
   });
-  assert('POST code invalide → 401', r.status === 401 && r.body?.error);
+  assert('POST password invalide → 401', r.status === 401 && r.body?.error);
 
-  // 3. POST code vide → 400
+  // 3. POST password vide → 400
   r = await checkStatus(`${BASE_URL}/api/admin-auth`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code: '' }),
+    body: JSON.stringify({ password: '' }),
   });
-  assert('POST code vide → 400', r.status === 400 && r.body?.error);
+  assert('POST password vide → 400', r.status === 400 && r.body?.error);
 
-  // 4. POST method invalide
+  // 4. PUT method → 405
   r = await checkStatus(`${BASE_URL}/api/admin-auth`, {
     method: 'PUT',
   });
   assert('PUT method → 405', r.status === 405);
 
-  // 5. POST code valide → cookie
+  // 5. POST password valide → cookie
   r = await checkStatus(`${BASE_URL}/api/admin-auth`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code: ADMIN_CODE }),
+    body: JSON.stringify({ password: ADMIN_PASSWORD }),
   });
-  assert('POST code valide → 200 + cookie', r.status === 200 && r.body?.ok && r.cookie);
+  assert('POST password valide → 200 + cookie', r.status === 200 && r.body?.ok && r.cookie);
   const sessionCookie = r.cookie;
 
   // 6. GET status avec cookie
@@ -131,13 +128,28 @@ async function testAuth() {
     setCookieRaw.slice(0, 100)
   );
 
-  // 9. Note : le HMAC cookie reste valide jusqu'a expiration (8h) car le serveur
-  // n'a pas de blacklist. C'est un comportement attendu : le logout clear le
-  // cookie cote client, mais un attaquant ayant copie le cookie pourrait
-  // theoriquement l'utiliser jusqu'a expiration. Pas un bug.
-  // On verifie juste que la réponse DELETE est OK (fait ci-dessus).
+  // 9. Re-login pour la suite des tests
+  r = await checkStatus(`${BASE_URL}/api/admin-auth`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: ADMIN_PASSWORD }),
+  });
+  return r.cookie;
+}
 
-  return sessionCookie;
+async function testPublicGeoJson() {
+  suite('GeoJSON public (/api/geojson/cabinets)');
+
+  const r = await checkStatus(`${BASE_URL}/api/geojson/cabinets`);
+  assert('GET → 200', r.status === 200);
+  assert('Type FeatureCollection', r.body?.type === 'FeatureCollection');
+  assert('Features array', Array.isArray(r.body?.features));
+  assert('Au moins 1 cabinet', (r.body?.features?.length || 0) >= 1,
+    `features=${r.body?.features?.length}`);
+
+  // Cache-Control present (60s CDN)
+  const cacheControl = r.headers.get('cache-control') || '';
+  assert('Cache-Control 60s', /max-age=60/.test(cacheControl), cacheControl);
 }
 
 async function testListCabinets(sessionCookie) {
@@ -154,7 +166,6 @@ async function testListCabinets(sessionCookie) {
   assert('GET avec cookie → 200', r.status === 200);
   assert('Réponse contient cabinets[]', Array.isArray(r.body?.cabinets));
   assert('Au moins 1 cabinet', (r.body?.count || 0) >= 1, `count=${r.body?.count}`);
-  assert('SHA présent', typeof r.body?.sha === 'string' && r.body.sha.length > 0);
 
   return r.body?.cabinets || [];
 }
@@ -168,12 +179,8 @@ async function testEdit(sessionCookie, cabinets) {
 
   suite('Mutation edit (POST action=edit)');
   const target = cabinets[0];
-  const originalPhone = target.properties?.phone || '';
-  const newPhone = `04.99.${Date.now().toString().slice(-8).padStart(8, '0')}`;
-
-  // Le payload doit contenir toutes les proprietes du cabinet (nom obligatoire),
-  // on merge donc l'existant avec le phone modifie.
-  const fullProps = { ...target.properties, phone: newPhone };
+  const originalCouleur = target.properties?.couleur || '#1e3a5f';
+  const newCouleur = '#10b981';
 
   const r = await checkStatus(`${BASE_URL}/api/cabinets`, {
     method: 'POST',
@@ -182,87 +189,106 @@ async function testEdit(sessionCookie, cabinets) {
       action: 'edit',
       payload: {
         id: target.properties.id,
-        properties: fullProps,
+        properties: { couleur: newCouleur },
       },
     }),
   });
 
-  assert('edit → 200 + PR créée', r.status === 200 && r.body?.prNumber, `status=${r.status}, body=${JSON.stringify(r.body)?.slice(0, 200)}`);
-  assert('PR a une URL', r.body?.prUrl?.startsWith('https://github.com/'));
-  assert('PR a un numéro', typeof r.body?.prNumber === 'number');
-  assert('Branche commence par admin/', /^admin\//.test(r.body?.branch || ''));
+  assert('edit → 200 + ok', r.status === 200 && r.body?.ok, `status=${r.status}`);
+  assert('edit merged=true', r.body?.merged === true);
+  assert(
+    'La nouvelle couleur est dans la réponse',
+    r.body?.cabinets?.find?.((c) => c.properties.id === target.properties.id)
+      ?.properties?.couleur === newCouleur
+  );
 
   return {
-    prNumber: r.body?.prNumber,
-    branch: r.body?.branch,
-    originalPhone,
-    newPhone,
     cabinetId: target.properties.id,
+    originalCouleur,
+    newCouleur,
   };
 }
 
-async function testAdd(sessionCookie) {
+async function testRestore(sessionCookie, editResult) {
+  if (SKIP_MUTATIONS || !editResult) return;
+  suite('Restore après edit');
+
+  const r = await checkStatus(`${BASE_URL}/api/cabinets`, {
+    method: 'POST',
+    headers: { Cookie: sessionCookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'edit',
+      payload: {
+        id: editResult.cabinetId,
+        properties: { couleur: editResult.originalCouleur },
+      },
+    }),
+  });
+
+  assert(
+    'restore → couleur d\'origine',
+    r.body?.cabinets?.find?.((c) => c.properties.id === editResult.cabinetId)
+      ?.properties?.couleur === editResult.originalCouleur
+  );
+}
+
+async function testAddAndDelete(sessionCookie) {
   if (SKIP_MUTATIONS) {
-    suite('Mutation add (SKIP_MUTATIONS=1)');
+    suite('Mutation add+delete (SKIP_MUTATIONS=1)');
     log('  ⊘ skip');
-    return null;
+    return;
   }
 
-  suite('Mutation add (POST action=add)');
-  const slug = `e2e-test-${Date.now()}`;
-  const r = await checkStatus(`${BASE_URL}/api/cabinets`, {
+  suite('Mutation add + delete (cycle complet)');
+  const TEST_ID = `cabinet-${Date.now().toString().slice(-6)}`; // ID numerique pour check constraint
+
+  // 1. ADD
+  let r = await checkStatus(`${BASE_URL}/api/cabinets`, {
     method: 'POST',
     headers: { Cookie: sessionCookie, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       action: 'add',
       payload: {
-        properties: {
-          id: slug,
-          nom: `Cabinet test E2E ${slug.slice(-6)}`,
-          adresse: '42 Rue de Test - 75000 PARIS',
-          phone: '01.23.45.67.89',
-          emails: ['test@e2e.fr'],
-          departements: ['75'],
-          tribunaux: ['PARIS'],
-          cours_appel: ['PARIS'],
-          couleur: '#1e3a5f',
-        },
+        id: TEST_ID,
+        nom: 'Cabinet test E2E',
+        adresse: '42 Rue de Test - 75000 PARIS',
+        phone: '01.23.45.67.89',
+        emails: ['test@e2e.fr'],
+        departements: ['75'],
+        tribunaux: ['PARIS'],
+        cours_appel: ['PARIS'],
+        couleur: '#1e3a5f',
       },
     }),
   });
+  assert(`add (${TEST_ID}) → 200 + ok`, r.status === 200 && r.body?.ok);
+  assert('Le cabinet apparaît dans la réponse',
+    r.body?.cabinets?.some?.((c) => c.properties.id === TEST_ID));
 
-  assert('add → 200 + PR créée', r.status === 200 && r.body?.prNumber);
-  assert('Nouvel ID retourné (slug auto-genere)', typeof r.body?.newId === 'string' && r.body.newId.length > 0, `newId=${r.body?.newId}`);
-  return { prNumber: r.body?.prNumber, branch: r.body?.branch, newId: r.body?.newId };
-}
-
-async function testDelete(sessionCookie) {
-  if (SKIP_MUTATIONS) {
-    suite('Mutation delete (SKIP_MUTATIONS=1)');
-    log('  ⊘ skip');
-    return null;
-  }
-
-  // On ne supprime pas un cabinet reel, juste un dry-run via edit/add/delete
-  // Le scenario complet delete necessiterait un cabinet jetable. On le skip
-  // pour eviter d'avoir a creer un cabinet juste pour le supprimer ensuite.
-  // A la place, on verifie que le payload delete est valide.
-  suite('Mutation delete (validation payload uniquement)');
-
-  const r = await checkStatus(`${BASE_URL}/api/cabinets`, {
+  // 2. DELETE (cleanup immediat)
+  r = await checkStatus(`${BASE_URL}/api/cabinets`, {
     method: 'POST',
     headers: { Cookie: sessionCookie, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       action: 'delete',
-      payload: { id: 'cabinet-99-inexistant' },
+      payload: { id: TEST_ID },
     }),
   });
+  assert(`delete (${TEST_ID}) → 200 + ok`, r.status === 200 && r.body?.ok);
+  assert('Le cabinet n\'est plus dans la réponse',
+    !r.body?.cabinets?.some?.((c) => c.properties.id === TEST_ID));
 
-  // NOTE : aujourd'hui l'API renvoie 500 (catch générique) au lieu de 404.
-  // C'est un bug à corriger dans une future phase. Pour l'instant on documente.
-  log(`  ℹ delete cabinet inexistant → status=${r.status} (attendu 400/404, actuel ${r.status})`);
-  // Le test passe quoi qu'il arrive pour ne pas bloquer la CI
-  assert('delete payload invalide → réponse (status informatif)', r.status > 0, `status=${r.status}`);
+  // 3. DELETE sur ID inexistant → 404 (graceful)
+  r = await checkStatus(`${BASE_URL}/api/cabinets`, {
+    method: 'POST',
+    headers: { Cookie: sessionCookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'delete',
+      payload: { id: 'cabinet-inexistant' },
+    }),
+  });
+  log(`  ℹ delete cabinet inexistant → status=${r.status}`);
+  assert('delete inexistant → pas de 500', r.status !== 500);
 }
 
 async function testHtmlSanity() {
@@ -273,78 +299,52 @@ async function testHtmlSanity() {
 
   assert('admin.html → 200', res.status === 200);
 
-  // Verifier les 4 references aux JS admin (chemin relatif ou absolu)
-  const jsFiles = [
+  const assetFiles = [
     'assets/admin/api.js',
     'assets/admin/auth.js',
     'assets/admin/cabinets.js',
     'assets/admin/styles.css',
   ];
 
-  for (const js of jsFiles) {
+  for (const js of assetFiles) {
     const present = html.includes(js);
     assert(`admin.html référence ${js}`, present);
   }
 
-  // Verifier qu'aucun des 4 fichiers ne retourne 404
-  for (const js of jsFiles) {
+  for (const js of assetFiles) {
     const r = await fetch(`${BASE_URL}/${js}`);
     assert(`${js} → 200`, r.status === 200);
   }
 
-  // Pas de note "Cookie HttpOnly" (retiree recemment)
-  assert('Note footer login retiree', !html.includes('Cookie HttpOnly'));
-}
-
-async function cleanup(prs) {
-  if (SKIP_MUTATIONS) return;
-  if (!prs || prs.length === 0) return;
-
-  suite('Cleanup des PRs de test');
-  for (const pr of prs) {
-    if (!pr?.prNumber) continue;
-    try {
-      log(`  → fermeture PR #${pr.prNumber} (${pr.branch})`);
-      execSync(`gh pr close ${pr.prNumber} --delete-branch --comment "E2E test cleanup" 2>&1`, {
-        stdio: 'pipe',
-      });
-    } catch (e) {
-      log(`  \x1b[33m⚠ impossible de fermer PR #${pr.prNumber} via gh\x1b[0m`);
-      log(`    → va sur https://github.com/fwBoa/CabinetsMAP/pull/${pr.prNumber}`);
-    }
-  }
+  // Pas de mention "code d'accès" (on utilise "mot de passe")
+  assert('Mention "mot de passe" présente', /mot de passe/i.test(html));
+  assert('Pas de mention "code d\'accès"', !/code d.accès/i.test(html));
 }
 
 // === Main ===
 async function main() {
-  log(`\x1b[1mCabinetsMAP — Tests E2E admin\x1b[0m`);
-  log(`  URL     : ${BASE_URL}`);
-  log(`  Code    : ${ADMIN_CODE ? '***' + ADMIN_CODE.slice(-4) : '(non fourni)'}`);
-  log(`  Mutations: ${SKIP_MUTATIONS ? 'désactivées' : 'activées'}`);
+  log(`\x1b[1mCabinetsMAP — Tests E2E admin (Neon + Vercel Functions)\x1b[0m`);
+  log(`  URL        : ${BASE_URL}`);
+  log(`  Password   : ${ADMIN_PASSWORD ? '***' + ADMIN_PASSWORD.slice(-4) : '(non fourni)'}`);
+  log(`  Mutations  : ${SKIP_MUTATIONS ? 'désactivées' : 'activées'}`);
 
   const start = Date.now();
-  const createdPrs = [];
 
   try {
     await testHtmlSanity();
+    await testPublicGeoJson();
 
     const sessionCookie = await testAuth();
     const cabinets = await testListCabinets(sessionCookie);
 
     const editResult = await testEdit(sessionCookie, cabinets);
-    if (editResult) createdPrs.push(editResult);
-
-    const addResult = await testAdd(sessionCookie);
-    if (addResult) createdPrs.push(addResult);
-
-    await testDelete(sessionCookie);
+    await testRestore(sessionCookie, editResult);
+    await testAddAndDelete(sessionCookie);
   } catch (err) {
     log(`\n\x1b[31m✗ Erreur fatale : ${err.message}\x1b[0m`);
     log(err.stack);
     process.exitCode = 1;
   }
-
-  await cleanup(createdPrs);
 
   // === Résumé ===
   const total = results.length;

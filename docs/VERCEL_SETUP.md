@@ -1,152 +1,132 @@
-# Setup Vercel pour CabinetsMAP
+# Setup Vercel + Neon pour CabinetsMAP
 
-Guide pas-à-pas pour migrer le site de GitHub Pages vers Vercel
-et préparer l'environnement de l'espace admin.
+Guide pas-à-pas pour déployer le site et préparer l'environnement
+admin (édition directe en base Neon).
 
 ## Pré-requis
 
 - Compte GitHub avec accès au repo `fwBoa/CabinetsMAP`
-- Vercel Free Tier (gratuit, 100 GB/mois)
+- Compte Vercel Free Tier (gratuit)
+- Compte Neon (gratuit) — créé automatiquement par Vercel Storage
 
-## Étape 1 — Créer le compte Vercel (2 min)
+## Étape 1 — Importer le repo sur Vercel (1 min)
 
-1. Aller sur https://vercel.com/signup
-2. Cliquer "Continue with GitHub"
-3. Autoriser Vercel à accéder à ton compte GitHub
-4. Accepter le Free Tier (pas de CB requise)
-
-## Étape 2 — Importer le repo (1 min)
-
-1. Sur le dashboard Vercel, cliquer "Add New..." → "Project"
-2. Chercher `fwBoa/CabinetsMAP` dans la liste
-3. Cliquer "Import"
-4. Sur l'écran de configuration :
-   - **Project Name** : `cabinetsmap` (par défaut)
-   - **Framework Preset** : "Other" (site statique)
-   - **Build Command** : laisser vide
+1. Dashboard Vercel → "Add New..." → "Project"
+2. Chercher `fwBoa/CabinetsMAP` → "Import"
+3. Configuration :
+   - **Project Name** : `cabinetsmap`
+   - **Framework Preset** : "Other"
    - **Output Directory** : `.` (laisser par défaut)
-   - **Install Command** : laisser vide
-5. Ne PAS cliquer "Deploy" tout de suite. D'abord configurer les variables.
+   - **Install/Build Command** : (laisser par défaut, le `vercel.json` s'occupe)
+4. NE PAS cliquer "Deploy" tout de suite. D'abord Storage + env.
 
-## Étape 3 — Configurer les variables d'environnement (5 min)
+## Étape 2 — Créer la base Neon (2 min)
 
-Avant le premier déploiement, ajouter les variables :
+1. Sur l'écran de configuration Vercel, section **Storage** → "Create New"
+2. Choisir **Neon Postgres** → "Continue"
+3. Region : choisir `US East (Ohio)` ou `EU` selon ton audience
+4. Cliquer "Create" → "Connect to Project"
+5. Vercel injecte automatiquement **toutes** les variables Postgres
+   (`DATABASE_URL`, `POSTGRES_URL`, `PGHOST`, `PGUSER`, etc.) en Preview +
+   Production.
 
-1. Sur l'écran de configuration Vercel, déployer la section "Environment Variables"
-2. Ajouter une par une (voir [`.env.example`](.env.example) pour la doc détaillée) :
+## Étape 3 — Configurer les variables admin (2 min)
+
+Ajouter manuellement :
 
 | Name | Value (exemple) | Environment |
 |------|-----------------|-------------|
-| `ADMIN_CODE_HASH` | `<sha256 de ton code>` | Production, Preview |
 | `SESSION_SECRET` | `<openssl rand -hex 32>` | Production, Preview |
-| `GITHUB_TOKEN` | `<ton PAT GitHub>` | Production |
-| `GITHUB_REPO_OWNER` | `fwBoa` | Production, Preview |
-| `GITHUB_REPO_NAME` | `CabinetsMAP` | Production, Preview |
-| `GITHUB_DEFAULT_BRANCH` | `main` | Production, Preview |
 | `ADMIN_SESSION_TTL_SECONDS` | `28800` | Production, Preview |
 
-### Comment générer chaque valeur
+> `DATABASE_URL` est déjà présent, créé automatiquement par Storage à l'étape 2.
 
-**`ADMIN_CODE_HASH`** (hash SHA-256 du code d'accès) :
-
-En local dans le terminal :
-```bash
-echo -n "TON_CODE_SECRET" | shasum -a 256
-```
-Sortie : `<hash>`. Copier cette valeur dans Vercel.
-
-> **Important** : le code lui-même n'apparaît dans AUCUN fichier du repo.
-> Tu es le seul à le connaître. Le hash seul ne permet pas de remonter au code.
-
-**`SESSION_SECRET`** (32+ caractères aléatoires) :
+### Générer `SESSION_SECRET`
 
 ```bash
 openssl rand -hex 32
+# Sortie : 64 caractères hexa. Copier dans Vercel.
 ```
-Sortie : 64 caractères hexa. Copier dans Vercel.
 
-**`GITHUB_TOKEN`** (Personal Access Token) :
+### Changer le mot de passe admin
 
-1. Aller sur https://github.com/settings/tokens
-2. Cliquer "Generate new token" → "Fine-grained token"
-3. Configurer :
-   - **Token name** : `Vercel CabinetsMAP Editor`
-   - **Expiration** : 90 days (ou plus, à toi de voir)
-   - **Repository access** : "Only select repositories" → `fwBoa/CabinetsMAP`
-   - **Permissions** :
-     - Repository permissions :
-       - **Contents** : Read and Write
-       - **Pull requests** : Read and Write
-       - **Metadata** : Read-only (par défaut, suffit)
-4. Cliquer "Generate token"
-5. **Copier immédiatement** le token affiché (il ne sera plus jamais visible)
+Le mot de passe par défaut est seedé dans `admin_settings` à l'init Neon.
+Pour le changer en production :
+
+```bash
+DATABASE_URL="..." node neon/seed-admin.mjs
+# (réponse interactive : nouveau mot de passe)
+```
+
+Ou en SQL direct :
+```sql
+-- le hash bcrypt doit être généré séparément (12 rounds min)
+update admin_settings
+set value = '<nouveau-bcrypt-hash>', updated_at = now()
+where key = 'password_hash';
+```
 
 ## Étape 4 — Premier déploiement (1 min)
 
-1. Après avoir ajouté toutes les variables, cliquer "Deploy"
-2. Vercel build en ~30s (site statique, rien à compiler)
-3. URL générée : `https://cabinetsmap.vercel.app` (ou similaire)
+Cliquer "Deploy" → build ~30s → URL : `https://cabinetsmap.vercel.app`.
 
-## Étape 5 — Vérifier que le site marche (1 min)
+## Étape 5 — Initialiser le schéma DB (1 min, une seule fois)
 
-1. Ouvrir `https://<ton-projet>.vercel.app/` dans le navigateur
-2. Vérifier que la carte s'affiche, que les cabinets apparaissent
-3. Tester une recherche (ex: "BORDEAUX 33")
-4. Visiter `https://<ton-projet>.vercel.app/admin.html`
-   → pour l'instant, ça doit afficher une erreur 404 ou une page blanche
-   → c'est normal, on n'a pas encore créé le code admin
+En local avec DATABASE_URL pointant sur la prod :
 
-## Étape 6 — Domaine personnalisé (optionnel, 5 min)
+```bash
+export DATABASE_URL="postgresql://..."  # copier depuis Vercel
+node neon/run-schema.mjs                 # applique CREATE TABLE/INDEX
+node neon/import-cabinets.mjs            # importe cabinets + départements
+node neon/seed-admin.mjs                 # seed du mot de passe admin
+```
 
-Si tu as un domaine (ex: `cabinetsmap.fr`) :
+> **À faire une seule fois** au premier setup. Les déploiements suivants
+> ne touchent pas au schéma.
 
-1. Sur Vercel : Project Settings → Domains
-2. Ajouter ton domaine : `cabinetsmap.fr`
-3. Vercel t'affiche les DNS à configurer chez ton registrar :
-   ```
-   Type A    @    76.76.21.21
-   Type CNAME www  cname.vercel-dns.com
-   ```
-4. Aller chez ton registrar (OVH, Gandi…) et appliquer ces DNS
-5. Attendre la propagation (5 min à 24h)
-6. Vercel génère automatiquement un certificat SSL (Let's Encrypt)
+## Étape 6 — Vérifier que tout marche (2 min)
 
-## Étape 7 — Couper GitHub Pages (optionnel, après validation)
+1. **Carte publique** : ouvrir `https://cabinetsmap.vercel.app/`
+   → la carte s'affiche avec les 13 cabinets
+2. **GeoJSON public** : `curl https://cabinetsmap.vercel.app/api/geojson/cabinets`
+   → renvoie un `FeatureCollection` avec les features
+3. **E2E tests** : `node scripts/test-admin-e2e.mjs`
+   → 37 assertions, doit afficher `Passés : 37`
+4. **Admin** : ouvrir `https://cabinetsmap.vercel.app/admin.html`
+   → se connecter avec le mot de passe → modifier un cabinet → vérifier
+     sur la carte publique dans la minute suivante (cache CDN)
 
-Quand tu es sûr que Vercel fonctionne bien :
+## Étape 7 — Domaine personnalisé (optionnel)
 
-1. GitHub → ton repo → Settings → Pages
-2. Source : "None" (ou désactiver)
-3. Le site ne sera plus servi par GitHub Pages
-
-> Garde GitHub Pages actif en parallèle **pendant au moins une semaine**
-> avant de couper, pour pouvoir rollback si Vercel a un souci.
+Project Settings → Domains → ajouter ton domaine → configurer les DNS
+chez ton registrar. SSL automatique via Let's Encrypt.
 
 ## Coûts
 
 | Ressource | Free Tier | Ton usage estimé |
-|-----------|-----------|-------------------|
-| Bande passante | 100 GB/mois | ~1-5 GB/mois |
-| Builds | 6000 min/mois | ~10 min/mois (auto-deploy sur push) |
-| Functions | 1M invocations/mois | ~100-500/mois |
-| Custom domain | Gratuit | 0 |
+|-----------|-----------|------------------|
+| Vercel bande passante | 100 GB/mois | ~1-5 GB/mois |
+| Vercel Functions | 1M invocations/mois | ~100-500/mois |
+| Neon Compute | 191.9h/mois (Active) | largement suffisant |
+| Neon Storage | 512 MB | ~5 MB |
 | SSL | Gratuit | 0 |
 
 **Total : 0 €.**
 
 ## Rollback
 
-Si quelque chose ne va pas après la migration :
-
-1. GitHub Pages est encore actif (on ne l'a pas coupé)
-2. Aller sur GitHub → Settings → Pages → réactiver si besoin
-3. Le temps que tu corriges, le site reste accessible via GitHub Pages
+Si Vercel a un souci : GitHub Pages est encore actif (le repo sert les
+fichiers statiques aussi via GitHub Pages si configuré). Sinon, dernier
+commit fonctionnel sur `main` → Vercel redéploie en quelques secondes.
 
 ## En cas de problème
 
-- **Build failed** : vérifier que `package.json` est bien à la racine
-- **Variables d'env non prises en compte** : redéployer après ajout
-  (Vercel ne rebuilte pas automatiquement sur changement d'env)
-- **Page 404** : vérifier que `vercel.json` est commité
-- **CORS error** : ajouter le domaine Vercel dans la liste blanche des origins
-  (à configurer dans la Function, pas dans vercel.json)
+- **Build failed** : vérifier `package.json` à la racine + `vercel.json`
+- **`DATABASE_URL` non trouvée** : vérifier que Storage Neon est bien
+  "Connected" au projet (Settings → Storage → Neon → Connect)
+- **Login échoue avec 401** : le hash bcrypt dans `admin_settings` ne
+  matche pas → réexécuter `node neon/seed-admin.mjs`
+- **Mutation visible seulement après 60s** : cache CDN normal, attendre
+  ou ajouter `?_=<timestamp>` à l'URL `/api/geojson/cabinets`
+- **Carte publique vide** : vérifier que `cabinets.geojson` est bien
+  commité et que `assets/main.js` charge bien `data/cabinets.geojson`

@@ -48,8 +48,8 @@
     authStatus() {
       return request('GET', '/admin-auth');
     },
-    authLogin(code) {
-      return request('POST', '/admin-auth', { code });
+    authLogin(password) {
+      return request('POST', '/admin-auth', { password });
     },
     authLogout() {
       return request('DELETE', '/admin-auth');

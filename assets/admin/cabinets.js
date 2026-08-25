@@ -10,7 +10,6 @@
   // === State ===
   const state = {
     cabinets: [],
-    sha: null,
     loading: false,
     editingId: null, // null = mode "ajout"
     sheetOpen: false,
@@ -84,27 +83,12 @@
     }
   }
 
-  // Toast specialise pour le resultat d'une mutation.
-  // 3 cas : succes (deploye), en attente de validation manuelle, echec.
-  // result = { merged: bool, prNumber, prUrl, mergeReason }
+  // Toast apres mutation. Avec Neon, la modification est immediate.
   function showMutationToast(result, verb) {
-    const link = result.prUrl ? { href: result.prUrl, label: 'Voir le détail technique' } : null;
-    if (result.merged) {
-      toast({
-        message: `Cabinet ${verb}. La carte sera mise à jour dans quelques secondes.`,
-        variant: 'success',
-        action: link,
-      });
-    } else {
-      const reason = result.mergeReason
-        ? ` Raison : ${result.mergeReason.toLowerCase().replace(/^./, c => c.toUpperCase())}.`
-        : '';
-      toast({
-        message: `Modification prise en compte mais validation automatique refusée.${reason} Un administrateur doit intervenir.`,
-        variant: 'warning',
-        action: link,
-      });
-    }
+    toast({
+      message: `Cabinet ${verb}. La carte est à jour.`,
+      variant: 'success',
+    });
   }
 
   function setBusy(button, busy) {
@@ -143,7 +127,6 @@
     try {
       const data = await AppAdmin.api.listCabinets();
       state.cabinets = data.cabinets || [];
-      state.sha = data.sha;
       renderList();
     } catch (err) {
       if (err.status === 401) {
@@ -462,13 +445,13 @@
       });
       if (items.length === 0) {
         return {
-          intro: 'Ce cabinet sera créé sur la carte après validation automatique.',
+          intro: 'Ce cabinet sera créé immédiatement sur la carte.',
           items: [],
           empty: true,
         };
       }
       return {
-        intro: 'Ce cabinet sera créé sur la carte après validation automatique.',
+        intro: 'Ce cabinet sera créé immédiatement sur la carte.',
         items,
         empty: false,
       };
@@ -528,7 +511,7 @@
     }
 
     return {
-      intro: `Modifications du cabinet « ${before.nom || ''} ».`,
+      intro: `Modifications du cabinet « ${before.nom || ''} » enregistrées immédiatement.`,
       items,
       empty: false,
     };
@@ -649,7 +632,6 @@
 
   function reset() {
     state.cabinets = [];
-    state.sha = null;
     state.editingId = null;
     state.loading = false;
     if (els.list) {

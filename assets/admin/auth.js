@@ -100,22 +100,22 @@
   async function handleLogin(e) {
     e.preventDefault();
     setError('');
-    const code = els.input.value.trim();
-    if (code.length < 8) {
-      setError('Le code doit contenir au moins 8 caractères.');
+    const password = els.input.value.trim();
+    if (password.length < 8) {
+      setError('Le mot de passe doit contenir au moins 8 caractères.');
       return;
     }
     setBusy(true);
     try {
-      const result = await AppAdmin.api.authLogin(code);
+      const result = await AppAdmin.api.authLogin(password);
       setError('');
-      els.input.value = ''; // clear le code en memoire
+      els.input.value = ''; // clear le mot de passe en memoire
       showToast('Connecté', 'success');
       setView('list');
       fireAuthenticated();
     } catch (err) {
-      setError(err.message === 'Code invalide'
-        ? 'Code incorrect.'
+      setError(err.message === 'Mot de passe invalide'
+        ? 'Mot de passe incorrect.'
         : (err.message || 'Erreur de connexion.'));
     } finally {
       setBusy(false);

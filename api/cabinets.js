@@ -1,24 +1,11 @@
 // api/cabinets.js
-// Endpoint CRUD pour les cabinets (admin seulement).
-// GET : retourne la liste des cabinets (lecture seule depuis GitHub raw)
-// POST { action, payload } : edit/add/delete via PR auto
-//
-// Toutes les mutations passent par une PR qu'un humain doit merger.
+// Endpoint CRUD direct sur Neon (Postgres).
+// GET : liste des cabinets (auth admin)
+// POST { action, payload } : edit/add/delete en base (auth admin)
 
+import { getSql } from './_lib/db.js';
 import { readCookie } from './_lib/_util.js';
 import { verifySession, SESSION_COOKIE_NAME } from './_lib/session.js';
-import {
-  getFile,
-  getMainSha,
-  createBranch,
-  commitFile,
-  createPullRequest,
-  mergePullRequestIfChecksPass,
-  normalizeCabinet,
-  applyMutation,
-  branchNameFor,
-  commitTitleFor,
-} from './_lib/github.js';
 
 function json(res, status, payload) {
   res.status(status).setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -28,14 +15,8 @@ function json(res, status, payload) {
 function requireAuth(req, res) {
   const token = readCookie(req, SESSION_COOKIE_NAME);
   const session = verifySession(token, process.env.SESSION_SECRET);
-  if (!session) { json(res, 401, { error: 'Non authentifié' }); return null; }
+  if (!session) { json(res, 401, { error: 'Non authentifie' }); return null; }
   return session;
-}
-
-function requireGithubToken(res) {
-  const token = process.env.GITHUB_TOKEN;
-  if (!token) { json(res, 500, { error: 'GITHUB_TOKEN manquant côté serveur' }); return null; }
-  return token;
 }
 
 async function readJsonBody(req) {
@@ -46,36 +27,58 @@ async function readJsonBody(req) {
   return JSON.parse(raw);
 }
 
+function rowToFeature(row) {
+  return {
+    type: 'Feature',
+    properties: {
+      id: row.id,
+      nom: row.nom,
+      adresse: row.adresse,
+      phone: row.phone,
+      emails: row.emails || [],
+      tribunaux: row.tribunaux || [],
+      cours_appel: row.cours_appel || [],
+      departements: row.departements || [],
+      couleur: row.couleur,
+      badges: row.badges || [],
+      display_name: row.display_name,
+      place_id: row.place_id,
+    },
+    geometry: {
+      type: 'Point',
+      coordinates: row.longitude != null && row.latitude != null
+        ? [Number(row.longitude), Number(row.latitude)]
+        : null,
+    },
+  };
+}
+
 // === GET : liste ===
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
 
   if (req.method === 'GET') {
-    // Lecture autorisee pour les utilisateurs authentifies
     if (!requireAuth(req, res)) return;
     try {
-      const file = await getFile('cabinets.geojson', process.env.GITHUB_TOKEN);
-      const geojson = JSON.parse(file.content);
+      const sql = getSql();
+      const rows = await sql`select * from cabinets order by id`;
       return json(res, 200, {
-        cabinets: geojson.features || [],
-        sha: file.sha,
-        count: (geojson.features || []).length,
+        cabinets: rows.map(rowToFeature),
+        count: rows.length,
       });
     } catch (err) {
+      console.error('cabinets GET error', err);
       return json(res, 500, { error: 'Lecture impossible', detail: err.message });
     }
   }
 
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'GET, POST');
-    return json(res, 405, { error: 'Méthode non autorisée' });
+    return json(res, 405, { error: 'Methode non autorisee' });
   }
 
   if (!requireAuth(req, res)) return;
-  const ghToken = requireGithubToken(res);
-  if (!ghToken) return;
 
-  // Lecture + validation body
   let body;
   try { body = await readJsonBody(req); }
   catch (e) { return json(res, 400, { error: 'Body JSON invalide', detail: e.message }); }
@@ -89,113 +92,103 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Charger le fichier courant
-    const file = await getFile('cabinets.geojson', ghToken);
-    const geojson = JSON.parse(file.content);
+    const sql = getSql();
 
-    // 2. Construire le payload normalisé pour la mutation
-    let mutationPayload;
-    if (action === 'edit' || action === 'add') {
-      // Pour edit : on garde id + geometry du cabinet existant
-      const existing = action === 'edit'
-        ? geojson.features.find(f => f.properties?.id === payload.id)
-        : null;
-      // Pour edit : partial=true -> on ne garde QUE les champs envoyes
-      // (sinon les anciens champs sont ecrases par les valeurs par defaut).
-      // Pour add : partial=false -> tous les champs avec valeurs par defaut.
-      const normalized = normalizeCabinet(payload.properties || payload, {
-        partial: action === 'edit',
+    if (action === 'edit') {
+      if (!payload.id) return json(res, 400, { error: 'id requis pour edit' });
+
+      const [existing] = await sql`select * from cabinets where id = ${payload.id}`;
+      if (!existing) return json(res, 404, { error: `Cabinet ${payload.id} introuvable` });
+
+      const props = payload.properties || payload;
+      const merged = {
+        nom: props.nom ?? existing.nom,
+        adresse: props.adresse ?? existing.adresse,
+        phone: props.phone ?? existing.phone,
+        emails: props.emails ?? existing.emails,
+        tribunaux: props.tribunaux ?? existing.tribunaux,
+        cours_appel: props.cours_appel ?? existing.cours_appel,
+        departements: props.departements ?? existing.departements,
+        couleur: props.couleur ?? existing.couleur,
+        badges: props.badges ?? existing.badges,
+        display_name: props.display_name ?? existing.display_name,
+        place_id: props.place_id ?? existing.place_id,
+        longitude: props.longitude ?? existing.longitude,
+        latitude: props.latitude ?? existing.latitude,
+      };
+
+      await sql`
+        update cabinets set
+          nom = ${merged.nom},
+          adresse = ${merged.adresse},
+          phone = ${merged.phone},
+          emails = ${merged.emails},
+          tribunaux = ${merged.tribunaux},
+          cours_appel = ${merged.cours_appel},
+          departements = ${merged.departements},
+          couleur = ${merged.couleur},
+          badges = ${merged.badges},
+          display_name = ${merged.display_name},
+          place_id = ${merged.place_id},
+          longitude = ${merged.longitude},
+          latitude = ${merged.latitude}
+        where id = ${payload.id}
+      `;
+
+      const rows = await sql`select * from cabinets order by id`;
+      return json(res, 200, {
+        ok: true,
+        action,
+        id: payload.id,
+        merged: true,
+        cabinets: rows.map(rowToFeature),
+        count: rows.length,
       });
-      if (action === 'edit') {
-        if (!payload.id) return json(res, 400, { error: 'id requis pour edit' });
-        if (!existing) return json(res, 400, { error: `Cabinet ${payload.id} introuvable` });
-        mutationPayload = { id: payload.id, properties: normalized };
-      } else {
-        mutationPayload = {
-          properties: normalized,
-          geometry: existing?.geometry,
-        };
-      }
-    } else if (action === 'delete') {
+    }
+
+    if (action === 'add') {
+      const props = payload.properties || payload;
+      const id = props.id || `cabinet-${Date.now()}`;
+
+      await sql`
+        insert into cabinets (
+          id, nom, adresse, phone, emails, tribunaux, cours_appel,
+          departements, couleur, badges, display_name, place_id,
+          longitude, latitude
+        ) values (
+          ${id}, ${props.nom}, ${props.adresse || null}, ${props.phone || null},
+          ${props.emails || []}, ${props.tribunaux || []}, ${props.cours_appel || []},
+          ${props.departements || []}, ${props.couleur || '#1e3a5f'}, ${props.badges || []},
+          ${props.display_name || ''}, ${props.place_id || null},
+          ${props.longitude ?? null}, ${props.latitude ?? null}
+        )
+      `;
+
+      const rows = await sql`select * from cabinets order by id`;
+      return json(res, 200, {
+        ok: true,
+        action,
+        id,
+        cabinets: rows.map(rowToFeature),
+        count: rows.length,
+      });
+    }
+
+    if (action === 'delete') {
       if (!payload.id) return json(res, 400, { error: 'id requis pour delete' });
-      mutationPayload = { id: payload.id };
+      await sql`delete from cabinets where id = ${payload.id}`;
+
+      const rows = await sql`select * from cabinets order by id`;
+      return json(res, 200, {
+        ok: true,
+        action,
+        id: payload.id,
+        cabinets: rows.map(rowToFeature),
+        count: rows.length,
+      });
     }
-
-    // 3. Appliquer la mutation
-    const { features, name, newId: createdId } = applyMutation(geojson, action, mutationPayload);
-    const newGeojson = { ...geojson, features };
-
-    // 4. Préparer branche + commit + PR
-    const branchName = branchNameFor(action, name);
-    const title = commitTitleFor(action, name);
-    const mainSha = await getMainSha(ghToken);
-    await createBranch(branchName, mainSha, ghToken);
-    await commitFile(
-      'cabinets.geojson',
-      JSON.stringify(newGeojson, null, 2) + '\n',
-      title,
-      branchName,
-      file.sha,
-      ghToken
-    );
-
-    // 5. Ouvrir PR
-    const prBody = [
-      `**Action** : \`${action}\``,
-      `**Cabinet** : ${name}`,
-      createdId ? `**Nouvel ID** : \`${createdId}\`` : '',
-      '',
-      'Créé automatiquement depuis l\'espace admin. À merger après review.',
-    ].filter(Boolean).join('\n');
-
-    const pr = await createPullRequest({
-      title,
-      body: prBody,
-      head: branchName,
-      base: process.env.GITHUB_DEFAULT_BRANCH,
-    }, ghToken);
-
-    // 6. Auto-merge : attend que les checks GitHub Actions passent.
-    // Si les checks sont verts, on merge automatiquement (squash).
-    // Sinon on laisse la PR ouverte pour merge manuel.
-    // Opt-out possible via AUTO_MERGE=false si jamais on veut debrayer.
-    let mergeResult = null;
-    if (process.env.AUTO_MERGE === 'false') {
-      mergeResult = { merged: false, reason: 'AUTO_MERGE desactive par env var' };
-    } else {
-      try {
-        mergeResult = await mergePullRequestIfChecksPass(
-          { prNumber: pr.number, headSha: pr.head.sha },
-          ghToken,
-          { maxWaitMs: 60_000, pollMs: 2_000, mergeMethod: 'squash' }
-        );
-      } catch (e) {
-        // Ne pas faire echouer toute l'operation si le polling plante
-        mergeResult = { merged: false, reason: `Polling checks erreur : ${e.message.slice(0, 150)}` };
-      }
-    }
-
-    return json(res, 200, {
-      ok: true,
-      action,
-      name,
-      newId: createdId || null,
-      prUrl: pr.html_url,
-      prNumber: pr.number,
-      branch: branchName,
-      merged: mergeResult.merged,
-      mergeReason: mergeResult.reason || null,
-    });
   } catch (err) {
-    if (err.status === 422 && /Reference already exists/i.test(err.message || '')) {
-      return json(res, 409, { error: 'Une PR existe déjà pour cette modification (réessaie dans 1 minute).' });
-    }
-    if (err.status === 401) {
-      return json(res, 500, { error: 'Token GitHub invalide côté serveur. Révoque et régénère le PAT.' });
-    }
-    if (err.status === 404 && action === 'edit') {
-      return json(res, 404, { error: 'Cabinet introuvable (id peut-être modifié entre-temps).' });
-    }
+    console.error('cabinets mutation error', err);
     return json(res, 500, { error: 'Mutation impossible', detail: err.message });
   }
 }

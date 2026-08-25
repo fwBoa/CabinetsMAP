@@ -1,10 +1,11 @@
 // api/admin-auth.js
-// Endpoint d'authentification admin.
-// POST { code: string } -> 200 + cookie session si OK, 401 sinon.
-// DELETE -> 200 + clear cookie (logout).
-// GET -> 200 { authenticated: boolean } pour verifier la session.
+// Auth admin : mot de passe unique stocke dans Neon (bcrypt).
+// POST { password: string } -> 200 + cookie session si OK.
+// DELETE -> logout.
+// GET -> status session.
 
-import { verifyAccessCode } from './_lib/crypto.js';
+import bcrypt from 'bcryptjs';
+import { getSql } from './_lib/db.js';
 import {
   signSession,
   verifySession,
@@ -22,11 +23,10 @@ function json(res, status, payload) {
 function ttlSeconds() {
   const raw = process.env.ADMIN_SESSION_TTL_SECONDS;
   const n = parseInt(raw, 10);
-  return Number.isFinite(n) && n > 0 ? n : 28800; // 8h par defaut
+  return Number.isFinite(n) && n > 0 ? n : 28800; // 8h
 }
 
 export default async function handler(req, res) {
-  // CORS minimaliste (meme origine en pratique, mais on accepte GET depuis le frontend)
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
 
   if (req.method === 'GET') {
@@ -45,7 +45,6 @@ export default async function handler(req, res) {
     return json(res, 405, { error: 'Méthode non autorisée' });
   }
 
-  // Lecture body JSON
   let body;
   try {
     const chunks = [];
@@ -56,23 +55,30 @@ export default async function handler(req, res) {
     return json(res, 400, { error: 'Body JSON invalide' });
   }
 
-  const code = typeof body.code === 'string' ? body.code : '';
-  if (!code) {
-    return json(res, 400, { error: 'Code manquant' });
+  const password = typeof body.password === 'string' ? body.password : '';
+  if (!password) {
+    return json(res, 400, { error: 'Mot de passe manquant' });
   }
 
-  if (!verifyAccessCode(code)) {
-    // Reponse generique pour ne pas confirmer/infirmer l'existence du hash
-    return json(res, 401, { error: 'Code invalide' });
+  try {
+    const sql = getSql();
+    const rows = await sql`select value from admin_settings where key = 'password_hash'`;
+    const hash = rows[0]?.value;
+    if (!hash || !bcrypt.compareSync(password, hash)) {
+      return json(res, 401, { error: 'Mot de passe invalide' });
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    const ttl = ttlSeconds();
+    const token = signSession(
+      { sub: 'admin', iat: now, exp: now + ttl },
+      process.env.SESSION_SECRET
+    );
+
+    res.setHeader('Set-Cookie', buildSessionCookie(token, ttl));
+    return json(res, 200, { ok: true, user: 'admin', expiresIn: ttl });
+  } catch (err) {
+    console.error('admin-auth error', err);
+    return json(res, 500, { error: 'Erreur interne' });
   }
-
-  const now = Math.floor(Date.now() / 1000);
-  const ttl = ttlSeconds();
-  const token = signSession(
-    { sub: 'admin', iat: now, exp: now + ttl },
-    process.env.SESSION_SECRET
-  );
-
-  res.setHeader('Set-Cookie', buildSessionCookie(token, ttl));
-  return json(res, 200, { ok: true, user: 'admin', expiresIn: ttl });
 }
