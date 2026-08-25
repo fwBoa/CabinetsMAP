@@ -73,15 +73,17 @@ create trigger trg_cabinets_updated_at
 -- ============================================================
 -- 5. Audit log (qui a fait quoi, quand)
 -- ============================================================
+-- Note: les apostrophes dans les commentaires cassaient le splitter de
+-- run-schema.mjs. Voir neon/migrate-audit-log.mjs pour l'application.
 create table if not exists admin_logs (
   id bigserial primary key,
   at timestamptz default now(),
-  action text not null,                -- 'edit' | 'add' | 'delete' | 'login' | 'login_fail'
-  cabinet_id text,                     -- null si non lie a un cabinet
-  user_sub text default 'admin',       -- reserve multi-admin futur
-  ip text,                             -- x-forwarded-for
+  action text not null,
+  cabinet_id text,
+  user_sub text default 'admin',
+  ip text,
   user_agent text,
-  details jsonb                        -- payload simplifie (sans PII sensible)
+  details jsonb
 );
 
 create index if not exists idx_admin_logs_at on admin_logs(at desc);
