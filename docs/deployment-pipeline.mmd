@@ -1,0 +1,76 @@
+flowchart TB
+    %% ========== DEVELOPPEMENT LOCAL ==========
+    subgraph LOCAL [Dev local - MacBook]
+        CODE[Modification code]
+        TEST[scripts/test-admin-e2e.mjs<br/>53 assertions]
+        COMMIT[git commit]
+    end
+
+    %% ========== GIT ==========
+    subgraph GIT [GitHub - fwBoa/CabinetsMAP]
+        PUSH[git push origin main]
+        HOOK[Webhook GitHub->Vercel<br/>⚠️ casse dans ce projet]
+        REPO[(Repo main<br/>+ branche feat/*)]
+    end
+
+    %% ========== BUILD ==========
+    subgraph VERCEL_BUILD [Vercel Build Pipeline]
+        BUILD_CMD[buildCommand:<br/>node scripts/bust-cache.mjs<br/>MD5 hash JS admin]
+        INDEX_BUILD[python3 scripts/build_index.py<br/>inline CSS + GeoJSON]
+        ENV_LOAD[Load env vars:<br/>DATABASE_URL, SESSION_SECRET, TTL]
+    end
+
+    %% ========== DEPLOY ==========
+    subgraph VERCEL_PROD [Vercel Production - CDN global]
+        STATIC[index.html, admin.html<br/>assets/ cache 1h]
+        FUNCTIONS[4 Vercel Functions:<br/>/api/admin-auth<br/>/api/cabinets<br/>/api/geojson/cabinets]
+        EDGE[Edge cache:<br/>HTML: max-age=0<br/>API: no-store<br/>GeoJSON: 60s CDN]
+        ALIAS[Alias:<br/>cabinetsmap.vercel.app]
+    end
+
+    %% ========== DATABASE ==========
+    subgraph NEON [Vercel Neon Postgres]
+        POOLER[pooler<br/>sslmode=require]
+        TABLES[(cabinets, departements,<br/>admin_settings)]
+    end
+
+    %% ========== FLUX ==========
+    CODE --> TEST
+    TEST -->|53/53 OK| COMMIT
+    COMMIT --> PUSH
+    PUSH --> REPO
+    REPO --> HOOK
+    HOOK -.casse, fallback.-> VERCEL_BUILD
+
+    %% Workaround actuel: vercel --prod --yes en local
+    CODE -.vercel CLI.-> VERCEL_BUILD
+
+    VERCEL_BUILD --> BUILD_CMD
+    VERCEL_BUILD --> INDEX_BUILD
+    VERCEL_BUILD --> ENV_LOAD
+
+    BUILD_CMD --> STATIC
+    INDEX_BUILD --> STATIC
+    ENV_LOAD --> FUNCTIONS
+
+    STATIC --> EDGE
+    FUNCTIONS --> EDGE
+    EDGE --> ALIAS
+
+    FUNCTIONS -->|HTTPS pooler| POOLER
+    POOLER --> TABLES
+
+    %% ========== ANNOTATIONS ==========
+    classDef local fill:#dbeafe,stroke:#1e40af
+    classDef git fill:#fef3c7,stroke:#a16207
+    classDef build fill:#e9d5ff,stroke:#7c3aed
+    classDef prod fill:#dcfce7,stroke:#16a34a
+    classDef data fill:#fce7f3,stroke:#be185d
+    classDef warn fill:#fee2e2,stroke:#b91c1c
+
+    class CODE,TEST,COMMIT local
+    class PUSH,HOOK,REPO git
+    class BUILD_CMD,INDEX_BUILD,ENV_LOAD build
+    class STATIC,FUNCTIONS,EDGE,ALIAS prod
+    class POOLER,TABLES data
+    class HOOK warn

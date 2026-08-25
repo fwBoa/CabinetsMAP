@@ -12,9 +12,10 @@
 // Pour scale-out : brancher Vercel KV ou Upstash Redis.
 
 const WINDOW_MS = 10 * 60 * 1000;
-const LIMIT_AUTH = 20;
-const LIMIT_CABINETS = 100;
-const LIMIT_GEOJSON = 600; // public, autorise plus (cold cache)
+// Limites genereuses (1 admin + tests E2E dans la fenetre 10 min)
+const LIMIT_AUTH = 60;
+const LIMIT_CABINETS = 200;
+const LIMIT_GEOJSON = 1200; // public, autorise plus (cold cache)
 
 const bucket = new Map();
 

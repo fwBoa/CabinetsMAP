@@ -1,0 +1,68 @@
+flowchart LR
+    %% ========== ZONES DE CONFIANCE ==========
+    subgraph PUBLIC [Zone publique - Internet]
+        USER([Visiteur])
+        BOT_G[Bots classiques<br/>Google, Bing]
+        BOT_AI[Bots IA<br/>GPTBot, ClaudeBot...]
+        ATTACKER([Attaquant])
+    end
+
+    subgraph CDN [Vercel CDN - edge]
+        ROBOTS_TXT[robots.txt<br/>Disallow: / + 8 bots IA]
+        HTML_STATIC[index.html<br/>admin.html<br/>+ meta noindex]
+        ASSETS_PUB[assets/ cache 1h]
+        ASSETS_ADM[assets/admin/<br/>cache no-cache]
+        HDR_SECURITY[Headers vercel.json:<br/>X-Robots-Tag noindex<br/>X-Frame DENY<br/>HSTS, nosniff]
+    end
+
+    subgraph COMPUTE [Vercel Functions - region: us-east-1]
+        EP_GEO[/api/geojson/cabinets<br/>GET public, 60s CDN cache/]
+        EP_AUTH[/api/admin-auth<br/>bcrypt + HMAC cookie/]
+        EP_CAB[/api/cabinets<br/>verif cookie obligatoire/]
+        SESS[session.js<br/>HMAC-SHA256]
+        DB_CLIENT[db.js singleton]
+    end
+
+    subgraph DATA [Vercel Neon - us-east-1]
+        PG[(Postgres<br/>pooler + sslmode=require)]
+    end
+
+    subgraph SECRETS [Vercel env vars]
+        DB_URL[DATABASE_URL]
+        SESS_SECRET[SESSION_SECRET 32o]
+        TTL[ADMIN_SESSION_TTL_SECONDS]
+    end
+
+    %% ========== POLITIQUES ==========
+    USER -->|visite| HTML_STATIC
+    HTML_STATIC -->|fetch GeoJSON| EP_GEO
+    EP_GEO -.cache 60s.-> USER
+
+    BOT_G -->|lit| ROBOTS_TXT
+    BOT_G -->|respecte Disallow: /| X[Stop]
+    BOT_AI -->|lit| ROBOTS_TXT
+    BOT_AI -->|respecte Disallow: /| X
+
+    ATTACKER -->|brute force| EP_AUTH
+    EP_AUTH -.rate limit manquant ⚠️.-> ATTACKER
+    ATTACKER -->|vole cookie| EP_CAB
+    EP_CAB -.httpOnly + SameSite=Lax.-> ATTACKER
+
+    %% ========== COOKIE ==========
+    EP_AUTH -->|Set-Cookie<br/>httpOnly, SameSite=Lax<br/>cm_admin_session| SESS
+    SESS -->|set env SESSION_SECRET| SECRETS
+    EP_AUTH -->|bcrypt.compare<br/>hash dans DB| DB_CLIENT
+    DB_CLIENT -->|pooler SSL| PG
+    EP_CAB -->|SELECT/UPDATE| PG
+
+    %% ========== HEADERS ==========
+    HTML_STATIC -.X-Robots-Tag noindex.-> BOT_G
+    HTML_STATIC -.X-Frame-Options DENY.-> ATTACKER
+
+    %% ========== LEGENDE ==========
+    classDef good fill:#dcfce7,stroke:#16a34a
+    classDef warn fill:#fef3c7,stroke:#ca8a04
+    classDef danger fill:#fee2e2,stroke:#b91c1c
+
+    class EP_GEO,EP_AUTH,EP_CAB,SESS,DB_CLIENT good
+    class ATTACKER,EP_AUTH,EP_CAB warn

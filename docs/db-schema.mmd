@@ -1,0 +1,47 @@
+erDiagram
+    cabinets {
+        text id PK "cabinet-NN"
+        text nom "NOT NULL"
+        text adresse
+        text phone
+        text_array emails "default {}"
+        text_array tribunaux "default {}"
+        text_array cours_appel "default {}"
+        text_array departements "default {}"
+        text couleur "default #1e3a5f"
+        text_array badges "default {}"
+        text display_name
+        text place_id
+        numeric longitude
+        numeric latitude
+        timestamptz created_at "default now()"
+        timestamptz updated_at "default now() - trigger"
+    }
+
+    departements {
+        text code PK "01..95 + 971..976"
+        text nom "NOT NULL"
+        text region
+        jsonb geometry "GeoJSON Feature"
+    }
+
+    admin_settings {
+        text key PK "ex: password_hash, last_admin_ip"
+        text value "NOT NULL"
+        timestamptz updated_at "default now()"
+    }
+
+    cabinets ||--o{ departements : "references via departements[] (text array)"
+
+    cabinets ||--o{ cabinets : "co-couverture via departements[] communs"
+
+    %% Notes architecture :
+    %% Pas de FK entre cabinets et departements (volontaire) :
+    %% les codes deps sont un text array cote cabinet, ce qui permet
+    %% d'ajouter un dep sans toucher la table departements.
+    %% idx_cabinets_departements : GIN sur l'array pour les
+    %% requetes "trouver cabinets qui couvrent dep X".
+    %% chk_cabinets_id_prefix : verrouille le format cabinet-NN
+    %% pour eviter les IDs arbitraires en DB.
+    %% Trigger trg_cabinets_updated_at : auto-met a jour updated_at
+    %% a chaque UPDATE.

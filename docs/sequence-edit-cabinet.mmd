@@ -6,71 +6,81 @@ sequenceDiagram
     participant AuthEP as /api/admin-auth
     participant CabinetsEP as /api/cabinets
     participant Session as session.js
-    participant GH as github.js
-    participant GitHub as GitHub API
-    participant Repo as fwBoa/CabinetsMAP
+    participant DB as Neon Postgres
+    participant GeoEP as /api/geojson/cabinets
+    participant Visitor as Visiteur public (cache CDN)
 
     rect rgba(220, 252, 231, 0.5)
-        Note over Admin,Repo: Phase 1 - Authentification
+        Note over Admin,DB: Phase 1 - Authentification (bcrypt + HMAC)
         Admin->>Browser: Ouvre /admin.html
         Browser->>AdminUI: Charge la page
-        AdminUI->>Browser: Affiche champ "Code d'accès"
-        Admin->>Browser: Tape le code + Valide
-        Browser->>AuthEP: POST { code: "..." }
-        AuthEP->>AuthEP: hash(code) vs ADMIN_CODE_HASH
-        alt Code invalide
+        AdminUI->>Browser: Affiche champ "Mot de passe"
+        Admin->>Browser: Tape CGC-EDIT-2026 + Valide
+        Browser->>AuthEP: POST { password: "CGC-EDIT-2026" }
+        AuthEP->>DB: select value from admin_settings where key='password_hash'
+        DB-->>AuthEP: bcrypt hash
+        AuthEP->>AuthEP: bcrypt.compare(input, hash)
+        alt Mot de passe invalide
             AuthEP-->>Browser: 401 Unauthorized
-            Browser->>AdminUI: Affiche "Code incorrect"
-        else Code valide
-            AuthEP->>Session: sign({ user: "admin", exp })
-            Session->>AuthEP: signedCookie
-            AuthEP-->>Browser: 200 + Set-Cookie session=...
+            Browser->>AdminUI: "Mot de passe incorrect"
+        else Mot de passe valide
+            AuthEP->>Session: sign({ sub: "admin", exp: now+8h })
+            Session->>AuthEP: cm_admin_session cookie
+            AuthEP-->>Browser: 200 + Set-Cookie
             Browser->>AdminUI: Passe a la liste
         end
     end
 
     rect rgba(219, 234, 254, 0.5)
-        Note over Admin,Repo: Phase 2 - Chargement de la liste
-        Browser->>CabinetsEP: GET /api/cabinets<br/>Cookie: session=...
-        CabinetsEP->>Session: verify(cookie)
-        Session-->>CabinetsEP: ok
-        CabinetsEP->>GH: listCabinets()
-        GH->>GitHub: GET /repos/{owner}/{repo}/contents/cabinets.geojson
-        GitHub-->>GH: { content: base64, sha, ... }
-        GH-->>CabinetsEP: { features: [...], sha }
-        CabinetsEP-->>Browser: 200 { cabinets, sha }
-        Browser->>AdminUI: Render liste des 13 cabinets
+        Note over Admin,DB: Phase 2 - Chargement initial de la liste
+        Browser->>CabinetsEP: GET /api/cabinets<br/>Cookie: cm_admin_session
+        CabinetsEP->>Session: verify(cookie, SESSION_SECRET)
+        Session-->>CabinetsEP: ok (sub=admin)
+        CabinetsEP->>DB: select * from cabinets order by id
+        DB-->>CabinetsEP: 14 rows
+        CabinetsEP-->>Browser: 200 { cabinets: [FeatureCollection], count: 14 }
+        Browser->>AdminUI: Render liste des 14 cabinets
     end
 
     rect rgba(254, 243, 199, 0.5)
-        Note over Admin,Repo: Phase 3 - Edition d'un cabinet
+        Note over Admin,DB: Phase 3 - Edition immdiate d'un cabinet
         Admin->>Browser: Click "Modifier" sur cabinet X
-        Browser->>AdminUI: Ouvre sheet formulaire<br/>pre-rempli avec X
-        Admin->>Browser: Modifie telephone + Click "Enregistrer"
-        Browser->>Browser: Validation cote client<br/>(nom non vide, email format)
-        Browser->>CabinetsEP: POST { action: "edit",<br/>cabinet: {...}, sha }
+        Browser->>AdminUI: Ouvre sheet pr-rempli avec X
+        Admin->>Browser: Change telephone + Click "Enregistrer"
+        Browser->>Browser: Validation client (nom, format email, deps 01-95/971-976)
+        Browser->>CabinetsEP: POST { action: "edit",<br/>payload: { id, properties: {...} } }
         CabinetsEP->>Session: verify(cookie)
-        CabinetsEP->>GH: editCabinet(action, cabinet, sha)
-        GH->>GitHub: GET /repos/{owner}/{repo}/git/ref/heads/main
-        GitHub-->>GH: { object: { sha: mainSha } }
-        GH->>GitHub: POST /repos/{owner}/{repo}/git/refs<br/>{ ref: "refs/heads/edit/cabinet-X-ts", sha: mainSha }
-        GitHub-->>GH: 201 (branche creee)
-        GH->>GitHub: PUT /repos/{owner}/{repo}/contents/cabinets.geojson<br/>{ branch, sha, content: base64(newGeoJSON),<br/>message: "feat(cabinets): edit X - tel mis a jour" }
-        GitHub-->>GH: 200 (commit cree)
-        GH->>GitHub: POST /repos/{owner}/{repo}/pulls<br/>{ head: "edit/...", base: "main",<br/>title: "feat(cabinets): edit X", body: "..." }
-        GitHub-->>GH: 201 { html_url: "https://github.com/fwBoa/.../pull/42" }
-        GH-->>CabinetsEP: { prUrl, prNumber }
-        CabinetsEP-->>Browser: 200 { prUrl: "..." }
-        Browser->>AdminUI: Toast "PR creee"<br/>Lien cliquable vers GitHub
+        alt Session expiree
+            CabinetsEP-->>Browser: 401
+            Browser->>AdminUI: Toast "Session expiree" + retour login
+        else Cookie valide
+            CabinetsEP->>DB: select existing row
+            DB-->>CabinetsEP: cabinet X
+            CabinetsEP->>CabinetsEP: Merge payload + existant
+            CabinetsEP->>DB: update cabinets set ... where id = X
+            DB-->>CabinetsEP: ok
+            CabinetsEP->>DB: select all (renvoi liste a jour)
+            DB-->>CabinetsEP: 14 rows
+            CabinetsEP-->>Browser: 200 { ok, merged: true, cabinets: [...] }
+            Browser->>AdminUI: Toast "Modifications enregistrees"<br/>MAJ optimiste de la liste
+        end
     end
 
     rect rgba(252, 165, 165, 0.3)
-        Note over Admin,Repo: Phase 4 - Validation manuelle (hors-ligne du flux)
-        Admin->>GitHub: Ouvre la PR, verifie le diff, clique "Merge"
-        GitHub->>Repo: Merge feat/edit into main
-        GitHub->>Vercel: Webhook push
-        Vercel->>Vercel: Rebuild + redeploy
-        Vercel-->>Repo: main mis a jour
+        Note over Visitor,DB: Phase 4 - Live sync vers visiteur public
+        Note over Visitor,DB: Cache-Control 60s sur GeoJSON,<br/>poll client toutes les 2min
+        loop Toutes les 2 minutes
+            Visitor->>GeoEP: GET /api/geojson/cabinets (cache-bust)
+            GeoEP->>DB: select all
+            DB-->>GeoEP: 14 rows with cabinet X modifi
+            GeoEP-->>Visitor: 200 FeatureCollection
+            Visitor->>Visitor: loadData() + App.map.refreshCabinets()
+            Visitor->>Visitor: MAJ markers + depts co-couvertes (hachures)
+        end
+        Note over Visitor,DB: Delai max = 60s cache + 2min poll = 2min30.
     end
 
-    Note over Browser,GitHub: Le visiteur public n'est jamais impacte pendant l'edition.<br/>Il voit la carte en lecture seule sur la version main pre-modification.
+    rect rgba(221, 214, 254, 0.4)
+        Note over Admin,DB: Phase 5 - Anti-indexation (toutes les pages)
+        Note over Admin,DB: robots.txt: Disallow: / + 8 bots IA bloques<br/>admin.html + carte: meta robots noindex<br/>Vercel headers: X-Robots-Tag, X-Frame DENY
+    end

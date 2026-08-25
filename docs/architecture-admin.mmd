@@ -1,81 +1,105 @@
 flowchart TB
     %% ========== ACTEURS ==========
     PUB([Visiteur public])
-    ADM([Admin])
+    ADM([Admin CEGC])
 
-    %% ========== FRONTEND ==========
-    subgraph FRONTEND [Frontend - Vercel CDN]
-        IDX[index.html<br/>carte publique]
-        ADM_HTML[admin.html<br/>espace admin]
-        subgraph ASSETS_ADMIN [assets/admin]
-            AUTH_UI[auth.js<br/>formulaire code]
-            UI_LIST[cabinets.js<br/>liste + sheet]
-            API_CLIENT[api.js<br/>fetch wrappers]
+    %% ========== FRONTEND (Vercel CDN - statique) ==========
+    subgraph FRONTEND [Frontend - Vercel CDN, pas de SSR]
+        IDX[index.html<br/>carte publique + live sync 2min]
+        ADM_HTML[admin.html<br/>login + edition]
+        subgraph ASSETS_PUB [assets/]
+            PUB_JS[main.js + map.js + ui.js<br/>MapLibre GL]
+            CACHE_BUST[build_index.py<br/>MD5 hash bust]
+        end
+        subgraph ASSETS_ADMIN [assets/admin/]
+            ADM_AUTH_UI[auth.js<br/>login form]
+            ADM_LIST[cabinets.js<br/>liste + sheet edition]
+            ADM_API[api.js<br/>fetch wrappers]
         end
     end
 
-    %% ========== BACKEND VERCEL ==========
-    subgraph BACKEND [Backend - Vercel Functions]
-        EP_AUTH[/api/admin-auth<br/>verif code + cookie/]
-        EP_CAB[/api/cabinets<br/>CRUD via GitHub/]
+    %% ========== BACKEND (Vercel Functions - serverless) ==========
+    subgraph BACKEND [Backend - 4 Vercel Functions Node ESM]
+        EP_AUTH[/api/admin-auth<br/>GET / POST / DELETE/]
+        EP_CAB[/api/cabinets<br/>GET list / POST edit,add,delete/]
+        EP_GEO[/api/geojson/cabinets<br/>GET public, 60s CDN cache/]
         subgraph LIB [api/_lib]
-            GH_LIB[github.js<br/>API Contents + PR]
-            SESS[session.js<br/>sign cookie]
+            DB_CLIENT[db.js<br/>@neondatabase/serverless<br/>singleton client]
+            SESS[session.js<br/>HMAC-SHA256 cookie]
+            UTIL[_util.js<br/>read/write cookie + JSON helpers]
         end
+    end
+
+    %% ========== BASE DE DONNEES ==========
+    subgraph BDD [Vercel Neon Postgres]
+        T_CAB[(cabinets<br/>14 rows)]
+        T_DEPT[(departements)]
+        T_ADM[(admin_settings<br/>bcrypt hash)]
     end
 
     %% ========== SECRETS ==========
     subgraph SECRETS [Variables d'environnement Vercel]
-        ENV_CODE[ADMIN_CODE_HASH<br/>SHA-256]
-        ENV_SESS[SESSION_SECRET<br/>32 chars]
-        ENV_GH[GITHUB_TOKEN<br/>PAT]
-        ENV_REPO[REPO meta]
+        ENV_DB[DATABASE_URL<br/>postgresql://neondb_owner@...]
+        ENV_SESS[SESSION_SECRET<br/>32 octets base64]
+        ENV_TTL[ADMIN_SESSION_TTL_SECONDS<br/>defaut 28800 = 8h]
     end
 
-    %% ========== EXTERNE ==========
-    subgraph EXTERNE [Externe]
-        GH_API[GitHub API<br/>Contents + PR]
-        GH_REPO[(fwBoa/CabinetsMAP<br/>cabinets.geojson)]
-        RAW[raw.githubusercontent.com<br/>geojson statique]
+    %% ========== POLITIQUE INDEXATION ==========
+    subgraph SEO [Anti-indexation - tout le site]
+        ROBOTS[robots.txt<br/>Disallow: / + 8 bots IA bloques]
+        META[meta robots noindex + googlebot noindex]
+        HDR_VCL[Vercel headers:<br/>X-Robots-Tag, X-Frame DENY,<br/>Cache-Control no-store]
     end
 
     %% ========== FLUX PUBLIC ==========
-    PUB -->|charge| IDX
-    IDX -->|fetch| RAW
+    PUB -->|ouvre| IDX
+    IDX -->|inline JSON| CACHE_BUST
+    IDX -->|charge MapLibre| PUB_JS
+    PUB_JS -->|GET 60s CDN| EP_GEO
+    PUB_JS -->|poll toutes 2min| EP_GEO
 
     %% ========== FLUX ADMIN ==========
-    ADM -->|ouvre| ADM_HTML
-    ADM_HTML --> AUTH_UI
-    AUTH_UI -->|POST code| EP_AUTH
-    EP_AUTH -->|compare hash| ENV_CODE
-    EP_AUTH -->|signe cookie| SESS
+    ADM -->|ouvre /admin| ADM_HTML
+    ADM_HTML --> ADM_AUTH_UI
+    ADM_AUTH_UI -->|POST password| EP_AUTH
+    EP_AUTH -->|lit hash bcrypt| T_ADM
+    EP_AUTH -->|compare via bcrypt| UTIL
+    EP_AUTH -->|signe cookie HMAC| SESS
     EP_AUTH -->|secret| ENV_SESS
-    EP_AUTH -->|Set-Cookie| AUTH_UI
+    EP_AUTH -->|TTL| ENV_TTL
+    EP_AUTH -->|Set-Cookie cm_admin_session| ADM_AUTH_UI
 
-    AUTH_UI -->|GET liste| EP_CAB
-    UI_LIST -->|GET liste| EP_CAB
-    UI_LIST -->|POST action edit/add/del| EP_CAB
-    API_CLIENT -->|fetch| EP_AUTH
-    API_CLIENT -->|fetch + cookie| EP_CAB
+    ADM_LIST -->|GET liste auth| EP_CAB
+    ADM_LIST -->|POST edit/add/del auth| EP_CAB
+    ADM_API -->|fetch + cookie| EP_AUTH
+    ADM_API -->|fetch + cookie| EP_CAB
 
     %% ========== BACKEND INTERNE ==========
     EP_AUTH -.verif cookie.-> SESS
     EP_CAB -.verif cookie.-> SESS
-    EP_CAB -->|lit / commit / PR| GH_LIB
-    GH_LIB -->|auth Basic| ENV_GH
-    GH_LIB -->|repo meta| ENV_REPO
-    GH_LIB -->|GET/PUT/POST| GH_API
-    GH_API -->|read/write| GH_REPO
+    EP_AUTH -->|query| DB_CLIENT
+    EP_CAB -->|query| DB_CLIENT
+    EP_GEO -->|query sans auth| DB_CLIENT
+    DB_CLIENT -->|DATABASE_URL| ENV_DB
+    DB_CLIENT <-->|HTTP pooler| T_CAB
+    DB_CLIENT <-->|lecture seule| T_DEPT
+
+    %% ========== LIVE SYNC ==========
+    EP_CAB -.mutation.-> T_CAB
+    T_CAB -.60s max.-> EP_GEO
+    EP_GEO -.refresh 2min.-> PUB_JS
 
     %% ========== STYLES ==========
     classDef actor fill:#1f2937,color:#fff,stroke:#1f2937
     classDef frontend fill:#dbeafe,stroke:#1e40af,color:#1e3a8a
     classDef backend fill:#fef3c7,stroke:#a16207,color:#713f12
+    classDef bdd fill:#e9d5ff,stroke:#7c3aed,color:#4c1d95
     classDef secret fill:#fee2e2,stroke:#b91c1c,color:#7f1d1d
-    classDef externe fill:#dcfce7,stroke:#15803d,color:#14532d
+    classDef seo fill:#fce7f3,stroke:#be185d,color:#831843
 
     class PUB,ADM actor
-    class IDX,ADM_HTML,AUTH_UI,UI_LIST,API_CLIENT frontend
-    class EP_AUTH,EP_CAB,GH_LIB,SESS backend
-    class ENV_CODE,ENV_SESS,ENV_GH,ENV_REPO secret
-    class GH_API,GH_REPO,RAW externe
+    class IDX,ADM_HTML,PUB_JS,ADM_AUTH_UI,ADM_LIST,ADM_API,CACHE_BUST frontend
+    class EP_AUTH,EP_CAB,EP_GEO,DB_CLIENT,SESS,UTIL backend
+    class T_CAB,T_DEPT,T_ADM bdd
+    class ENV_DB,ENV_SESS,ENV_TTL secret
+    class ROBOTS,META,HDR_VCL seo

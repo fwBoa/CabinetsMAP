@@ -1,0 +1,71 @@
+flowchart LR
+    %% ========== ETAT ACTUEL ==========
+    subgraph TODAY [v1.x - Aujourd'hui]
+        T1[14 cabinets, 103 depts]
+        T2[1 mdp unique en DB]
+        T3[Pas de logs]
+        T4[Cache 60s GeoJSON]
+        T5[No rate limit ⚠️]
+        T6[Webhook GH->Vercel casse ⚠️]
+    end
+
+    %% ========== PHASE 2 - Hardening ==========
+    subgraph V2 [v2.x - Hardening court terme]
+        V2A[Rate limit<br/>Vercel KV + edge]
+        V2B[Audit log table<br/>admin_logs]
+        V2C[Soft delete<br/>deleted_at + history]
+        V2D[Webhook GH->Vercel retabli]
+        V2E[Multi-admin bcrypt]
+        V2F[.env.example complet]
+    end
+
+    %% ========== PHASE 3 - Production grade ==========
+    subgraph V3 [v3.x - Production grade]
+        V3A[CSP + nonce<br/>helmet-style]
+        V3B[Sentry / OpenTelemetry<br/>tracing API]
+        V3C[Sauvegardes Neon<br/>+ PITR active]
+        V3D[E2E tests Playwright<br/>rendering visible]
+        V3E[Lighthouse CI<br/>perf budget]
+        V3F[Pagination + recherche<br/>cote admin]
+    end
+
+    %% ========== PHASE 4 - Scale out ==========
+    subgraph V4 [v4.x - Scale out]
+        V4A[FR frontend<br/>Next.js ou Astro]
+        V4B[CDN images<br/>pour badges/photos]
+        V4C[Multi-tenant<br/>plusieurs reseaux]
+        V4D[API publique documentee<br/>OpenAPI + rate limit/cle]
+        V4E[Notifications<br/>email + push admin]
+        V4F[Statistiques<br/>couverts, clics, demandes]
+    end
+
+    %% ========== TRANSITIONS ==========
+    T1 --> V2A
+    T2 --> V2E
+    T2 --> V3C
+    T3 --> V2B
+    T4 --> V4F
+    T5 --> V2A
+    T6 --> V2D
+
+    V2A --> V3A
+    V2B --> V3B
+    V2E --> V3E
+    V2F --> V3F
+
+    V3A --> V4A
+    V3B --> V4B
+    V3F --> V4C
+
+    %% ========== LEGENDE ==========
+    classDef today fill:#dbeafe,stroke:#1e40af
+    classDef v2 fill:#dcfce7,stroke:#16a34a
+    classDef v3 fill:#fef3c7,stroke:#ca8a04
+    classDef v4 fill:#e9d5ff,stroke:#7c3aed
+    classDef warn fill:#fee2e2,stroke:#b91c1c
+
+    class T1,T2,T3,T4 today
+    class T5,T6 warn
+    class V2A,V2B,V2C,V2D,V2E,V2F v2
+    class V3A,V3B,V3C,V3D,V3E,V3F v3
+    class V4A,V4B,V4C,V4D,V4E,V4F v4
