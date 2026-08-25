@@ -321,6 +321,98 @@ async function testHtmlSanity() {
   assert('Pas de mention "code d\'accès"', !/code d.accès/i.test(html));
 }
 
+// Regression : charge "Chargement des cabinets…" qui restait visible après login.
+// Cause : `.admin-list__loading { display:flex }` surchargeait `[hidden]{display:none}`.
+// Test : verifie que la regle `[hidden]{display:none}` est bien dans la CSS servie.
+async function testListLoadingHiddenCss() {
+  suite('Regresssion CSS — #listLoading[hidden] vraiment masque');
+
+  const res = await fetch(`${BASE_URL}/assets/admin/styles.css`);
+  assert('styles.css → 200', res.status === 200);
+
+  const css = await res.text();
+
+  // Regles critiques ajoutees dans le fix commit 974e834
+  assert(
+    'CSS : .admin-list__loading[hidden] { display: none }',
+    /\.admin-list__loading\[hidden\]\s*\{\s*display\s*:\s*none\s*;?\s*\}/.test(css)
+  );
+  assert(
+    'CSS : .admin-list__empty[hidden] { display: none }',
+    /\.admin-list__empty\[hidden\]\s*\{\s*display\s*:\s*none\s*;?\s*\}/.test(css)
+  );
+  assert(
+    'CSS : .admin-list__items[hidden] { display: none }',
+    /\.admin-list__items\[hidden\]\s*\{\s*display\s*:\s*none\s*;?\s*\}/.test(css)
+  );
+
+  // Sanity : la regle display:flex existe toujours (sinon regression inverse)
+  assert(
+    'CSS : .admin-list__loading garde display:flex',
+    /\.admin-list__loading\s*\{[^}]*display\s*:\s*flex/.test(css)
+  );
+}
+
+// Regression : chargement visible meme apres loadCabinets().finally.
+// Verifie que l'attribut HTML `hidden` est pose sur #listLoading cote serveur.
+async function testListLoadingHtmlMarkup() {
+  suite('Regresssion HTML — #listLoading declare en [hidden] dans admin.html');
+
+  const res = await fetch(`${BASE_URL}/admin.html`);
+  const html = await res.text();
+
+  // L'element #listLoading doit avoir l'attribut hidden dans le HTML statique.
+  // Regex tolerant aux espaces et sauts de ligne.
+  const re = /id=["']listLoading["'][^>]*hidden|hidden[^>]*id=["']listLoading["']/;
+  assert(
+    '#listLoading a l\'attribut HTML hidden',
+    re.test(html),
+    html.match(/<div[^>]*listLoading[^>]*>/)?.[0]?.slice(0, 120) ?? 'absent'
+  );
+
+  // Et pas de `display:flex !important` ou hack qui resurpasserait [hidden]
+  assert(
+    'Pas de hack display:flex sur listLoading',
+    !/listLoading[^}]*display\s*:\s*flex\s*!important/i.test(html)
+  );
+}
+
+// Regression anti-indexation : admin + carte doivent rester noindex.
+async function testRobotsAndHeaders() {
+  suite('Anti-indexation (robots.txt + headers)');
+
+  // robots.txt -> Disallow: /
+  const robotsRes = await fetch(`${BASE_URL}/robots.txt`);
+  const robots = await robotsRes.text();
+  assert('robots.txt → 200', robotsRes.status === 200);
+  assert('robots.txt contient "Disallow: /"',
+    /Disallow:\s*\/\s*$/m.test(robots) || robots.includes('Disallow: /'),
+    robots.split('\n').slice(0, 3).join(' | '));
+
+  // Bots IA bloques
+  for (const bot of ['GPTBot', 'ClaudeBot', 'CCBot', 'Bytespider']) {
+    const botLine = new RegExp(`User-agent:\\s*${bot}[\\s\\S]{0,200}Disallow:\\s*/`, 'i');
+    assert(`robots.txt bloque ${bot}`, botLine.test(robots));
+  }
+
+  // admin.html -> X-Robots-Tag noindex
+  const adminHead = await fetch(`${BASE_URL}/admin.html`, { method: 'HEAD' });
+  const xRobotsAdmin = adminHead.headers.get('x-robots-tag') || '';
+  assert('admin.html : X-Robots-Tag noindex',
+    /noindex/.test(xRobotsAdmin), xRobotsAdmin);
+
+  // / (carte) -> X-Robots-Tag noindex aussi
+  const indexHead = await fetch(`${BASE_URL}/`, { method: 'HEAD' });
+  const xRobotsIndex = indexHead.headers.get('x-robots-tag') || '';
+  assert('Carte / : X-Robots-Tag noindex',
+    /noindex/.test(xRobotsIndex), xRobotsIndex);
+
+  // carte -> meta robots noindex dans le HTML
+  const indexHtml = await (await fetch(`${BASE_URL}/`)).text();
+  assert('Carte : meta robots noindex',
+    /<meta\s+name=["']robots["']\s+content=["']noindex/i.test(indexHtml));
+}
+
 // === Main ===
 async function main() {
   log(`\x1b[1mCabinetsMAP — Tests E2E admin (Neon + Vercel Functions)\x1b[0m`);
@@ -332,6 +424,9 @@ async function main() {
 
   try {
     await testHtmlSanity();
+    await testListLoadingHiddenCss();
+    await testListLoadingHtmlMarkup();
+    await testRobotsAndHeaders();
     await testPublicGeoJson();
 
     const sessionCookie = await testAuth();
