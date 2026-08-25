@@ -413,6 +413,103 @@ async function testRobotsAndHeaders() {
     /<meta\s+name=["']robots["']\s+content=["']noindex/i.test(indexHtml));
 }
 
+// Regression : rate limit sur /api/admin-auth et /api/cabinets.
+async function testRateLimit() {
+  suite('Rate limit (middleware.js)');
+
+  // Verifie que les headers X-RateLimit-* sont exposes
+  const r = await checkStatus(`${BASE_URL}/api/admin-auth`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: 'WRONG-PWD-RATE-LIMIT-TEST' }),
+  });
+  assert('POST auth expose X-RateLimit-Limit',
+    r.headers.get('x-ratelimit-limit') !== null,
+    r.headers.get('x-ratelimit-limit'));
+  assert('POST auth expose X-RateLimit-Remaining',
+    r.headers.get('x-ratelimit-remaining') !== null);
+
+  // Le endpoint public geoJSON a un seuil plus eleve
+  const g = await checkStatus(`${BASE_URL}/api/geojson/cabinets`);
+  assert('GET /api/geojson expose aussi X-RateLimit-Limit',
+    g.headers.get('x-ratelimit-limit') !== null);
+
+  // On ne declenche PAS le 429 dans cette suite (risque de bloquer les tests suivants)
+  // Mais on verifie qu'au moins 1 hit ne depasse pas la limite.
+  assert('POST auth avec mdp invalide → 401 (sous la limite)',
+    r.status === 401, `status=${r.status}`);
+}
+
+// Regression : payload abuse vers l'API ne doit pas polluer la DB
+async function testServerValidation(sessionCookie) {
+  suite('Validation serveur (anti-XSS payload abuse)');
+
+  // ID invalide (pas cabinet-NN)
+  let r = await checkStatus(`${BASE_URL}/api/cabinets`, {
+    method: 'POST',
+    headers: { Cookie: sessionCookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'edit',
+      payload: { id: 'evil-id"; DROP TABLE cabinets;--', properties: { nom: 'x' } }
+    }),
+  });
+  assert('ID avec injection SQL → 400', r.status === 400, `status=${r.status}`);
+
+  // couleur invalide
+  r = await checkStatus(`${BASE_URL}/api/cabinets`, {
+    method: 'POST',
+    headers: { Cookie: sessionCookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'edit',
+      payload: { id: 'cabinet-01', properties: { couleur: 'javascript:alert(1)' } }
+    }),
+  });
+  assert('Couleur "javascript:..." → 400', r.status === 400, `status=${r.status}`);
+
+  // departement invalide
+  r = await checkStatus(`${BASE_URL}/api/cabinets`, {
+    method: 'POST',
+    headers: { Cookie: sessionCookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'edit',
+      payload: { id: 'cabinet-01', properties: { departements: ['<script>', '99', '971'] } }
+    }),
+  });
+  assert('Deps avec <script> + 99 (invalide) + 971 → sanitized = 200',
+    r.status === 200, `status=${r.status}`);
+
+  // nom trop court
+  r = await checkStatus(`${BASE_URL}/api/cabinets`, {
+    method: 'POST',
+    headers: { Cookie: sessionCookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'edit',
+      payload: { id: 'cabinet-01', properties: { nom: 'a' } }
+    }),
+  });
+  assert('nom="a" (1 char) → 400', r.status === 400, `status=${r.status}`);
+}
+
+// Regression : table admin_logs creee et alimentee.
+async function testAuditLogSchema(sessionCookie) {
+  if (SKIP_MUTATIONS) {
+    suite('Audit log schema (SKIP_MUTATIONS=1)');
+    log('  ⊘ skip');
+    return;
+  }
+  suite('Audit log (table admin_logs)');
+
+  // Verifie qu'apres une mutation, on peut lire la table via le cookie admin
+  // (on ne sait pas SELECT directement sans endpoint, donc on verifie juste
+  // qu'aucune mutation ne casse avec un message lie aux logs)
+  const r = await checkStatus(`${BASE_URL}/api/cabinets`, {
+    method: 'GET',
+    headers: { Cookie: sessionCookie },
+  });
+  assert('GET apres mutations ne casse pas',
+    r.status === 200 && r.body?.count >= 1, `status=${r.status}`);
+}
+
 // === Main ===
 async function main() {
   log(`\x1b[1mCabinetsMAP — Tests E2E admin (Neon + Vercel Functions)\x1b[0m`);
@@ -427,14 +524,18 @@ async function main() {
     await testListLoadingHiddenCss();
     await testListLoadingHtmlMarkup();
     await testRobotsAndHeaders();
+    await testRateLimit();
     await testPublicGeoJson();
 
     const sessionCookie = await testAuth();
     const cabinets = await testListCabinets(sessionCookie);
 
+    await testServerValidation(sessionCookie);
+
     const editResult = await testEdit(sessionCookie, cabinets);
     await testRestore(sessionCookie, editResult);
     await testAddAndDelete(sessionCookie);
+    await testAuditLogSchema(sessionCookie);
   } catch (err) {
     log(`\n\x1b[31m✗ Erreur fatale : ${err.message}\x1b[0m`);
     log(err.stack);

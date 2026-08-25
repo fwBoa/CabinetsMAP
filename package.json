@@ -7,8 +7,9 @@
   "scripts": {
     "dev": "npx serve . -l 3000",
     "deploy": "vercel --prod",
-    "build": "echo 'Site statique, pas de build step'",
-    "lint": "echo 'Pas de linter configure - a ajouter si besoin'",
+    "build": "python3 scripts/build_index.py",
+    "lint:js": "node --check scripts/test-admin-e2e.mjs && node --check middleware.js && find api assets -name '*.js' -exec node --check {} \\;",
+    "lint:mermaid": "node /tmp/mmd-validate/validate.mjs docs/*.mmd",
     "test": "node scripts/test-admin-e2e.mjs",
     "test:read-only": "SKIP_MUTATIONS=1 node scripts/test-admin-e2e.mjs",
     "test:local": "BASE_URL=http://localhost:3000 node scripts/test-admin-e2e.mjs"

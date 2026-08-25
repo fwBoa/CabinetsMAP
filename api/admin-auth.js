@@ -60,13 +60,33 @@ export default async function handler(req, res) {
     return json(res, 400, { error: 'Mot de passe manquant' });
   }
 
+  function readIp(req) {
+    return (
+      req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+      req.headers['x-real-ip'] ||
+      'unknown'
+    );
+  }
+
+  async function audit(action) {
+    try {
+      const sql = getSql();
+      await sql`insert into admin_logs (action, ip, user_agent)
+                values (${action}, ${readIp(req)}, ${(req.headers['user-agent'] || '').slice(0, 200)})`;
+    } catch (e) {
+      console.error('audit log failed', e.message);
+    }
+  }
+
   try {
     const sql = getSql();
     const rows = await sql`select value from admin_settings where key = 'password_hash'`;
     const hash = rows[0]?.value;
     if (!hash || !bcrypt.compareSync(password, hash)) {
+      await audit('login_fail');
       return json(res, 401, { error: 'Mot de passe invalide' });
     }
+    await audit('login');
 
     const now = Math.floor(Date.now() / 1000);
     const ttl = ttlSeconds();

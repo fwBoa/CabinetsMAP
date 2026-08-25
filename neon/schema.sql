@@ -69,3 +69,21 @@ drop trigger if exists trg_cabinets_updated_at on cabinets;
 create trigger trg_cabinets_updated_at
   before update on cabinets
   for each row execute function set_updated_at();
+
+-- ============================================================
+-- 5. Audit log (qui a fait quoi, quand)
+-- ============================================================
+create table if not exists admin_logs (
+  id bigserial primary key,
+  at timestamptz default now(),
+  action text not null,                -- 'edit' | 'add' | 'delete' | 'login' | 'login_fail'
+  cabinet_id text,                     -- null si non lie a un cabinet
+  user_sub text default 'admin',       -- reserve multi-admin futur
+  ip text,                             -- x-forwarded-for
+  user_agent text,
+  details jsonb                        -- payload simplifie (sans PII sensible)
+);
+
+create index if not exists idx_admin_logs_at on admin_logs(at desc);
+create index if not exists idx_admin_logs_action on admin_logs(action);
+create index if not exists idx_admin_logs_cabinet on admin_logs(cabinet_id) where cabinet_id is not null;

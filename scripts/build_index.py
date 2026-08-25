@@ -1,8 +1,9 @@
 import json
 import re
+import sys
 from pathlib import Path
 
-ROOT = Path('/Users/daveee/Desktop/Projets/CabinetsMAP')
+ROOT = Path(__file__).resolve().parent.parent
 TEMPLATE = ROOT / 'index.template.html'
 OUT = ROOT / 'index.html'
 CABINETS = ROOT / 'cabinets.geojson'
