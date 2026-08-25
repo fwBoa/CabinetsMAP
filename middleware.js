@@ -133,9 +133,20 @@ export default async function middleware(req) {
   }
 
   // ============================================================
-  // Laisser passer, mais enrichir la reponse
+  // Laisser passer, mais enrichir les headers de la reponse aval
   // ============================================================
-  const response = new Response(null, { status: 200 });
+  // On appelle la function en aval (meme path, meme method/headers/body),
+  // puis on merge nos headers dessus.
+  const downstream = await fetch(req);
+  const response = new Response(downstream.body, {
+    status: downstream.status,
+    statusText: downstream.statusText,
+  });
+  // Copier les headers du downstrean
+  downstream.headers.forEach((value, key) => {
+    if (!response.headers.has(key)) response.headers.set(key, value);
+  });
+  // Merger nos headers (ecrasent ceux du downstream en cas de doublon)
   headers.forEach((value, key) => response.headers.set(key, value));
   return response;
 }
