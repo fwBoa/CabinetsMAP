@@ -87,9 +87,27 @@
     S.map.on('error', (e) => {
       const err = e.error || {};
       const msg = String(err.message || e.message || '');
-      // Le fond blanc n'utilise pas de tuiles, donc la plupart des erreurs sont non bloquantes
-      const isFatal = msg.toLowerCase().includes('style') || msg.toLowerCase().includes('webgl');
-      console.warn('Erreur MapLibre (non bloquante) :', msg || e);
+      const low = msg.toLowerCase();
+
+      // Warnings non bloquants : on les log mais on ne casse pas la carte.
+      // Exemples : "layer X does not exist" (interrogation avant rendu),
+      // "source Y could not be loaded" sur un mode inactif, etc.
+      const isKnownWarning =
+        low.includes('does not exist') ||
+        low.includes('could not be loaded') ||
+        low.includes('not found') ||
+        low.includes('aborted');
+
+      // Erreurs vraiment fatales : echec WebGL / style totalement invalide
+      const isFatal = low.includes('webgl') || low.includes('failed to initialize');
+
+      if (isKnownWarning || !msg) {
+        // Log debug, pas warn
+        if (window.console?.debug) console.debug('MapLibre warn:', msg || e);
+        return;
+      }
+
+      console.warn('Erreur MapLibre :', msg || e);
       if (isFatal) {
         setLoaderError('Problème technique avec la carte. Réessayez ou continuez avec la liste.', true);
       }
