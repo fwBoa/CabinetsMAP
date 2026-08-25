@@ -20,13 +20,14 @@ sequenceDiagram
         AuthEP->>DB: select value from admin_settings where key='password_hash'
         DB-->>AuthEP: bcrypt hash
         AuthEP->>AuthEP: bcrypt.compare(input, hash)
+        AuthEP->>DB: insert admin_logs (action='login' ou 'login_fail', ip)
         alt Mot de passe invalide
             AuthEP-->>Browser: 401 Unauthorized
             Browser->>AdminUI: "Mot de passe incorrect"
         else Mot de passe valide
             AuthEP->>Session: sign({ sub: "admin", exp: now+8h })
             Session->>AuthEP: cm_admin_session cookie
-            AuthEP-->>Browser: 200 + Set-Cookie
+            AuthEP-->>Browser: 200 + Set-Cookie + X-RateLimit-Remaining
             Browser->>AdminUI: Passe a la liste
         end
     end

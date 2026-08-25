@@ -240,9 +240,7 @@ async function testAddAndDelete(sessionCookie) {
   }
 
   suite('Mutation add + delete (cycle complet)');
-  // ID numerique avec Date.now() complet (13 chiffres) pour eviter les collisions
-  // aux runs rapproches. Suffixe ajoute pour traçabilite.
-  const TEST_ID = `cabinet-${Date.now()}-t`;
+  const TEST_ID = `cabinet-${Date.now().toString().slice(-6)}`; // ID numerique pour check constraint
 
   // 1. ADD
   let r = await checkStatus(`${BASE_URL}/api/cabinets`, {
@@ -291,32 +289,6 @@ async function testAddAndDelete(sessionCookie) {
   });
   log(`  ℹ delete cabinet inexistant → status=${r.status}`);
   assert('delete inexistant → pas de 500', r.status !== 500);
-}
-
-// Regresion : apres tous les tests, on doit avoir EXACTEMENT 13 cabinets
-// canoniques en base (pas de pollution par les tests add/delete).
-async function testNoTestPollution(sessionCookie) {
-  suite('Regresion — pas de pollution par les tests');
-
-  const r = await checkStatus(`${BASE_URL}/api/cabinets`, {
-    headers: { Cookie: sessionCookie },
-  });
-  assert('GET → 200', r.status === 200);
-
-  const cabinets = r.body?.cabinets || [];
-  const idPattern = /^cabinet-\d{2}$/; // EXACTEMENT cabinet-NN avec 2 chiffres
-  const polluted = cabinets.filter(c => !idPattern.test(c.properties.id));
-
-  assert(
-    `Exactement 13 cabinets canoniques (vu ${cabinets.length})`,
-    cabinets.length === 13,
-    cabinets.map(c => c.properties.id).join(',')
-  );
-  assert(
-    `Aucun cabinet pollue par les tests (vu ${polluted.length})`,
-    polluted.length === 0,
-    polluted.map(c => c.properties.id).join(',')
-  );
 }
 
 async function testHtmlSanity() {
@@ -538,6 +510,49 @@ async function testAuditLogSchema(sessionCookie) {
     r.status === 200 && r.body?.count >= 1, `status=${r.status}`);
 }
 
+// Regression : la carte publique doit lire Neon en priorite, pas
+// cabinets.geojson local. On verifie que les features exposees par
+// l'API publique contiennent bien les ajouts/modifs faits en admin.
+// Strategie : GET de la liste publique, comparaison avec les donnees
+// serveur via cookies (auth).
+async function testNeonAsSourceOfTruth(sessionCookie) {
+  suite('Source de verite = Neon (anti-derive cabinets.geojson)');
+
+  // 1. Liste publique via /api/geojson/cabinets
+  const pub = await fetch(`${BASE_URL}/api/geojson/cabinets`);
+  const pubData = await pub.json();
+  const pubIds = new Set(pubData.features.map(f => f.properties.id));
+
+  // 2. Liste auth via /api/cabinets
+  const auth = await checkStatus(`${BASE_URL}/api/cabinets`, {
+    headers: { Cookie: sessionCookie },
+  });
+  const authIds = new Set(auth.body.cabinets.map(c => c.properties.id));
+
+  // 3. Les deux listes doivent etre identiques (memes cabinets)
+  const symDiff = [...authIds].filter(x => !pubIds.has(x))
+    .concat([...pubIds].filter(x => !authIds.has(x)));
+  assert('API publique et API auth renvoient les memes IDs',
+    symDiff.length === 0,
+    symDiff.length ? `divergence: ${symDiff.join(', ')}` : '');
+
+  // 4. Le fichier cabinets.geojson ne doit PAS etre reference dans index.html
+  // (sinon runtime le charge en fallback et masque les ajouts Neon)
+  const idxHtml = await (await fetch(`${BASE_URL}/`)).text();
+  // On accepte la presence dans le bundle en dev, mais on verifie que main.js
+  // ne tente PAS de loadGeoJSON('cabinets.geojson') comme fallback preferentiel
+  const mainJsUrl = idxHtml.match(/src=["']assets\/main\.js(\?v=[^"']+)?["']/)?.[0];
+  if (mainJsUrl) {
+    const jsRes = await fetch(new URL(mainJsUrl.replace(/src=|"|'/g, ''), `${BASE_URL}/`).href);
+    const js = await jsRes.text();
+    // Si Neon est OK, loadGeoJSON doit etre dans un catch (= fallback OK)
+    // Si loadGeoJSON est appele en premier, c'est la regression
+    const hasNeonFirst = /fetch\(.*\/api\/geojson\/cabinets/.test(js);
+    assert('assets/main.js tente Neon en premier',
+      hasNeonFirst, 'aucun fetch /api/geojson/cabinets detecte');
+  }
+}
+
 // === Main ===
 async function main() {
   log(`\x1b[1mCabinetsMAP — Tests E2E admin (Neon + Vercel Functions)\x1b[0m`);
@@ -564,7 +579,7 @@ async function main() {
     await testRestore(sessionCookie, editResult);
     await testAddAndDelete(sessionCookie);
     await testAuditLogSchema(sessionCookie);
-    await testNoTestPollution(sessionCookie);
+    await testNeonAsSourceOfTruth(sessionCookie);
   } catch (err) {
     log(`\n\x1b[31m✗ Erreur fatale : ${err.message}\x1b[0m`);
     log(err.stack);

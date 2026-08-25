@@ -14,13 +14,32 @@
     return response.json();
   }
 
-  let CABINETS_GEOJSON, DEPARTEMENTS_GEOJSON;
+  // Source de verite = Neon (Postgres), via /api/geojson/cabinets.
+// Le try/catch historique capturait la ReferenceError sur __CABINETS_GEOJSON__
+// (placeholder jamais injecte dans assets/main.js) pour basculer sur le
+// fichier local. Maintenant on essaie d'abord Neon (avec timeout court),
+// puis fallback fichiers statiques si offline.
+  let CABINETS_GEOJSON = null;
+  let DEPARTEMENTS_GEOJSON = null;
   try {
-    CABINETS_GEOJSON = __CABINETS_GEOJSON__;
-    DEPARTEMENTS_GEOJSON = __DEPARTEMENTS_GEOJSON__;
-  } catch (err) {
-    CABINETS_GEOJSON = await loadGeoJSON('cabinets.geojson');
-    DEPARTEMENTS_GEOJSON = await loadGeoJSON('departements.geojson');
+    const neonUrl = (window.App?.config?.GEOJSON_CABINETS_URL) || '/api/geojson/cabinets';
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 5000);
+    const res = await fetch(neonUrl, { cache: 'no-store', signal: ctrl.signal });
+    clearTimeout(timer);
+    if (res.ok) {
+      CABINETS_GEOJSON = await res.json();
+    }
+  } catch (_) { /* Neon injoignable, on tente le fallback */ }
+
+  if (!CABINETS_GEOJSON) {
+    try {
+      CABINETS_GEOJSON = await loadGeoJSON('cabinets.geojson');
+      DEPARTEMENTS_GEOJSON = await loadGeoJSON('departements.geojson');
+    } catch (err) {
+      App.map.setLoaderError('Impossible de charger les données du réseau.', true);
+      return false;
+    }
   }
 
   // Synchronisation live avec la base Neon (Vercel Function).

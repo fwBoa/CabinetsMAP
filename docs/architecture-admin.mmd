@@ -53,10 +53,11 @@ flowchart TB
 
     %% ========== FLUX PUBLIC ==========
     PUB -->|ouvre| IDX
-    IDX -->|inline JSON| CACHE_BUST
     IDX -->|charge MapLibre| PUB_JS
-    PUB_JS -->|GET 60s CDN| EP_GEO
+    PUB_JS -->|GET Neon au load| EP_GEO
     PUB_JS -->|poll toutes 2min| EP_GEO
+    PUB_JS -.fallback si Neon KO.-> RAW[departements.geojson local]
+    CACHE_BUST -.construit index.html.-> EP_GEO
 
     %% ========== FLUX ADMIN ==========
     ADM -->|ouvre /admin| ADM_HTML
