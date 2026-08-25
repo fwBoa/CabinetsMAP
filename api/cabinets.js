@@ -76,7 +76,9 @@ const RE_CABINET_ID = /^cabinet-[0-9]+$/;
 const RE_DEPT_CODE = /^(0[1-9]|[1-8][0-9]|9[0-5]|97[1-6])$/; // 01..95 + 971..976
 const RE_EMAIL = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
 const RE_HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
-const RE_TEL = /^[+()0-9 \-.]{6,30}$/;
+// Telephone : accepte chiffres, espaces, +, ., -, (, ), X (masque de cabinets)
+// Exemples valides : "04.94.XX.XX.XX", "+33 6 12 34 56 78", "01 23 45 67 89"
+const RE_TEL = /^[+()0-9 \-.\sXx]{6,30}$/;
 
 // Coupe a N caracteres max pour empecher payload mega-mega
 function trimStr(v, max = 200) {
