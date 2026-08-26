@@ -48,18 +48,29 @@ for (const assetPath of ASSETS) {
 
   // Detecte si c'est un script ou un link CSS
   const escapedPath = assetPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Pour <script> : remplace le src, preserve le reste
   const scriptRe = new RegExp(
-    `<script\\s+src=["']${escapedPath}(\\?v=[a-f0-9]+)?["']`,
+    `(<script\\s+src=["'])${escapedPath}(\\?v=[a-f0-9]+)?(["'])`,
     'g'
   );
+  // Pour <link rel="stylesheet"> : remplace le href, preserve le rel.
+  // IMPORTANT : on capture tout ce qui precede href (peut etre absent) pour
+  // que le remplacement garde le rel. Sinon le CSS devient un <link> sans
+  // stylesheet et le navigateur ignore la ressource (bug vecu en prod le 26/08/2026).
   const linkRe = new RegExp(
-    `<link[^>]*href=["']${escapedPath}(\\?v=[a-f0-9]+)?["']`,
+    `(<link[^>]*?)(href=["'])${escapedPath}(\\?v=[a-f0-9]+)?(["'])`,
     'g'
   );
 
   const before = html;
-  html = html.replace(scriptRe, `<script src="${versionedPath}"`);
-  html = html.replace(linkRe, `<link href="${versionedPath}"`);
+  html = html.replace(scriptRe, `$1${versionedPath}$3`);
+  // Pour le link, on garantit rel="stylesheet" dans le remplacement
+  html = html.replace(linkRe, (match, prefix, hrefAttr, version, endQuote) => {
+    // Si rel manque dans prefix, on le rajoute
+    const hasRel = /rel\s*=\s*["']stylesheet["']/i.test(prefix);
+    const relPart = hasRel ? '' : ' rel="stylesheet"';
+    return `${prefix}${relPart} ${hrefAttr}${versionedPath}${endQuote}`;
+  });
 
   if (html !== before) {
     updated++;
