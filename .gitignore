@@ -25,9 +25,13 @@ test-results/
 playwright-report/
 .env*
 
-# Data tierce (Natural Earth, ~10 MB, régénérable via scripts/build_geojson.py)
+# Data tierce Natural Earth (supprimee du repo - inutilisee)
 ne_10m_admin_0_countries/
 ne_10m_admin_0_countries.zip
 
-# Données sources locales non versionnables (chemins absolus)
+# Données sources locales non versionnables (chemin absolu, import Neon initial)
 CABINETS - LISTE CABINET.csv
+
+# Miroir local de Neon (regenere par scripts/sync-cabinets-geojson.mjs)
+# Decommenter pour ne plus versionner le miroir :
+# cabinets.geojson

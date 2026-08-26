@@ -1179,5 +1179,5 @@ html, body {
   color: var(--color-text);
   white-space: nowrap;
 }
-/* .polynesia-scale-note volontairement supprimée : voir POLYNESIA_PLAN.md
-   (les proportions restent non respectées, mais on n'affiche plus le disclaimer) */
+/* .polynesia-scale-note volontairement supprimée : les proportions restent
+   non respectées sur la Polynesie, mais on n'affiche plus le disclaimer. */

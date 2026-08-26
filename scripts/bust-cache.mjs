@@ -20,11 +20,13 @@ if (!existsSync(HTML_PATH)) {
   process.exit(1);
 }
 
-// Liste des scripts a hasher
+// Liste des scripts a hasher (tous les scripts charges par admin.html)
 const SCRIPTS = [
   'assets/admin/api.js',
   'assets/admin/auth.js',
   'assets/admin/cabinets.js',
+  'assets/admin/departements-liste.js',
+  'assets/admin/departements-picker.js',
 ];
 
 let html = readFileSync(HTML_PATH, 'utf8');
