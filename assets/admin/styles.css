@@ -123,9 +123,20 @@ html, body {
 
 /* ========== MAIN ========== */
 .admin-main {
-  max-width: 480px;
+  /* min(...) garantit qu'on ne depasse JAMAIS l'ecran, peu importe la valeur max */
+  max-width: min(480px, calc(100% - 2rem));
   margin: 4rem auto;
   padding: 0 1rem;
+}
+/* Vue "list" : plus large pour afficher les noms de cabinets sans tronquer */
+.admin-main[data-view='list'] {
+  max-width: min(720px, calc(100% - 2rem));
+}
+/* Tres grands ecrans : on elargit encore, sans depasser 960px */
+@media (min-width: 1200px) {
+  .admin-main[data-view='list'] {
+    max-width: min(960px, calc(100% - 2rem));
+  }
 }
 
 /* ========== LOGIN ========== */
@@ -316,9 +327,13 @@ html, body {
 .admin-card__name {
   font-weight: 600;
   font-size: 0.95rem;
+  /* line-clamp: 2 lignes max, ellipsis auto sur la 3e */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  word-break: break-word;
 }
 .admin-card__meta {
   font-size: 0.8rem;
@@ -326,7 +341,12 @@ html, body {
   margin-top: 0.15rem;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  /* line-clamp: 2 pour eviter que l'adresse complete mange tout l'espace
+     sur mobile. Au-dela de 2 lignes, ellipsis. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 .admin-card__actions {
   display: flex;
@@ -481,6 +501,8 @@ html, body {
   justify-content: space-between;
   gap: 0.5rem;
   padding: 1rem 1.25rem;
+  /* Safe area iOS : les boutons restent au-dessus de la home indicator */
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--admin-border);
   background: var(--admin-bg);
   position: sticky;
@@ -510,8 +532,10 @@ html, body {
 .admin-field input[type="tel"],
 .admin-field textarea {
   font-family: inherit;
-  font-size: 0.95rem;
-  padding: 0.55rem 0.75rem;
+  font-size: 1rem;
+  /* min-height 44px = recommandation Apple HIG touch target */
+  min-height: 44px;
+  padding: 0.65rem 0.85rem;
   border: 1px solid var(--admin-border);
   border-radius: 8px;
   background: var(--admin-bg);
