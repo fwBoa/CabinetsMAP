@@ -133,7 +133,17 @@
 
     map.addSource('cabinets', {
       type: 'geojson',
-      data: { type: 'FeatureCollection', features: S.cabinets },
+      // Filtre les features sans coords valides (MapLibre crashe sur
+      // geometry: { type: 'Point', coordinates: null }). Les features
+      // sans geometrie apparaissent toujours dans la sidebar (state.cabinets)
+      // mais sont ignorees sur le canvas.
+      data: {
+        type: 'FeatureCollection',
+        features: S.cabinets.filter(f => {
+          const c = f.geometry?.coordinates;
+          return Array.isArray(c) && c.length >= 2 && c[0] != null && c[1] != null;
+        }),
+      },
       promoteId: 'id',
       generateId: false
     });
