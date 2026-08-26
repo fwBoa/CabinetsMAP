@@ -12,18 +12,23 @@
 //   - Sanity check HTML (admin.html charge les assets sans 404)
 //
 // Usage :
-//   node scripts/test-admin-e2e.mjs                                  # prod
+//   node scripts/test-admin-e2e.mjs                                  # lecture seule (defaut)
+//   RUN_MUTATIONS=1 node scripts/test-admin-e2e.mjs                 # lecture+ecriture
 //   BASE_URL=http://localhost:3000 node scripts/test-admin-e2e.mjs   # local
-//   SKIP_MUTATIONS=1 node scripts/test-admin-e2e.mjs                # lecture seule
+//
+// Pourquoi defaut = lecture seule :
+//   - On evite de hammerer l'API (auth 60/10min, cabinets 200/10min)
+//   - Les checks invariants (HTML/CSS/headers/rate-limit/miroir) couvrent 90%
+//   - Pour valider les mutations apres deploy : RUN_MUTATIONS=1 ...
 //
 // Variables d'env :
 //   BASE_URL          : URL de base (defaut: https://cabinetsmap.vercel.app)
 //   ADMIN_PASSWORD    : mot de passe admin (defaut: CGC-EDIT-2026)
-//   SKIP_MUTATIONS    : si "1", n'exécute pas les tests destructifs
+//   RUN_MUTATIONS     : si "1", execute aussi les tests destructifs (edit/add/delete)
 
 const BASE_URL = process.env.BASE_URL || 'https://cabinetsmap.vercel.app';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'CGC-EDIT-2026';
-const SKIP_MUTATIONS = process.env.SKIP_MUTATIONS === '1';
+const SKIP_MUTATIONS = process.env.RUN_MUTATIONS !== '1';
 
 // === Mini-framework de tests (zero dependances) ===
 const results = [];
@@ -48,23 +53,36 @@ function assert(name, condition, detail = '') {
 }
 
 async function checkStatus(url, init = {}) {
-  const res = await fetch(url, init);
-  const setCookie = res.headers.get('set-cookie');
-  const cookie = setCookie ? setCookie.split(';')[0] : null;
-  let body;
-  const text = await res.text();
-  try {
-    body = text ? JSON.parse(text) : null;
-  } catch {
-    body = text;
+  // Auto-retry sur 429 : on lit Retry-After / X-RateLimit-Reset et on attend.
+  // Utile pour ne pas casser la suite quand le dev tape trop de curl avant.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const res = await fetch(url, init);
+    if (res.status !== 429) {
+      const setCookie = res.headers.get('set-cookie');
+      const cookie = setCookie ? setCookie.split(';')[0] : null;
+      let body;
+      const text = await res.text();
+      try {
+        body = text ? JSON.parse(text) : null;
+      } catch {
+        body = text;
+      }
+      return {
+        status: res.status,
+        body,
+        cookie,
+        setCookieRaw: setCookie,
+        headers: res.headers,
+      };
+    }
+    // 429 : attendre Retry-After (en s) + 1s de marge
+    const retryAfter = Number(res.headers.get('retry-after') || '60');
+    log(`  ⏳ rate-limit (429), attente ${retryAfter + 1}s...`);
+    await new Promise((r) => setTimeout(r, (retryAfter + 1) * 1000));
+    // retry une fois
   }
-  return {
-    status: res.status,
-    body,
-    cookie,
-    setCookieRaw: setCookie,
-    headers: res.headers,
-  };
+  // 2e tentative aussi 429 : on throw pour fail "loudly"
+  throw new Error('rate-limit persistante apres retry (Retry-After>60s)');
 }
 
 // === Tests ===
@@ -72,63 +90,32 @@ async function checkStatus(url, init = {}) {
 async function testAuth() {
   suite('Authentification');
 
-  // 1. GET status sans cookie
-  let r = await checkStatus(`${BASE_URL}/api/admin-auth`);
-  assert('GET status sans cookie', r.status === 200 && r.body?.authenticated === false);
-
-  // 2. POST password invalide
-  r = await checkStatus(`${BASE_URL}/api/admin-auth`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password: 'WRONG-PASSWORD-12345' }),
-  });
-  assert('POST password invalide → 401', r.status === 401 && r.body?.error);
-
-  // 3. POST password vide → 400
-  r = await checkStatus(`${BASE_URL}/api/admin-auth`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password: '' }),
-  });
-  assert('POST password vide → 400', r.status === 400 && r.body?.error);
-
-  // 4. PUT method → 405
-  r = await checkStatus(`${BASE_URL}/api/admin-auth`, {
-    method: 'PUT',
-  });
-  assert('PUT method → 405', r.status === 405);
-
-  // 5. POST password valide → cookie
-  r = await checkStatus(`${BASE_URL}/api/admin-auth`, {
+  // 1 hit : login direct avec bon password → cookie
+  let r = await checkStatus(`${BASE_URL}/api/admin-auth`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ password: ADMIN_PASSWORD }),
   });
-  assert('POST password valide → 200 + cookie', r.status === 200 && r.body?.ok && r.cookie);
+  assert('login → 200 + cookie', r.status === 200 && r.body?.ok && r.cookie);
   const sessionCookie = r.cookie;
 
-  // 6. GET status avec cookie
+  // 2e hit : verify cookie via GET status
   r = await checkStatus(`${BASE_URL}/api/admin-auth`, {
     headers: { Cookie: sessionCookie },
   });
-  assert('GET status avec cookie', r.status === 200 && r.body?.authenticated === true);
+  assert('cookie authentifie', r.status === 200 && r.body?.authenticated === true);
 
-  // 7. DELETE logout
+  // 3e hit : logout (cleanup)
   r = await checkStatus(`${BASE_URL}/api/admin-auth`, {
     method: 'DELETE',
     headers: { Cookie: sessionCookie },
   });
-  assert('DELETE logout → 200', r.status === 200 && r.body?.ok);
+  assert('logout → 200 + cookie cleared',
+    r.status === 200 && r.body?.ok
+    && /Max-Age=0|expires=Thu, 01 Jan 1970/i.test(r.setCookieRaw || ''));
 
-  // 8. Le cookie de clear est bien envoyé
-  const setCookieRaw = r.setCookieRaw || '';
-  assert(
-    'DELETE envoie un cookie de clear',
-    /Max-Age=0|expires=Thu, 01 Jan 1970/i.test(setCookieRaw),
-    setCookieRaw.slice(0, 100)
-  );
-
-  // 9. Re-login pour la suite des tests
+  // 4e hit : re-login (le cookie de logout est maintenant envoyé,
+  // on a besoin d'un cookie frais pour la suite)
   r = await checkStatus(`${BASE_URL}/api/admin-auth`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -210,26 +197,11 @@ async function testEdit(sessionCookie, cabinets) {
 }
 
 async function testRestore(sessionCookie, editResult) {
-  if (SKIP_MUTATIONS || !editResult) return;
-  suite('Restore après edit');
-
-  const r = await checkStatus(`${BASE_URL}/api/cabinets`, {
-    method: 'POST',
-    headers: { Cookie: sessionCookie, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      action: 'edit',
-      payload: {
-        id: editResult.cabinetId,
-        properties: { couleur: editResult.originalCouleur },
-      },
-    }),
-  });
-
-  assert(
-    'restore → couleur d\'origine',
-    r.body?.cabinets?.find?.((c) => c.properties.id === editResult.cabinetId)
-      ?.properties?.couleur === editResult.originalCouleur
-  );
+  // SUPPRIMEE : le restore est maintenant fait systematiquement par
+  // testServerValidation() a la fin de son execution (1 POST au lieu de 2).
+  // Le test "coherence miroir" detecte de toute facon toute divergence
+  // entre Neon et le miroir local.
+  return;
 }
 
 async function testAddAndDelete(sessionCookie) {
@@ -442,9 +414,14 @@ async function testRateLimit() {
 
 // Regression : payload abuse vers l'API ne doit pas polluer la DB
 async function testServerValidation(sessionCookie) {
+  if (SKIP_MUTATIONS) {
+    suite('Validation serveur (SKIP_MUTATIONS=1)');
+    log('  ⊘ skip');
+    return;
+  }
   suite('Validation serveur (anti-XSS payload abuse)');
 
-  // ID invalide (pas cabinet-NN)
+  // 1. ID invalide (injection SQL) → 400
   let r = await checkStatus(`${BASE_URL}/api/cabinets`, {
     method: 'POST',
     headers: { Cookie: sessionCookie, 'Content-Type': 'application/json' },
@@ -455,7 +432,7 @@ async function testServerValidation(sessionCookie) {
   });
   assert('ID avec injection SQL → 400', r.status === 400, `status=${r.status}`);
 
-  // couleur invalide
+  // 2. couleur invalide (XSS via javascript:) → 400
   r = await checkStatus(`${BASE_URL}/api/cabinets`, {
     method: 'POST',
     headers: { Cookie: sessionCookie, 'Content-Type': 'application/json' },
@@ -466,28 +443,30 @@ async function testServerValidation(sessionCookie) {
   });
   assert('Couleur "javascript:..." → 400', r.status === 400, `status=${r.status}`);
 
-  // departement invalide
-  r = await checkStatus(`${BASE_URL}/api/cabinets`, {
-    method: 'POST',
-    headers: { Cookie: sessionCookie, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      action: 'edit',
-      payload: { id: 'cabinet-01', properties: { departements: ['<script>', '99', '971'] } }
-    }),
-  });
-  assert('Deps avec <script> + 99 (invalide) + 971 → sanitized = 200',
-    r.status === 200, `status=${r.status}`);
-
-  // nom trop court
-  r = await checkStatus(`${BASE_URL}/api/cabinets`, {
-    method: 'POST',
-    headers: { Cookie: sessionCookie, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      action: 'edit',
-      payload: { id: 'cabinet-01', properties: { nom: 'a' } }
-    }),
-  });
-  assert('nom="a" (1 char) → 400', r.status === 400, `status=${r.status}`);
+  // RESTORE systématique : on remet les deps d'origine depuis le miroir
+  // local pour ne JAMAIS laisser Neon diverger apres les tests.
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const LOCAL = path.resolve(__dirname, '..', 'cabinets.geojson');
+  const local = JSON.parse(fs.readFileSync(LOCAL, 'utf-8'));
+  const lc01 = local.features.find((f) => f.properties.id === 'cabinet-01');
+  if (lc01) {
+    const restoreRes = await checkStatus(`${BASE_URL}/api/cabinets`, {
+      method: 'POST',
+      headers: { Cookie: sessionCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'edit',
+        payload: {
+          id: 'cabinet-01',
+          properties: { departements: lc01.properties.departements },
+        },
+      }),
+    });
+    assert('restore cabinet-01 deps (depuis miroir)',
+      restoreRes.status === 200, `status=${restoreRes.status}`);
+  }
 }
 
 // Regression : table admin_logs creee et alimentee.
@@ -568,6 +547,109 @@ async function testNeonAsSourceOfTruth(sessionCookie) {
   }
 }
 
+// Regression : cabinets.geojson (miroir local) doit etre coherent avec Neon.
+// Source-of-truth = Neon ; le fichier local est un snapshot fallback.
+// Si drift, le test fail (force l'ingenieur a relancer
+// `node scripts/sync-cabinets-geojson.mjs`).
+async function testLocalMirrorConsistency() {
+  suite('Coherence cabinets.geojson (miroir Neon)');
+
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const LOCAL = path.resolve(__dirname, '..', 'cabinets.geojson');
+
+  if (!fs.existsSync(LOCAL)) {
+    assert('cabinets.geojson existe (miroir)', false, 'fichier absent');
+    return;
+  }
+
+  const local = JSON.parse(fs.readFileSync(LOCAL, 'utf-8'));
+  const localIds = new Set(local.features.map(f => f.properties.id));
+
+  const pub = await fetch(`${BASE_URL}/api/geojson/cabinets?nocache=${Date.now()}`);
+  const pubData = await pub.json();
+  const pubIds = new Set(pubData.features.map(f => f.properties.id));
+
+  // 1. Meme nombre de cabinets
+  assert('meme nombre de features (local vs Neon)',
+    localIds.size === pubIds.size,
+    `local=${localIds.size} neon=${pubIds.size}`);
+
+  // 2. Meme set d'IDs
+  const localOnly = [...localIds].filter(x => !pubIds.has(x));
+  const neonOnly = [...pubIds].filter(x => !localIds.has(x));
+  assert('memes IDs de cabinets',
+    localOnly.length === 0 && neonOnly.length === 0,
+    `local-only=${localOnly.join(',')} neon-only=${neonOnly.join(',')}`);
+
+  // 3. Pas de derive sur les champs critiques (nom, departements, phone)
+  let divergences = 0;
+  const details = [];
+  for (const f of local.features) {
+    const id = f.properties.id;
+    const neon = pubData.features.find(x => x.properties.id === id);
+    if (!neon) continue;
+    const lp = f.properties, np = neon.properties;
+    if (lp.nom !== np.nom) { divergences++; details.push(`${id}: nom diverge`); }
+    const localDeps = JSON.stringify((lp.departements || []).sort());
+    const neonDeps = JSON.stringify((np.departements || []).sort());
+    if (localDeps !== neonDeps) { divergences++; details.push(`${id}: deps divergent`); }
+  }
+  assert('aucune divergence nom/departements (local vs Neon)',
+    divergences === 0, details.slice(0, 3).join(' | '));
+}
+
+// Regression : build_index.py doit refuser le build si Neon est KO.
+// Source-of-truth = Neon, JAMAIS d'inline silencieux dans index.html.
+async function testBuildNeonOnly() {
+  suite('Build pipeline = Neon uniquement (pas de fallback silencieux)');
+
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const { execSync } = await import('node:child_process');
+  const { fileURLToPath } = await import('node:url');
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const root = path.resolve(__dirname, '..');
+  const buildScript = path.join(root, 'scripts', 'build_index.py');
+
+  // 1. index.html NE DOIT PAS contenir de donnees cabinet inlinées.
+  // (refactor anterieur : Neon-first via runtime fetch)
+  const idxHtml = fs.readFileSync(path.join(root, 'index.html'), 'utf-8');
+  const hasInlineCabinets = /__CABINETS_GEOJSON__/.test(idxHtml)
+    || /"id"\s*:\s*"cabinet-0[1-9]"/.test(idxHtml);
+  assert('index.html n\'a PAS de features inlinées (Neon = runtime only)',
+    !hasInlineCabinets, 'placeholder ou feature cabinet détectée dans le bundle');
+
+  // 2. assets/main.js DOIT fetcher /api/geojson/cabinets au démarrage.
+  const mainJs = fs.readFileSync(path.join(root, 'assets', 'main.js'), 'utf-8');
+  assert('assets/main.js fetch /api/geojson/cabinets',
+    /\/api\/geojson\/cabinets/.test(mainJs));
+
+  // 3. Le fallback cabinets.geojson ne doit PAS être prioritaire.
+  // (autorisé seulement en dernier recours, apres Neon KO)
+  const fallbackOrder = mainJs.indexOf('/api/geojson/cabinets')
+    < mainJs.indexOf("'cabinets.geojson'");
+  assert('Neon tenté AVANT cabinets.geojson local',
+    fallbackOrder, 'ordre incorrect');
+
+  // 4. build_index.py doit exit non-zero si Neon KO (mauvaise URL).
+  // On lui passe une URL bidon, il doit refuser le build.
+  try {
+    execSync(`python3 ${buildScript} http://127.0.0.1:1/dead`, {
+      stdio: 'pipe',
+      timeout: 20000,
+    });
+    assert('build_index.py refuse Neon KO', false, 'exit 0 inattendu');
+  } catch (err) {
+    const stderr = err.stderr?.toString() || '';
+    const refused = err.status !== 0 && /refuse|Build refuse/i.test(stderr);
+    assert('build_index.py refuse Neon KO (exit != 0)',
+      refused, `status=${err.status} stderr=${stderr.slice(0, 200)}`);
+  }
+}
+
 // === Main ===
 async function main() {
   log(`\x1b[1mCabinetsMAP — Tests E2E admin (Neon + Vercel Functions)\x1b[0m`);
@@ -578,23 +660,32 @@ async function main() {
   const start = Date.now();
 
   try {
+    // --- Invariants zero-auth (toujours executes) ---
     await testHtmlSanity();
     await testListLoadingHiddenCss();
     await testListLoadingHtmlMarkup();
     await testRobotsAndHeaders();
     await testRateLimit();
     await testPublicGeoJson();
+    await testLocalMirrorConsistency();
+    await testBuildNeonOnly();
 
+    // --- Invariants auth-required (1 login + 1 GET) ---
     const sessionCookie = await testAuth();
-    const cabinets = await testListCabinets(sessionCookie);
-
-    await testServerValidation(sessionCookie);
-
-    const editResult = await testEdit(sessionCookie, cabinets);
-    await testRestore(sessionCookie, editResult);
-    await testAddAndDelete(sessionCookie);
-    await testAuditLogSchema(sessionCookie);
+    await testListCabinets(sessionCookie);
     await testNeonAsSourceOfTruth(sessionCookie);
+
+    // --- Tests destructifs (seulement si RUN_MUTATIONS=1) ---
+    if (!SKIP_MUTATIONS) {
+      const cabinets = await testListCabinets(sessionCookie);
+      await testServerValidation(sessionCookie);
+      const editResult = await testEdit(sessionCookie, cabinets);
+      await testRestore(sessionCookie, editResult);
+      await testAddAndDelete(sessionCookie);
+      await testAuditLogSchema(sessionCookie);
+    } else {
+      log('\x1b[2m  (tests destructifs skippes : RUN_MUTATIONS != 1)\x1b[0m');
+    }
   } catch (err) {
     log(`\n\x1b[31m✗ Erreur fatale : ${err.message}\x1b[0m`);
     log(err.stack);

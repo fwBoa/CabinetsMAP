@@ -1,3 +1,14 @@
+"""LEGACY — Geocodage one-time au deploiement initial.
+
+Ajoute lat/long aux features de cabinets.geojson en appelant Nominatim.
+NEON est la source de verite. Si ce script est re-run apres que Neon
+contient des coordonnees, il ECRASE les lat/long sans tenir compte de Neon.
+
+Usage legitime : premier deploiement pour peupler la geometrie.
+Usage quotidien : NEON-first. Si vous voulez re-geocoder, faites-le via
+l'API admin (futur) ou mettez Neon a jour manuellement.
+"""
+
 import json
 import time
 import urllib.request

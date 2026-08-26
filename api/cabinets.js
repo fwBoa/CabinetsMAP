@@ -110,7 +110,7 @@ function validateProperties(props) {
   if (props.couleur !== undefined && !RE_HEX_COLOR.test(props.couleur)) {
     return { error: 'couleur invalide (attendu #RRGGBB)' };
   }
-  if (props.phone !== undefined && props.phone !== null && !RE_TEL.test(props.phone)) {
+  if (props.phone !== undefined && props.phone !== null && props.phone !== '' && !RE_TEL.test(props.phone)) {
     return { error: 'telephone invalide' };
   }
   if (props.emails !== undefined && !Array.isArray(props.emails)) {
@@ -223,7 +223,9 @@ export default async function handler(req, res) {
 
     if (action === 'add') {
       const props = payload.properties || payload;
-      const id = props.id || `cabinet-${Date.now()}`;
+      // Priorite : payload.id > payload.properties.id > auto-genere.
+      // Note : le frontend admin envoie payload.id directement (pas via properties).
+      const id = payload.id || props.id || `cabinet-${Date.now()}`;
       if (!RE_CABINET_ID.test(id)) return json(res, 400, { error: 'id invalide (format cabinet-NN)' });
 
       const v = validateProperties(props);

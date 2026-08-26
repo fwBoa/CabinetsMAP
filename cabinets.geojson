@@ -7,7 +7,7 @@
         "id": "cabinet-01",
         "nom": "AARPI PLATON MAGNE TURNER",
         "adresse": "6 Rue Molière - 83000 TOULON",
-        "phone": "04.99.83274431",
+        "phone": "04.94.XX.XX.XX",
         "emails": [
           "contact@pmt-avocats.fr"
         ],
@@ -23,7 +23,8 @@
         ],
         "cours_appel": [
           "AIX-EN-PROVENCE",
-          "ORLEANS"
+          "ORLEANS",
+          "TOURS"
         ],
         "departements": [
           "04",
@@ -34,10 +35,8 @@
           "45",
           "83"
         ],
-        "couleur": "#1e3a5f",
-        "badges": [],
-        "display_name": "",
-        "place_id": null
+        "couleur": "#3b7d87",
+        "badges": []
       },
       "geometry": {
         "type": "Point",
@@ -82,9 +81,7 @@
           "87"
         ],
         "couleur": "#2a6f68",
-        "badges": [],
-        "display_name": "56, Avenue de la République, Barrière d'Arès, Cardoze, Caudéran, Bordeaux, Gironde, Nouvelle-Aquitaine, France métropolitaine, 33200, France",
-        "place_id": 290043927
+        "badges": []
       },
       "geometry": {
         "type": "Point",
@@ -133,9 +130,7 @@
           "68"
         ],
         "couleur": "#8b5a2b",
-        "badges": [],
-        "display_name": "Le Bigre! Lieu, 8, Place du Colombier, Colombier - Champ de Mars, Centre, Quartiers Centre, Rennes, Ille-et-Vilaine, Bretagne, France métropolitaine, 35000, France",
-        "place_id": 282487376
+        "badges": []
       },
       "geometry": {
         "type": "Point",
@@ -188,9 +183,7 @@
           "80"
         ],
         "couleur": "#4a4e69",
-        "badges": [],
-        "display_name": "Alain Goislot, 17, Avenue du Maréchal Foch, Senlis, Oise, Hauts-de-France, France métropolitaine, 60300, France",
-        "place_id": 99047247
+        "badges": []
       },
       "geometry": {
         "type": "Point",
@@ -245,9 +238,7 @@
           "84"
         ],
         "couleur": "#9a4d66",
-        "badges": [],
-        "display_name": "Rue Breteuil, Palais de Justice, 6e Arrondissement, Marseille, Bouches-du-Rhône, Provence-Alpes-Côte d'Azur, France métropolitaine, 13006, France",
-        "place_id": 83110720
+        "badges": []
       },
       "geometry": {
         "type": "Point",
@@ -281,9 +272,7 @@
           "91"
         ],
         "couleur": "#3d5a80",
-        "badges": [],
-        "display_name": "71, Boulevard Raspail, Quartier Notre-Dame-des-Champs, Paris 6e Arrondissement, Paris, Île-de-France, France métropolitaine, 75006, France",
-        "place_id": 97567531
+        "badges": []
       },
       "geometry": {
         "type": "Point",
@@ -329,9 +318,7 @@
           "90"
         ],
         "couleur": "#5f7d4f",
-        "badges": [],
-        "display_name": "24, Avenue de Moka, Rocabey, Rocabey - Alsace - Gare, Saint-Malo, Ille-et-Vilaine, Bretagne, France métropolitaine, 35400, France",
-        "place_id": 284053121
+        "badges": []
       },
       "geometry": {
         "type": "Point",
@@ -368,9 +355,7 @@
           "94"
         ],
         "couleur": "#7c4eb5",
-        "badges": [],
-        "display_name": "52, Boulevard Malesherbes, Quartier de l'Europe, Paris 8e Arrondissement, Paris, Île-de-France, France métropolitaine, 75017, France",
-        "place_id": 98472904
+        "badges": []
       },
       "geometry": {
         "type": "Point",
@@ -433,16 +418,13 @@
           "49",
           "53",
           "63",
-          "64",
           "65",
           "66",
           "72",
           "83"
         ],
         "couleur": "#b85c38",
-        "badges": [],
-        "display_name": "123 Conseil, 18, Boulevard Carnot, Cannes Passy, Hautes Vallergues, Cannes, Grasse, Alpes-Maritimes, Provence-Alpes-Côte d'Azur, France métropolitaine, 06400, France",
-        "place_id": 422619214
+        "badges": []
       },
       "geometry": {
         "type": "Point",
@@ -499,9 +481,7 @@
           "89"
         ],
         "couleur": "#2c7da0",
-        "badges": [],
-        "display_name": "Société Générale, 20, Boulevard Eugène Deruelle, Part-Dieu, Lyon 3e Arrondissement, Lyon, Métropole de Lyon, Rhône, Auvergne-Rhône-Alpes, France métropolitaine, 69003, France",
-        "place_id": 90729038
+        "badges": []
       },
       "geometry": {
         "type": "Point",
@@ -575,10 +555,7 @@
           "988"
         ],
         "couleur": "#5e4b35",
-        "badges": [],
-        "outremer_only": true,
-        "display_name": "Rue Gambetta, Centre-Ville, Pointe-à-Pitre, Guadeloupe, 97110, France",
-        "place_id": 302308042
+        "badges": []
       },
       "geometry": {
         "type": "Point",
@@ -625,9 +602,7 @@
           "76"
         ],
         "couleur": "#6b4c7d",
-        "badges": [],
-        "display_name": "40, Rue Pasteur, La Madeleine, Lille, Nord, Hauts-de-France, France métropolitaine, 59110, France",
-        "place_id": 102220743
+        "badges": []
       },
       "geometry": {
         "type": "Point",
@@ -682,9 +657,7 @@
           "95"
         ],
         "couleur": "#3b7d87",
-        "badges": [],
-        "display_name": "123 Conseil, 18, Boulevard Carnot, Cannes Passy, Hautes Vallergues, Cannes, Grasse, Alpes-Maritimes, Provence-Alpes-Côte d'Azur, France métropolitaine, 06400, France",
-        "place_id": 422619214
+        "badges": []
       },
       "geometry": {
         "type": "Point",
@@ -692,6 +665,29 @@
           7.0171301,
           43.5557428
         ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "cabinet-14",
+        "nom": "Selarl Sahnoun Castinetti",
+        "adresse": "Adresse non renseignee",
+        "phone": "",
+        "emails": [],
+        "tribunaux": [
+          "PAU"
+        ],
+        "cours_appel": [],
+        "departements": [
+          "64"
+        ],
+        "couleur": "#1e3a5f",
+        "badges": []
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": null
       }
     }
   ]

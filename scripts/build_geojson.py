@@ -1,3 +1,17 @@
+"""LEGACY — Bootstrap initial uniquement.
+
+ATTENTION : Ce script lit un CSV local et OVERWRITE cabinets.geojson avec.
+NEON est la source de verite en production. Utiliser ce script ecrase
+toutes les modifications faites dans l'admin (couleurs, deps ajustes,
+badges, etc.).
+
+Usage legitime : bootstrap initial d'une nouvelle base Neon.
+Usage quotidien : NEON-first, editer via /admin.html.
+
+Pour regenerer le miroir local depuis Neon :
+    node scripts/sync-cabinets-geojson.mjs
+"""
+
 import csv
 import json
 import re

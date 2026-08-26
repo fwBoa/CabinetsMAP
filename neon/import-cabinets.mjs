@@ -1,5 +1,14 @@
 // Importe cabinets.geojson et departements.geojson dans Neon.
 // Usage: DATABASE_URL=... node neon/import-cabinets.mjs
+//
+// SENS DU FLUX : Fichier -> Neon (bootstrap initial uniquement).
+// APRES le premier import, Neon est la source de verite. Pour mettre a
+// jour les cabinets, utiliser /admin.html (pas re-run ce script).
+// Pour regenerer le miroir local depuis Neon :
+//   node scripts/sync-cabinets-geojson.mjs
+//
+// ATTENTION : re-run ce script ecrase silencieusement les modifications
+// admin. Ne JAMAIS l'executer en routine.
 
 import { neon } from '@neondatabase/serverless';
 import { readFileSync } from 'node:fs';

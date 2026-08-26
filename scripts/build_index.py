@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import sys
 import time
@@ -31,14 +32,23 @@ def geojson_to_js_value(data) -> str:
 
 def fetch_cabinets_from_neon():
     """Lit la liste des cabinets depuis Neon via l'API publique /api/geojson/cabinets.
-    Retourne None si l'API est inaccessible (build offline)."""
+    Echec = exception levee (pas de fallback silencieux sur cabinets.geojson :
+    on ne veut JAMAIS embarquer des donnees qui ne refletent pas Neon en prod)."""
     url = f"{API_BASE_URL.rstrip('/')}/api/geojson/cabinets?_t={int(time.time())}"
     try:
         with urllib.request.urlopen(url, timeout=15) as resp:
-            return json.loads(resp.read().decode('utf-8'))
+            if resp.status != 200:
+                raise RuntimeError(f'API status {resp.status}')
+            data = json.loads(resp.read().decode('utf-8'))
+            if data.get('type') != 'FeatureCollection':
+                raise RuntimeError(f'reponse invalide (type={data.get("type")})')
+            return data
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError) as e:
-        print(f'  ⚠ Neon inaccessible ({type(e).__name__}: {e}), fallback sur {CABINETS_FILE.name}', file=sys.stderr)
-        return None
+        raise RuntimeError(
+            f'Neon inaccessible ({type(e).__name__}: {e}). '
+            f'Build refuse pour empecher un bundle stale. '
+            f'Verifier que l\'API repond ou definir SKIP_NEON_CHECK=1 pour build local.'
+        ) from e
 
 
 def read_asset(name: str) -> str:
@@ -79,21 +89,26 @@ def build():
     if not DEPARTEMENTS.exists():
         raise FileNotFoundError(f'GeoJSON manquant : {DEPARTEMENTS}')
 
+    # --- Smoke-test Neon ---
+    # Le runtime (assets/main.js) fetch /api/geojson/cabinets au demarrage.
+    # On verifie ici que Neon repond pour detecter une chaine de build cassee
+    # (down Neon, mauvaise URL, bug de la Function). Si Neon KO on refuse le
+    # build loudement (exit non-zero). SKIP_NEON_CHECK=1 uniquement pour debug.
+    if os.environ.get('SKIP_NEON_CHECK') == '1':
+        print('  ⚠ SKIP_NEON_CHECK=1 : smoke-test Neon desactive')
+    else:
+        try:
+            cabinets_count = len(fetch_cabinets_from_neon()['features'])
+            print(f'  ✓ Neon repond ({cabinets_count} cabinets)')
+        except RuntimeError as e:
+            raise SystemExit(f'\n✗ Build refuse : {e}\n') from e
+
     template = TEMPLATE.read_text(encoding='utf-8')
     template = inline_assets(template)
-
-    # Source de verite : Neon (via API). Fallback fichier local si offline.
-    cabinets_geojson = fetch_cabinets_from_neon()
-    if cabinets_geojson is None:
-        if not CABINETS_FILE.exists():
-            raise FileNotFoundError(f'Ni Neon ni {CABINETS_FILE.name} accessibles.')
-        cabinets_geojson = json.loads(CABINETS_FILE.read_text(encoding='utf-8'))
-        print('  → utilisation du fichier local (Neon indisponible)')
-    else:
-        print(f'  → {len(cabinets_geojson["features"])} cabinets lus depuis Neon')
-
-    template = template.replace('__CABINETS_GEOJSON__', geojson_to_js_value(cabinets_geojson))
-    template = template.replace('__DEPARTEMENTS_GEOJSON__', geojson_to_js_value(DEPARTEMENTS))
+    # Note : __CABINETS_GEOJSON__ et __DEPARTEMENTS_GEOJSON__ ne sont PLUS
+    # inlines dans le HTML. Le runtime fetch Neon + departements.geojson au
+    # chargement. Raison : Neon est la seule source de verite, on ne veut
+    # JAMAIS embarquer de donnees statiques dans le bundle.
 
     OUT.write_text(template, encoding='utf-8')
     print(f'Wrote {OUT} ({OUT.stat().st_size / 1024:.1f} KB)')
