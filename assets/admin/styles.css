@@ -133,10 +133,16 @@ html, body {
 .admin-main[data-view='list'] {
   max-width: min(720px, calc(100% - 2rem));
 }
-/* Tres grands ecrans : on elargit encore, sans depasser 960px */
-@media (min-width: 1200px) {
+/* Tablettes paysage et desktops compacts : on elargit a 960px */
+@media (min-width: 900px) {
   .admin-main[data-view='list'] {
     max-width: min(960px, calc(100% - 2rem));
+  }
+}
+/* Tres grands ecrans : on elargit encore, sans depasser 1100px */
+@media (min-width: 1400px) {
+  .admin-main[data-view='list'] {
+    max-width: min(1100px, calc(100% - 2rem));
   }
 }
 
