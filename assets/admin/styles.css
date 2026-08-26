@@ -115,6 +115,7 @@ html, body {
   font-family: inherit;
   cursor: pointer;
   transition: all 0.15s ease;
+  white-space: nowrap;
 }
 .admin-header__logout:hover {
   color: var(--admin-danger);
