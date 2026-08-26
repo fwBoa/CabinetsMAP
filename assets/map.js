@@ -6,6 +6,13 @@
   const U = App.utils;
   const C = App.config;
 
+  // Helper : MapLibre refuse les Points avec coordinates: null
+  // (cabinet cree sans geocodage). On filtre une fois pour toutes.
+  function hasValidCoords(feature) {
+    const c = feature?.geometry?.coordinates;
+    return Array.isArray(c) && c.length >= 2 && c[0] != null && c[1] != null;
+  }
+
   const loader = document.getElementById('loader');
   const loaderText = document.getElementById('loaderText');
   const loaderActions = document.getElementById('loaderActions');
@@ -139,10 +146,7 @@
       // mais sont ignorees sur le canvas.
       data: {
         type: 'FeatureCollection',
-        features: S.cabinets.filter(f => {
-          const c = f.geometry?.coordinates;
-          return Array.isArray(c) && c.length >= 2 && c[0] != null && c[1] != null;
-        }),
+        features: S.cabinets.filter(hasValidCoords),
       },
       promoteId: 'id',
       generateId: false
@@ -1421,7 +1425,10 @@
     if (!S.map) return;
     const cabSrc = S.map.getSource('cabinets');
     if (cabSrc) {
-      cabSrc.setData({ type: 'FeatureCollection', features: S.cabinets });
+      // Filtre les features sans coords (meme logique que addSource initial).
+      // Sinon MapLibre leve "Cannot read properties of null (reading '0')"
+      // et la carte n'affiche plus aucun point.
+      cabSrc.setData({ type: 'FeatureCollection', features: S.cabinets.filter(hasValidCoords) });
     }
     // Repeindre aussi la couche departements : buildDeptIndex() (dans main.js)
     // met a jour S.departements[*].properties.fillColor selon la couleur du
