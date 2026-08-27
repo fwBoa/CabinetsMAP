@@ -1069,3 +1069,124 @@ html, body {
     grid-template-columns: 3rem 1fr;
   }
 }
+
+/* =============================================================================
+   Historique (sheet laterale)
+   ============================================================================= */
+
+.admin-header__history {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--admin-radius-sm);
+  color: var(--admin-text-secondary);
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.admin-header__history:hover {
+  background: var(--admin-primary-light);
+  color: var(--admin-primary);
+}
+.admin-header__history:focus-visible {
+  outline: none;
+  box-shadow: var(--admin-focus-ring);
+}
+
+/* La sheet d'historique reutilise .admin-sheet, on override la largeur */
+.admin-sheet__panel--history {
+  width: min(520px, calc(100vw - 2rem));
+}
+
+.admin-sheet__subtitle {
+  font-weight: 500;
+  font-size: 0.85rem;
+  color: var(--admin-text-muted);
+  margin-left: 0.35rem;
+}
+
+.admin-sheet__body {
+  padding: 1rem 1.25rem 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.history-meta {
+  margin: 0 0 0.75rem;
+  font-size: 0.82rem;
+  color: var(--admin-text-muted);
+}
+
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.history-item {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-sm);
+  padding: 0.55rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.history-item__head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.history-item__when {
+  color: var(--admin-text-muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.history-item__action {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--admin-radius-full);
+  background: var(--admin-primary-light);
+  color: var(--admin-primary);
+  white-space: nowrap;
+}
+.history-item__action.is-add    { background: #dcfce7; color: #15803d; }
+.history-item__action.is-edit   { background: #dbeafe; color: #1e40af; }
+.history-item__action.is-delete { background: #fee2e2; color: #b91c1c; }
+.history-item__action.is-login  { background: var(--admin-primary-light); color: var(--admin-primary); }
+.history-item__action.is-warn   { background: #fef3c7; color: #92400e; }
+
+.history-item__name {
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: var(--admin-text);
+  flex: 1;
+  min-width: 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.history-item__summary {
+  margin: 0.2rem 0 0;
+  font-size: 0.82rem;
+  color: var(--admin-text-secondary);
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 540px) {
+  .admin-sheet__panel--history {
+    width: calc(100vw - 1rem);
+  }
+}

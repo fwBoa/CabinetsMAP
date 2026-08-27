@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=EB+Garamond:wght@600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet"   href="assets/admin/styles.css?v=b4dd1a65" />
+  <link rel="stylesheet"     href="assets/admin/styles.css?v=771a9eba" />
 </head>
 <body>
   <a href="#main" class="skip-link">Aller au contenu principal</a>
@@ -25,6 +25,9 @@
     </div>
     <nav class="admin-header__nav" id="adminNav" hidden>
       <a href="/" class="admin-header__link">Voir le site public</a>
+      <button id="historyBtn" class="admin-header__history" type="button">
+        ↺ Historique
+      </button>
       <button id="logoutBtn" class="admin-header__logout" type="button">
         Se déconnecter
       </button>
@@ -167,6 +170,36 @@
     </div>
   </aside>
 
+  <!-- ========== SHEET HISTORIQUE ========== -->
+  <aside id="historySheet" class="admin-sheet admin-sheet--history" aria-hidden="true" hidden>
+    <div class="admin-sheet__backdrop" data-close></div>
+    <div class="admin-sheet__panel admin-sheet__panel--history" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
+      <header class="admin-sheet__header">
+        <h2 id="historyTitle" class="admin-sheet__title">Historique <span class="admin-sheet__subtitle">· 30 derniers jours</span></h2>
+        <button id="historyClose" type="button" class="admin-sheet__close" aria-label="Fermer">×</button>
+      </header>
+
+      <div class="admin-sheet__body">
+        <p class="history-meta">
+          <strong id="historyCount">0</strong> événement(s) sur la période.
+        </p>
+
+        <div id="historyLoading" class="admin-list__loading" hidden>
+          <span class="admin-spinner" aria-hidden="true"></span>
+          <span>Chargement…</span>
+        </div>
+
+        <p id="historyError" class="admin-form__error" role="alert" aria-live="polite"></p>
+
+        <p id="historyEmpty" class="admin-list__empty" hidden>
+          Aucun événement sur les 30 derniers jours.
+        </p>
+
+        <ul id="historyBody" class="history-list"></ul>
+      </div>
+    </div>
+  </aside>
+
   <!-- ========== MODAL CONFIRMATION ========== -->
   <div id="confirmModal" class="admin-modal" hidden>
     <div class="admin-modal__backdrop" data-close></div>
@@ -185,8 +218,9 @@
   <!-- ========== JS ========== -->
   <script src="assets/admin/departements-liste.js?v=eae3e8e8" defer></script>
   <script src="assets/admin/departements-picker.js?v=5ecca553" defer></script>
-  <script src="assets/admin/api.js?v=77861272" defer></script>
+  <script src="assets/admin/api.js?v=0e4e0ce9" defer></script>
   <script src="assets/admin/auth.js?v=a58b7b93" defer></script>
   <script src="assets/admin/cabinets.js?v=0c6deb9c" defer></script>
+  <script src="assets/admin/history.js?v=2185e359" defer></script>
 </body>
 </html>

@@ -61,5 +61,9 @@
     mutateCabinet(action, payload) {
       return request('POST', '/cabinets', { action, payload });
     },
+    // === Historique ===
+    listHistory(days = 30, limit = 200) {
+      return request('GET', `/admin-history?days=${days}&limit=${limit}`);
+    },
   };
 })();

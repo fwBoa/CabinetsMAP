@@ -29,6 +29,7 @@ const ASSETS = [
   'assets/admin/cabinets.js',
   'assets/admin/departements-liste.js',
   'assets/admin/departements-picker.js',
+  'assets/admin/history.js',
   'assets/admin/styles.css',
 ];
 
