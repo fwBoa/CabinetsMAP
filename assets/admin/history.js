@@ -1,6 +1,8 @@
 // assets/admin/history.js
-// Sheet d'historique : affiche les 30 derniers jours d'evenements admin.
-// S'appuie sur AppAdmin.api.listHistory (api/admin-history.js) + AppAdmin.toast.
+// Sheet d'historique : affiche les 30 derniers jours d'evenements cabinets
+// (add / edit / delete uniquement — pas les connexions).
+// Chaque evenement montre le detail de chaque champ modifie
+// (meme presentation que la preview de la sheet d'edition).
 
 (function () {
   'use strict';
@@ -14,6 +16,18 @@
   };
 
   const els = {};
+
+  // Labels humains pour chaque champ
+  const FIELD_LABELS = {
+    nom: 'Nom',
+    adresse: 'Adresse',
+    phone: 'Téléphone',
+    emails: 'Emails',
+    tribunaux: 'Tribunaux',
+    cours_appel: "Cours d'appel",
+    departements: 'Départements',
+    couleur: 'Couleur',
+  };
 
   function cacheDom() {
     els.sheet = document.getElementById('historySheet');
@@ -31,7 +45,7 @@
     if (AppAdmin.toast) AppAdmin.toast(msg, variant);
   }
 
-  // === Rendu ===
+  // === Helpers de formatage ===
 
   function formatDate(iso) {
     if (!iso) return '—';
@@ -46,22 +60,124 @@
       case 'add': return { text: '+ Ajouté', cls: 'is-add' };
       case 'edit': return { text: '✎ Modifié', cls: 'is-edit' };
       case 'delete': return { text: '× Supprimé', cls: 'is-delete' };
-      case 'login': return { text: '→ Connexion', cls: 'is-login' };
-      case 'login_failed': return { text: '⚠ Connexion refusée', cls: 'is-warn' };
       default: return { text: action, cls: '' };
     }
   }
 
-  function summarizeDetails(entry) {
-    const d = entry.details;
-    if (!d) return null;
-    if (entry.action === 'edit' && Array.isArray(d.fields) && d.fields.length) {
-      return `Champs : ${d.fields.join(', ')}`;
+  // Formate une valeur pour affichage (jamais de JSON brut).
+  function formatValue(value) {
+    if (value === undefined || value === null || value === '') return '—';
+    if (Array.isArray(value)) {
+      if (value.length === 0) return '—';
+      return value.join(', ');
     }
-    if (entry.action === 'add' && d.nom) {
-      return `Nom : ${d.nom}`;
+    return String(value);
+  }
+
+  // === Rendu ===
+
+  function makeTag(text, kind) {
+    const tag = document.createElement('span');
+    tag.className = `admin-preview__tag admin-preview__tag--${kind}`;
+    tag.textContent = (kind === 'add' ? '+ ' : '− ') + text;
+    return tag;
+  }
+
+  function isEmpty(v) {
+    return v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0);
+  }
+
+  // Rend un champ de diff en <li class="admin-preview__item ...">.
+  // Pour les listes : additions / removals en tags (comme la preview).
+  // Pour les scalaires : avant → apres.
+  function renderFieldItem(fieldKey, change) {
+    const label = FIELD_LABELS[fieldKey] || fieldKey;
+    const li = document.createElement('li');
+
+    const labelEl = document.createElement('span');
+    labelEl.className = 'admin-preview__label';
+    labelEl.textContent = label;
+
+    const value = document.createElement('div');
+    value.className = 'admin-preview__value';
+
+    const before = change?.before;
+    const after = change?.after;
+    const bEmpty = isEmpty(before);
+    const aEmpty = isEmpty(after);
+
+    // Cas : listes → additions/removals
+    if (Array.isArray(before) || Array.isArray(after)) {
+      const b = Array.isArray(before) ? before : [];
+      const a = Array.isArray(after) ? after : [];
+      const bSet = new Set(b.map(String));
+      const aSet = new Set(a.map(String));
+      const additions = a.filter(x => !bSet.has(String(x)));
+      const removals = b.filter(x => !aSet.has(String(x)));
+
+      if (additions.length === 0 && removals.length === 0) return null;
+
+      additions.forEach(v => value.appendChild(makeTag(v, 'add')));
+      removals.forEach(v => value.appendChild(makeTag(v, 'remove')));
+
+      li.className = 'admin-preview__item admin-preview__item--' +
+        (additions.length && removals.length ? 'changed'
+         : additions.length ? 'added' : 'removed');
     }
-    return null;
+    // Cas : scalaire → avant → apres
+    else {
+      if (bEmpty && aEmpty) return null;
+      const bStr = formatValue(before);
+      const aStr = formatValue(after);
+
+      let kind = 'changed';
+      if (bEmpty && !aEmpty) kind = 'added';
+      else if (!bEmpty && aEmpty) kind = 'removed';
+
+      li.className = 'admin-preview__item admin-preview__item--' + kind;
+
+      if (kind === 'changed') {
+        const beforeEl = document.createElement('span');
+        beforeEl.className = 'admin-preview__before';
+        beforeEl.textContent = bStr;
+        value.appendChild(beforeEl);
+        const arrow = document.createElement('span');
+        arrow.className = 'admin-preview__arrow';
+        arrow.textContent = '→';
+        arrow.setAttribute('aria-hidden', 'true');
+        value.appendChild(arrow);
+        const afterEl = document.createElement('span');
+        afterEl.className = 'admin-preview__after';
+        afterEl.textContent = aStr;
+        value.appendChild(afterEl);
+      } else if (kind === 'removed') {
+        value.appendChild(makeTag(bStr, 'remove'));
+      } else {
+        value.appendChild(makeTag(aStr, 'add'));
+      }
+    }
+
+    li.appendChild(labelEl);
+    li.appendChild(value);
+    return li;
+  }
+
+  // Rend toutes les cles d'un diff en <ul class="admin-preview__list">
+  function renderDiff(diff) {
+    if (!diff || typeof diff !== 'object' || !Object.keys(diff).length) return null;
+    const ul = document.createElement('ul');
+    ul.className = 'admin-preview__list';
+    let hasItems = false;
+    for (const fieldKey of Object.keys(FIELD_LABELS)) {
+      const change = diff[fieldKey];
+      if (!change) continue;
+      const li = renderFieldItem(fieldKey, change);
+      if (li) {
+        ul.appendChild(li);
+        hasItems = true;
+      }
+    }
+    return hasItems ? ul : null;
   }
 
   function renderEntries() {
@@ -91,26 +207,31 @@
       badgeEl.className = `history-item__action ${badge.cls}`;
       badgeEl.textContent = badge.text;
 
-      const nameEl = document.createElement('span');
-      nameEl.className = 'history-item__name';
-      nameEl.textContent = e.cabinet_nom || e.cabinet_id || '';
-
-      const summary = summarizeDetails(e);
-      let summaryEl = null;
-      if (summary) {
-        summaryEl = document.createElement('p');
-        summaryEl.className = 'history-item__summary';
-        summaryEl.textContent = summary;
-      }
+      // Nom du cabinet : details.nom (snapshot au moment de l'action) en priorite,
+      // sinon cabinet_nom (join avec la table actuelle, peut etre null si supprime).
+      const nom = e.details?.nom || e.cabinet_nom || e.cabinet_id || '';
 
       const head = document.createElement('div');
       head.className = 'history-item__head';
       head.appendChild(when);
       head.appendChild(badgeEl);
-      if (nameEl.textContent) head.appendChild(nameEl);
-
+      if (nom) {
+        const nameEl = document.createElement('span');
+        nameEl.className = 'history-item__name';
+        nameEl.textContent = nom;
+        head.appendChild(nameEl);
+      }
       li.appendChild(head);
-      if (summaryEl) li.appendChild(summaryEl);
+
+      // Diff par champ (meme look que la preview)
+      const diffList = renderDiff(e.details?.diff);
+      if (diffList) {
+        const wrap = document.createElement('div');
+        wrap.className = 'history-item__diff';
+        wrap.appendChild(diffList);
+        li.appendChild(wrap);
+      }
+
       frag.appendChild(li);
     }
     els.body.appendChild(frag);
@@ -146,7 +267,6 @@
     els.sheet.setAttribute('aria-hidden', 'false');
     document.body.classList.add('has-sheet-open');
     state.open = true;
-    // Charge au premier open (et refresh a chaque open suivant)
     load();
   }
 

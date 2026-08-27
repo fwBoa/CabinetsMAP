@@ -34,8 +34,8 @@ export default async function handler(req, res) {
 
   try {
     const sql = getSql();
-    // On recupere les events triés du plus recent au plus ancien,
-    // joints au nom du cabinet si cabinet_id present (pour l'affichage).
+    // On ne garde que les actions liees aux cabinets (pas les login/logout).
+    // Tri plus recent en premier, joint au nom du cabinet pour l'affichage.
     const rows = await sql`
       select
         l.id,
@@ -50,6 +50,7 @@ export default async function handler(req, res) {
       from admin_logs l
       left join cabinets c on c.id = l.cabinet_id
       where l.at >= now() - (${days} || ' days')::interval
+        and l.action in ('add', 'edit', 'delete')
       order by l.at desc
       limit ${limit}
     `;

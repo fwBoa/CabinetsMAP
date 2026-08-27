@@ -1185,6 +1185,23 @@ html, body {
   overflow-wrap: break-word;
 }
 
+/* Diff par champ dans l'historique (reutilise les classes .admin-preview__*) */
+.history-item__diff {
+  margin-top: 0.45rem;
+  padding-top: 0.45rem;
+  border-top: 1px dashed var(--admin-border);
+}
+/* Ajustement : dans la sheet historique, les items preview n'ont pas
+   besoin d'arriere-plan supplementaire (la card history-item en a deja un). */
+.history-item__diff .admin-preview__item {
+  background: transparent;
+  padding: 0.4rem 0;
+  border-left-width: 3px;
+}
+.history-item__diff .admin-preview__list {
+  gap: 0.3rem;
+}
+
 @media (max-width: 540px) {
   .admin-sheet__panel--history {
     width: calc(100vw - 1rem);

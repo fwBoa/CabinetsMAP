@@ -209,8 +209,21 @@ export default async function handler(req, res) {
         where id = ${payload.id}
       `;
 
+      // Construit le diff avant/apres pour l'audit (sera consomme par
+      // la vue historique pour afficher chaque changement comme dans
+      // la preview de la sheet).
+      const AUDIT_FIELDS = ['nom', 'adresse', 'phone', 'emails', 'tribunaux', 'cours_appel', 'departements', 'couleur'];
+      const diff = {};
+      for (const k of AUDIT_FIELDS) {
+        const b = existing[k];
+        const a = merged[k];
+        if (JSON.stringify(b ?? null) !== JSON.stringify(a ?? null)) {
+          diff[k] = { before: b ?? null, after: a ?? null };
+        }
+      }
+
       const rows = await sql`select * from cabinets order by id`;
-      await auditLog(sql, 'edit', payload.id, req, { fields: Object.keys(merged) });
+      await auditLog(sql, 'edit', payload.id, req, { nom: merged.nom, diff });
       return json(res, 200, {
         ok: true,
         action,
@@ -263,7 +276,15 @@ export default async function handler(req, res) {
       `;
 
       const rows = await sql`select * from cabinets order by id`;
-      await auditLog(sql, 'add', id, req, { nom: clean.nom });
+      // Snapshot des champs crees (pour la vue historique)
+      const addedDiff = {};
+      const ADD_FIELDS = ['nom', 'adresse', 'phone', 'emails', 'tribunaux', 'cours_appel', 'departements', 'couleur'];
+      for (const k of ADD_FIELDS) {
+        const v = clean[k];
+        const isEmpty = v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0);
+        if (!isEmpty) addedDiff[k] = { before: null, after: v };
+      }
+      await auditLog(sql, 'add', id, req, { nom: clean.nom, diff: addedDiff });
       return json(res, 200, {
         ok: true,
         action,
@@ -276,10 +297,27 @@ export default async function handler(req, res) {
     if (action === 'delete') {
       if (!payload.id) return json(res, 400, { error: 'id requis pour delete' });
       if (!RE_CABINET_ID.test(payload.id)) return json(res, 400, { error: 'id invalide' });
+
+      // Snapshot avant delete pour pouvoir montrer ce qui a ete supprime
+      // dans l'historique.
+      const [existing] = await sql`select * from cabinets where id = ${payload.id}`;
       await sql`delete from cabinets where id = ${payload.id}`;
 
       const rows = await sql`select * from cabinets order by id`;
-      await auditLog(sql, 'delete', payload.id, req);
+      let deleteDiff = null;
+      if (existing) {
+        deleteDiff = {};
+        const DEL_FIELDS = ['nom', 'adresse', 'phone', 'emails', 'tribunaux', 'cours_appel', 'departements', 'couleur'];
+        for (const k of DEL_FIELDS) {
+          const v = existing[k];
+          const isEmpty = v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0);
+          if (!isEmpty) deleteDiff[k] = { before: v, after: null };
+        }
+      }
+      await auditLog(sql, 'delete', payload.id, req, {
+        nom: existing ? existing.nom : null,
+        diff: deleteDiff,
+      });
       return json(res, 200, {
         ok: true,
         action,
