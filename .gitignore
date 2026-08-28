@@ -25,6 +25,11 @@ test-results/
 playwright-report/
 .env*
 
+# Documentation interne (PDF + sources HTML print) - jamais versionnee
+docs/TECHNICAL.print.html
+docs/USER-GUIDE.print.html
+docs/*.pdf
+
 # Data tierce Natural Earth (supprimee du repo - inutilisee)
 ne_10m_admin_0_countries/
 ne_10m_admin_0_countries.zip
