@@ -1181,36 +1181,3 @@ html, body {
 }
 /* .polynesia-scale-note volontairement supprimée : les proportions restent
    non respectées sur la Polynesie, mais on n'affiche plus le disclaimer. */
-
-/* ========== FOOTER MENTIONS (sources + liens légaux) ========== */
-.site-footer {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 40;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.25rem 1rem;
-  padding: 0.3rem 0.9rem;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(6px);
-  border-top: 1px solid var(--color-border, #e2e8f0);
-  font-size: 0.72rem;
-  color: var(--color-text-secondary, #475569);
-  pointer-events: none; /* laisse passer les clics carte sauf sur les liens */
-}
-.site-footer a { pointer-events: auto; color: var(--color-primary, #1e3a8a); text-decoration: none; }
-.site-footer a:hover { text-decoration: underline; }
-.site-footer__source { margin: 0; }
-.site-footer__legal { margin: 0; display: flex; align-items: center; gap: 0.35rem; }
-/* Mobile : compacte, au-dessus du handle de la sidebar */
-@media (max-width: 720px) {
-  .site-footer {
-    font-size: 0.62rem;
-    padding: 0.25rem 0.6rem;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 3.4rem);
-  }
-}
