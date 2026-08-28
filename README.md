@@ -22,8 +22,6 @@ Ce projet a été réalisé **dans le cadre d'un CDD pour le compte de la CEGC**
 - Les informations publiées sur les cabinets sont des **informations professionnelles
   publiques** (nom, adresse professionnelle, contacts, zones d'intervention), vérifiables
   publiquement. **Aucune donnée personnelle n'est publiée** sans accord.
-- La carte est **volontairement non indexée** (`noindex, nofollow`) : il s'agit d'un
-  outil destiné au réseau, pas d'un annuaire public.
 - **Aucune donnée personnelle de visiteur n'est collectée** : pas de tracking, pas de
   cookies publicitaires. Le seul cookie est la session d'administration (strictement nécessaire).
 - Toute modification des données est **journalisée** (audit log) dans un but de sécurité
@@ -56,17 +54,6 @@ Ce projet a été réalisé **dans le cadre d'un CDD pour le compte de la CEGC**
 ```
 
 ## 🚀 Développement
-
-```bash
-# Tests E2E
-node scripts/test-admin-e2e.mjs
-
-# Régénérer index.html depuis le template (smoke-test DB inclus)
-python3 scripts/build_index.py
-
-# Déploiement production
-vercel --prod
-```
 
 Variables d'environnement requies : voir [`.env.example`](.env.example)
 (`DATABASE_URL`, `SESSION_SECRET`, `ADMIN_SESSION_TTL_SECONDS`).
