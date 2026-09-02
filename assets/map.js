@@ -686,6 +686,25 @@
       promoteId: 'code',
       generateId: false
     });
+    // Source de points pour les labels de codes : UN point par departement
+    // (centroide de sa geometrie inset). Un archipel MultiPolygon n'affiche
+    // ainsi qu'un seul label, pas un par ilot.
+    const labelPoints = {
+      type: 'FeatureCollection',
+      features: insetData.features.map(f => {
+        const c = getGeometryCentroid(f.geometry);
+        return {
+          type: 'Feature',
+          properties: { code: f.properties.code, nom: f.properties.nom },
+          geometry: { type: 'Point', coordinates: c }
+        };
+      })
+    };
+    map.addSource('om-insets-labels', {
+      type: 'geojson',
+      data: labelPoints,
+      generateId: false
+    });
     map.addLayer({
       id: 'om-insets-fill',
       type: 'fill',
@@ -728,6 +747,34 @@
         'line-width': 1.6,
         'line-dasharray': [2, 2],
         'line-opacity': 1
+      }
+    });
+
+    // Labels codes departements sur les insets DOM-TOM (971, 972, ...).
+    // Source dediee de POINTS (un seul par departement, au centroide de sa
+    // geometrie inset) : evite la duplication de labels sur les archipels
+    // MultiPolygon (988, 987...). Memes regles que la metropole.
+    map.addLayer({
+      id: 'om-insets-code-labels',
+      type: 'symbol',
+      source: 'om-insets-labels',
+      minzoom: 4,
+      layout: {
+        'text-field': ['get', 'code'],
+        'text-font': ['Open Sans Semibold'],
+        'text-size': ['interpolate', ['linear'], ['zoom'],
+          4, 8,
+          6, 10,
+          9, 13
+        ],
+        'text-allow-overlap': true,
+        'symbol-placement': 'point'
+      },
+      paint: {
+        'text-color': '#ffffff',
+        'text-halo-color': 'rgba(15, 23, 42, 0.55)',
+        'text-halo-width': 1.1,
+        'text-opacity': 0.92
       }
     });
     bindInsetEvents();
