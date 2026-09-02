@@ -21,6 +21,10 @@
     config: {
       IGN_STYLE: {
         version: 8,
+        // Glyphes vectoriels requis par les couches de type 'symbol'
+        // (labels des codes departements sur la carte). Servi par demotiles,
+        // heberge par MapLibre. Sans cette propriete, text-field ne rend rien.
+        glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
         sources: {},
         layers: [{
           id: 'background',

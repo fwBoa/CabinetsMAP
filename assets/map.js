@@ -200,6 +200,40 @@
       }
     });
 
+    // Labels : code departement affiche au centre du polygone.
+    // Blanc sur la couleur du dept (contrasté), discret au zoom pays,
+    // lisible en zoomant. Toujours visibles, masques si un dept est "dim"
+    // (hors filtre actif) pour ne pas surcharger.
+    map.addLayer({
+      id: 'depts-code-labels',
+      type: 'symbol',
+      source: 'departements',
+      minzoom: 4,
+      layout: {
+        'text-field': ['get', 'code'],
+        // Fontstack servi par demotiles.maplibre.org (verifie 02/09/2026 :
+        // "Open Sans Regular" renvoie 404, "Open Sans Semibold" 200)
+        'text-font': ['Open Sans Semibold'],
+        'text-size': ['interpolate', ['linear'], ['zoom'],
+          4, 9,
+          6, 12,
+          9, 15
+        ],
+        'text-allow-overlap': true,
+        'text-ignore-placement': false,
+        'symbol-placement': 'point'
+      },
+      paint: {
+        'text-color': '#ffffff',
+        'text-halo-color': 'rgba(15, 23, 42, 0.55)',
+        'text-halo-width': 1.2,
+        'text-opacity': ['case',
+          ['boolean', ['feature-state', 'hover'], false], 1,
+          0.9
+        ]
+      }
+    });
+
     map.addLayer({
       id: 'cabinets-circles',
       type: 'circle',
